@@ -19,11 +19,13 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.executors;
 
-import jep.JepException;
+import java.util.List;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
+
+import jep.JepException;
 
 /**
  * Executes the generateProductFrom method of ProductScript
@@ -38,6 +40,8 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * Apr 23, 2014  1480      jsanchez     Added isCorrection attribute.
  * Apr 16, 2015  7579      Robert.Blum  Replaced prevDataList with keyinfo.
  * Apr 23, 2015  6979      Robert.Blum  Renamed - changes for product corrections.
+ * Feb 23, 2017  29170     Robert.Blum  Product Editor refactor.
+ * Jun 05, 2017  29996     Robert.Blum  Now handles product parts.
  * 
  * </pre>
  * 
@@ -45,30 +49,30 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * @version 1.0
  */
 
-public class GenerateProductFromExecutor extends
-        AbstractProductExecutor<GeneratedProductList> {
+public class GenerateProductFromExecutor
+        extends AbstractProductExecutor<GeneratedProductList> {
 
     private GeneratedProductList generatedProducts;
 
-    private KeyInfo keyInfo;
+    private List<ProductPart> productParts;
 
     /** String array of formats */
     private String[] formats;
 
     public GenerateProductFromExecutor(String product,
             GeneratedProductList generatedProducts,
-            KeyInfo keyInfo, String[] formats) {
+            List<ProductPart> productParts, String[] formats) {
         this.product = product;
         this.generatedProducts = generatedProducts;
         this.formats = formats;
-        this.keyInfo = keyInfo;
+        this.productParts = productParts;
     }
 
     @Override
     public GeneratedProductList execute(ProductScript script)
             throws JepException {
         GeneratedProductList generatedProducts = script.generateProductFrom(
-                product, this.generatedProducts, keyInfo, formats);
+                product, this.generatedProducts, productParts, formats);
         return generatedProducts;
     }
 

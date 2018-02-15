@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
@@ -60,6 +61,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Mar 29, 2018   48027    Chris.Golden Removed "hazard event visual feature changed"
  *                                      recommender trigger, as it has been folded into
  *                                      "hazard event modified".
+ * May 22, 2018   15561    Chris.Golden Made extra parameters map immutable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -126,7 +128,7 @@ public class RecommenderExecutionContext
     /**
      * Maps of additional entries to be added to the event set.
      */
-    private final Map<String, Serializable> extraEventSetAttributes;
+    private final ImmutableMap<String, Serializable> extraEventSetAttributes;
 
     // Public Static Methods
 
@@ -304,7 +306,8 @@ public class RecommenderExecutionContext
         this.visualFeatureIdentifiers = (visualFeatureIdentifiers == null ? null
                 : ImmutableSet.copyOf(visualFeatureIdentifiers));
         this.eventType = eventType;
-        this.extraEventSetAttributes = extraEventSetAttributes;
+        this.extraEventSetAttributes = (extraEventSetAttributes == null ? null
+                : ImmutableMap.copyOf(extraEventSetAttributes));
     }
 
     /**
@@ -349,7 +352,8 @@ public class RecommenderExecutionContext
         this.visualFeatureIdentifiers = (visualFeatureIdentifiers == null ? null
                 : ImmutableSet.copyOf(visualFeatureIdentifiers));
         this.eventType = eventType;
-        this.extraEventSetAttributes = extraEventSetAttributes;
+        this.extraEventSetAttributes = (extraEventSetAttributes == null ? null
+                : ImmutableMap.copyOf(extraEventSetAttributes));
     }
 
     // Public Methods

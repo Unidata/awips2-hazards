@@ -34,7 +34,7 @@
 
 from Event import NullEvent
 from HazardEvent import HazardEvent
-from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
+from com.raytheon.uf.common.dataplugin.events.hazards.event import SessionHazardEvent
 
 def createNullEvent():        
     '''
@@ -44,11 +44,11 @@ def createNullEvent():
     ne = NullEvent()
     return ne
 
-def createEvent():
+def createEvent(practice):
     '''
     @return: a BaseEvent, any event that has an area and holds other information
     '''
-    bhe = BaseHazardEvent()
+    bhe = SessionHazardEvent(practice)
     he = HazardEvent(bhe)
     return he
     

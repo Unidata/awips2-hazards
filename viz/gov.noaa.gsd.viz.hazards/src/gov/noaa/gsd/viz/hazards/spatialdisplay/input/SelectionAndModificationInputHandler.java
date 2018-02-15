@@ -78,6 +78,8 @@ import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
  *                                      classes. Added ability to use other
  *                                      new input handlers for delegation of
  *                                      rotating and resizing drawables.
+ * Mar 16, 2017   30225    Robert.Blum  Fixes for MB2 changing resource
+ *                                      editability.
  * Jan 22, 2018   25765    Chris.Golden Changed to bring together algorithms
  *                                      to determine which drawable is the
  *                                      best fit for a certain point into one
@@ -505,7 +507,7 @@ public class SelectionAndModificationInputHandler
             Coordinate location = translatePixelToWorld(x, y);
             getSpatialDisplay().handleUserSelectionOfLocation(location);
         } else if (button == 2) {
-            handleVertexAdditionOrDeletion(x, y);
+            result = handleVertexAdditionOrDeletion(x, y);
         } else if (drawableUnderMouseDown != null) {
             boolean multipleSelection = (isShiftDown() || isControlDown());
             getSpatialDisplay().handleUserSingleDrawableSelection(
@@ -702,10 +704,12 @@ public class SelectionAndModificationInputHandler
      *            Pixel X coordinate.
      * @param y
      *            Pixel Y coordinate.
+     * @return <code>true</code> if a vertex was added or deleted,
+     *         <code>false</code> otherwise.
      */
-    private void handleVertexAdditionOrDeletion(int x, int y) {
+    private boolean handleVertexAdditionOrDeletion(int x, int y) {
         if (active == false) {
-            return;
+            return false;
         }
         if (getManipulationPointUnderMouse() instanceof VertexManipulationPoint) {
             getSpatialDisplay().deleteVertex(x, y);
@@ -713,6 +717,7 @@ public class SelectionAndModificationInputHandler
         } else {
             setManipulationPointUnderMouse(getSpatialDisplay().addVertex(x, y));
         }
+        return true;
     }
 
     /**

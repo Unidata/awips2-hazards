@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.gfe;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -37,7 +35,6 @@ import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
@@ -55,6 +52,8 @@ import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.edex.hazards.interop.InteroperabilityUtil;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 /**
  * Supports GFE to Hazard Services interoperability.
@@ -77,6 +76,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Aug 13, 2015  8836      Chris.Cody    Changes for a configurable Event Id
  * Aug 20, 2015  6895      Ben.Phillippe Routing registry requests through request
  *                                       server
+ * Oct 29, 2015 11864      Robert.Blum   Changed to use new expirationTime field.
  * Sep 14, 2016 15934      Chris.Golden  Changed to work with advanced geometries
  *                                       now used in hazard events.
  * Feb 16, 2017 29138      Chris.Golden  Changed to work with new hazard
@@ -132,9 +132,9 @@ public class GFEHazardsCreator {
 
     private static final char COUNTY_CHAR = 'C';
 
-    private static final List<String> MARINE_ZONE_PREFIXES = Arrays.asList(
-            "AM", "AN", "GM", "LC", "LE", "LH", "LM", "LO", "LS", "PH", "PK",
-            "PM", "PS", "PZ", "SL");
+    private static final List<String> MARINE_ZONE_PREFIXES = Arrays.asList("AM",
+            "AN", "GM", "LC", "LE", "LH", "LM", "LO", "LS", "PH", "PK", "PM",
+            "PS", "PZ", "SL");
 
     private final List<String> zones = new ArrayList<String>();
 
@@ -171,11 +171,13 @@ public class GFEHazardsCreator {
                     // do querying for all the zones/counties tables
                     List<IGeometryData> geomData = new ArrayList<IGeometryData>();
                     if (counties.isEmpty() == false) {
-                        geomData.addAll(getData(counties, MAPDATA_COUNTY, FIPS));
+                        geomData.addAll(
+                                getData(counties, MAPDATA_COUNTY, FIPS));
                     }
 
                     if (zones.isEmpty() == false) {
-                        geomData.addAll(getData(zones, MAPDATA_ZONE, STATE_ZONE));
+                        geomData.addAll(
+                                getData(zones, MAPDATA_ZONE, STATE_ZONE));
                     }
 
                     if (firewxZones.isEmpty() == false) {
@@ -184,8 +186,8 @@ public class GFEHazardsCreator {
                     }
 
                     if (marineZones.isEmpty() == false) {
-                        geomData.addAll(getData(marineZones,
-                                MAPDATA_MARINE_ZONES, ID));
+                        geomData.addAll(
+                                getData(marineZones, MAPDATA_MARINE_ZONES, ID));
                     }
                     if (offshoreZones.isEmpty() == false) {
                         geomData.addAll(getData(offshoreZones,
@@ -199,8 +201,8 @@ public class GFEHazardsCreator {
                         gridParmInfo = new GridRequestHandler()
                                 .requestGridParmInfo(practice, rec.getXxxid());
                     } catch (Exception e) {
-                        statusHandler.error(
-                                "Failed to retrieve Grid Parm Info for site: "
+                        statusHandler
+                                .error("Failed to retrieve Grid Parm Info for site: "
                                         + rec.getXxxid() + ".", e);
                         return;
                     }
@@ -211,9 +213,9 @@ public class GFEHazardsCreator {
                                 .translateHazardPolygonToGfe(
                                         gridParmInfo.getGridLoc(), geom);
                     } catch (TransformException e) {
-                        statusHandler
-                                .error("GFE Geometry conversion has failed for the new Hazard!",
-                                        e);
+                        statusHandler.error(
+                                "GFE Geometry conversion has failed for the new Hazard!",
+                                e);
                         return;
                     }
 
@@ -227,12 +229,12 @@ public class GFEHazardsCreator {
 
                     List<HazardEvent> eventsToUpdate;
                     try {
-                        eventsToUpdate = this.getEventsToUpdate(practice,
-                                event, hazardGfeTimeRange.getStart(),
+                        eventsToUpdate = this.getEventsToUpdate(practice, event,
+                                hazardGfeTimeRange.getStart(),
                                 hazardGfeTimeRange.getEnd(), rec.getEtn());
                     } catch (HazardEventServiceException e) {
-                        statusHandler.error(
-                                "Error retrieving events to update!", e);
+                        statusHandler
+                                .error("Error retrieving events to update!", e);
                         return;
                     }
 
@@ -242,14 +244,12 @@ public class GFEHazardsCreator {
                     if (eventsToUpdate == null) {
                         if (event.getEndTime().getTime() < event.getStartTime()
                                 .getTime()) {
-                            statusHandler
-                                    .warn("Product "
-                                            + rec.getXxxid()
-                                            + " ends before it begins. Skipping record!");
+                            statusHandler.warn("Product " + rec.getXxxid()
+                                    + " ends before it begins. Skipping record!");
                             return;
                         }
-                        statusHandler.info("Creating event: "
-                                + event.getEventID());
+                        statusHandler
+                                .info("Creating event: " + event.getEventID());
 
                         manager.storeEvents(event);
 
@@ -257,7 +257,8 @@ public class GFEHazardsCreator {
                                 event, rec.getEtn(), INTEROPERABILITY_TYPE.GFE);
                     } else {
                         for (HazardEvent eventToUpdate : eventsToUpdate) {
-                            if (this.updateHazardWithProduct(eventToUpdate, rec)) {
+                            if (this.updateHazardWithProduct(eventToUpdate,
+                                    rec)) {
                                 manager.updateEvents(eventToUpdate);
                             }
 
@@ -381,8 +382,9 @@ public class GFEHazardsCreator {
             }
         }
 
-        return factory.createGeometryCollection(
-                geometries.toArray(new Geometry[0])).buffer(0);
+        return factory
+                .createGeometryCollection(geometries.toArray(new Geometry[0]))
+                .buffer(0);
     }
 
     /**
@@ -396,26 +398,18 @@ public class GFEHazardsCreator {
      */
     private HazardEvent createEvent(IHazardEventManager manager,
             AbstractWarningRecord rec, Geometry geom, boolean practice) {
-        HazardEvent event = manager.createEvent();
+        HazardEvent event = manager.createEvent(practice);
         event.setSiteID(rec.getXxxid());
         event.setPhenomenon(rec.getPhen());
         event.setSignificance(rec.getSig());
         event.setStartTime(rec.getStartTime().getTime());
         event.setEndTime(rec.getEndTime().getTime());
-        ProductClass value = ProductClass.TEST;
-        for (ProductClass clazz : ProductClass.values()) {
-            if (clazz.getAbbreviation().equals(rec.getProductClass())) {
-                value = clazz;
-                break;
-            }
-        }
-        event.setHazardMode(value);
-        event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(geom,
-                0));
+        event.setGeometry(
+                AdvancedGeometryUtilities.createGeometryWrapper(geom, 0));
 
         try {
-            event.setEventID(HazardEventServicesSoapClient
-                    .getServices(practice).requestEventId(rec.getXxxid()));
+            event.setEventID(HazardEventServicesSoapClient.getServices(practice)
+                    .requestEventId(rec.getXxxid()));
         } catch (Exception e) {
             throw new RuntimeException("Unable to generate hazard event id", e);
         }
@@ -426,25 +420,26 @@ public class GFEHazardsCreator {
 
     private boolean updateHazardWithProduct(IHazardEvent event,
             AbstractWarningRecord rec) {
-        HazardStatus state = HazardEventUtilities.stateBasedOnAction(rec
-                .getAct());
+        HazardStatus state = HazardEventUtilities
+                .stateBasedOnAction(rec.getAct());
         if (state == event.getStatus()) {
             /*
              * Skip the event if it is already in the correct state.
              */
-            statusHandler.info("Skipping update of event: "
-                    + event.getEventID());
+            statusHandler
+                    .info("Skipping update of event: " + event.getEventID());
             return false;
         }
         event.setStatus(state);
-        event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, rec
-                .getPurgeTime().getTime().getTime());
-        event.addHazardAttribute(HazardConstants.ETNS, "[" + rec.getEtn() + "]");
-        event.addHazardAttribute(HazardConstants.VTEC_CODES, "[" + rec.getAct()
-                + "]");
-        event.addHazardAttribute(HazardConstants.PILS, "[" + rec.getPil() + "]");
-        event.addHazardAttribute(HazardConstants.ISSUE_TIME, rec.getIssueTime()
-                .getTime().getTime());
+        event.setExpirationTime(rec.getPurgeTime().getTime());
+        event.addHazardAttribute(HazardConstants.ETNS,
+                "[" + rec.getEtn() + "]");
+        event.addHazardAttribute(HazardConstants.VTEC_CODES,
+                "[" + rec.getAct() + "]");
+        event.addHazardAttribute(HazardConstants.PILS,
+                "[" + rec.getPil() + "]");
+        event.addHazardAttribute(HazardConstants.ISSUE_TIME,
+                rec.getIssueTime().getTime().getTime());
         event.setCreationTime(rec.getIssueTime().getTime());
 
         return true;

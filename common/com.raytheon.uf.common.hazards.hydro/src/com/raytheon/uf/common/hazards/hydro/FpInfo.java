@@ -37,6 +37,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * Feb 11, 2016 14796      mduff       Add toString().
  * May 04, 2016 15584      Kevin.Bisanz Rename MAJOR_FLOW, update toString().
+ * Feb 08, 2017 28335      Robert.Blum Fixed incorrect javaDoc.
+ * Apr 27, 2017 29292      bkowal      Handle {@code null} ordinal values in the fpinfo view.
  * </pre>
  * 
  * @author Chris.Cody
@@ -359,7 +361,9 @@ public class FpInfo {
                     this.groupId = (String) queryValue;
                     break;
                 case ORDINAL_FIELD_IDX:
-                    this.ordinal = ((Number) queryValue).intValue();
+                    if (queryValue != null) {
+                        this.ordinal = ((Number) queryValue).intValue();
+                    }
                     break;
                 case CHG_THRESHOLD_FIELD_IDX:
                     this.changeThreshold = ((Number) queryValue).doubleValue();
@@ -647,7 +651,7 @@ public class FpInfo {
     }
 
     /**
-     * @return the major flood category.
+     * @return the record flood category.
      */
     public double getRecordFloodCategory() {
         return this.floodCategory[HydroFloodCategories.RECORD_FLOOD_CATEGORY

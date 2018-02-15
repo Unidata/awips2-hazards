@@ -29,6 +29,7 @@ import java.util.Set;
 
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil.IdDisplayType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
@@ -109,6 +110,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      session event manager shouldn't be policing this; it should
  *                                      assume it gets valid geometries.
  * Apr 04, 2016 15192      Robert.Blum  Added new copyEvents() method.
+ * May 12, 2016 16374      mduff        Added getFilterEvents.
  * Jun 06, 2016 19432      Chris.Golden Added method to set a flag indicating whether newly-created
  *                                      (by the user) hazard events should be added to the selected
  *                                      set or not.
@@ -133,16 +135,23 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      count for a hazard event. Also moved selection methods to
  *                                      new selection manager, and added method for reverting an
  *                                      event to the most recent saved version.
+ * Feb 16, 2017 28708      mduff        Added setIdDisplayType.
  * Feb 17, 2017 21676      Chris.Golden Changed to place old SessionEventUtilities merge method
  *                                      into this interface.
  * Feb 17, 2017 29138      Chris.Golden Removed notion of visible history list (since all events
  *                                      in history list are now visible). Also added support for
  *                                      saving to history list versus new "latest version" set
  *                                      in database.
+ * Mar 13, 2017 28708      Chris.Golden Further work with new(er) HazardServicesEventIdUtil.
  * Mar 16, 2017 15528      Chris.Golden Added methods to get and set checked state of a hazard
  *                                      event.
  * Mar 30, 2017 15528      Chris.Golden Changed to reset modified flag when asked to do so
  *                                      during the persistence of a hazard event.
+ * Apr 03, 2017 32574      bkowal       Confirm that the user would like to end every issued
+ *                                      hazard event when all possible issued events have been
+ *                                      selected.
+ * May 02, 2017 33739      mduff        Display confirmation dialog for ending all visible hazards
+ *                                      only if ending all visible.
  * Sep 27, 2017 38072      Chris.Golden Removed definitions of constants that did not belong here.
  * Oct 23, 2017 21730      Chris.Golden Added method to set a hazard event to the default hazard
  *                                      type as configured, if any.
@@ -155,6 +164,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      not to be used.
  * Feb 21, 2018 46736      Chris.Golden Simplified the mergeHazardEvents() method.
  * Apr 10, 2018 48027      Chris.Golden Added originator parameter for checking geometry validity.
+ * Apr 23, 2018 15561      Chris.Golden Added isHazardous() method, and modified the merge method
+ *                                      to allow a new flag, fromDatabase, to be passed in.
  * </pre>
  * 
  * @author bsteffen
@@ -169,7 +180,7 @@ public interface ISessionEventManager {
      * Result of an event property change attempt.
      */
     public enum EventPropertyChangeResult {
-        SUCCESS, FAILURE_DUE_TO_EVENT_NOT_FOUND, FAILURE_DUE_TO_LOCK_STATUS, FAILURE_DUE_TO_BAD_VALUE
+        SUCCESS, FAILURE_DUE_TO_EVENT_NOT_FOUND, FAILURE_DUE_TO_LOCK_STATUS, FAILURE_DUE_TO_BAD_VALUE, FAILURE_DUE_TO_TRANSMISSION_NOT_ALLOWED
     }
 
     // Public Static Classes
@@ -400,14 +411,17 @@ public interface ISessionEventManager {
      *            Event into which to merge the new event.
      * @param forceMerge
      *            If <code>true</code>, the event manager will not be used to
-     *            set time range and hazard type, meaning the values from the
-     *            new event will not be checked for correctness before being
-     *            merged into the old event. If <code>false</code>, such checks
-     *            will occur.
+     *            set time range, hazard type, and geometry, meaning the values
+     *            from the new event will not be checked for correctness before
+     *            being merged into the old event. If <code>false</code>, such
+     *            checks will occur.
      * @param persistOnStatusChange
      *            Flag indicating whether or not the event should be saved to
      *            the database (persisted) if its status is being changed as a
      *            result of this merge.
+     * @param fromDatabase
+     *            Flag indicating whether or not the new event is coming from
+     *            the database.
      * @param useModifiedValue
      *            Flag indicating whether or not the new event's modified flag
      *            value should be used for the event it is being merged into.
@@ -418,7 +432,8 @@ public interface ISessionEventManager {
     public EventPropertyChangeResult mergeHazardEvents(
             IReadableHazardEvent newEvent, IHazardEventView oldEvent,
             boolean forceMerge, boolean persistOnStatusChange,
-            boolean useModifiedValue, IOriginator originator);
+            boolean fromDatabase, boolean useModifiedValue,
+            IOriginator originator);
 
     /**
      * Remove an event from the session.
@@ -539,6 +554,19 @@ public interface ISessionEventManager {
      */
     public EventPropertyChangeResult initiateEventEndingProcess(
             IHazardEventView event, IOriginator originator);
+
+    /**
+     * Initiate the ending process for all the currently selected hazard events
+     * that are issued. If the user directly requested the ending, and any of
+     * the event ending attempts fails due to the event being locked, the user
+     * will be notified.
+     * 
+     * @param originator
+     *            Originator of the change.
+     * @return <code>true</code> if the ending process was attempted,
+     *         <code>false</code> otherwise.
+     */
+    public boolean initiateSelectedEventsEndingProcess(IOriginator originator);
 
     /**
      * Revert the ending process for the specified hazard event. If the user
@@ -717,6 +745,24 @@ public interface ISessionEventManager {
      * of something else that changed (not directly from an action in the user
      * interface).
      * 
+     * @param eventIdentifier
+     *            Identifier of the event to be modified.
+     * @param propertyChange
+     *            Property and manner in which the property is to be changed.
+     * @param parameters
+     *            Parameters needed to effect the change.
+     * @return Result of the attempt.
+     */
+    public <T> EventPropertyChangeResult changeEventProperty(
+            String eventIdentifier, EventPropertyChange<T> propertyChange,
+            T parameters);
+
+    /**
+     * Change the specified event's specified property in the specified manner
+     * if possible, marking the change as having originated from a side effect
+     * of something else that changed (not directly from an action in the user
+     * interface).
+     * 
      * @param event
      *            Event to be modified.
      * @param propertyChange
@@ -728,6 +774,26 @@ public interface ISessionEventManager {
     public <T> EventPropertyChangeResult changeEventProperty(
             IHazardEventView event, EventPropertyChange<T> propertyChange,
             T parameters);
+
+    /**
+     * Change the specified event's specified property in the specified manner
+     * if possible. If the change is directly the result of user input, lock the
+     * event if it is not already locked by this workstation, or notify the user
+     * if the lock is held by another workstation.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event to be modified.
+     * @param propertyChange
+     *            Property and manner in which the property is to be changed.
+     * @param parameters
+     *            Parameters needed to effect the change.
+     * @param originator
+     *            Originator of this change.
+     * @return Result of the attempt.
+     */
+    public <T> EventPropertyChangeResult changeEventProperty(
+            String eventIdentifier, EventPropertyChange<T> propertyChange,
+            T parameters, IOriginator originator);
 
     /**
      * Change the specified event's specified property in the specified manner
@@ -991,11 +1057,21 @@ public interface ISessionEventManager {
      * Determine whether or not the specified event's area can be changed.
      * 
      * @param event
-     *            View of the event to be examined.
+     *            Event to be examined.
      * @return <code>true</code> the event's area can be changed,
      *         <code>false</code> the event's area cannot be changed.
      */
     public boolean canEventAreaBeChanged(IReadableHazardEvent event);
+
+    /**
+     * Determine whether or not the event is hazardous.
+     * 
+     * @param event
+     *            Event to be examined.
+     * @return <code>true</code> the event is hazardous, <code>false</code>
+     *         otherwise.
+     */
+    public boolean isHazardous(IReadableHazardEvent event);
 
     /**
      * Determine whether or not the event may be set to proposed status.
@@ -1214,6 +1290,18 @@ public interface ISessionEventManager {
      */
     public void setAddCreatedEventsToSelected(
             boolean addCreatedEventsToSelected);
+
+    /**
+     * Set the display type for the session.
+     * 
+     * @param displayType
+     */
+    public void setIdDisplayType(IdDisplayType displayType);
+
+    /**
+     * Get the events that have been filtered out.
+     */
+    public Set<IHazardEventView> getFilteredEvents();
 
     /**
      * Determine whether or not this manager is shut down.

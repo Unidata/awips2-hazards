@@ -10,8 +10,10 @@ import EventFactory, EventSetFactory, GeometryFactory
 import RecommenderTemplate
 import logging, UFStatusHandler
 import HazardDataAccess
+import AdvancedGeometry
+from VisualFeatures import VisualFeatures
 from EventSet import EventSet
-from HazardConstants import DELETE_EVENT_IDENTIFIERS_KEY, RESULTS_MESSAGE_KEY
+from HazardConstants import SESSION_OBJECT_KEY, DELETE_EVENT_IDENTIFIERS_KEY, RESULTS_MESSAGE_KEY
 from HazardEventLockUtils import HazardEventLockUtils
 
 from ufpy.dataaccess import DataAccessLayer
@@ -25,6 +27,7 @@ from java.util import Date
 from java.lang import Long, Float
 
 import JUtil
+from shapely import prepared
 #
 # Keys to values in the attributes dictionary produced
 # by the flash flood recommender.
@@ -35,6 +38,7 @@ TYPE_SOURCE = 'typeSource'
 RADAR = 'radar'
 ACCUMULATION_INTERVAL = 'accumulationInterval'
 COMBINE_HAZARD_DISTANCE = 'combineHazardDistance'
+RECOMMENDER_AREA = 'recommenderArea'
 
 #  Time and key constants
 FLASH_FLOOD_PHENOMENON = 'FF'
@@ -45,6 +49,8 @@ CURRENT_TIME = 'currentTime'
 CURRENT_SITE = 'siteID'
 CWA_GEOMETRY = 'cwaGeometry'
 INCLUDE_CWA_GEOMETRY = "includeCwaGeometry"
+ENTIRE_CWA =  'entire CWA'
+USER_DEFINED_AREA = 'user defined area'
 
 DEFAULT_FFW_DURATION_IN_SECONDS = 6*60*60  # 6 hours.
 
@@ -107,6 +113,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata[INCLUDE_CWA_GEOMETRY] = True
         
         metadata["getSpatialInfoNeeded"] = False
+        metadata["handleDialogParameterChangeNeeded"] = True
        
         return metadata
 
@@ -119,7 +126,6 @@ class Recommender(RecommenderTemplate.Recommender):
         '''  
         dialogDict = {'title': 'Flash Flood Recommender'}
        
-        qpeChoices = []
         qpfChoices = []
         guidChoices = []
        
@@ -132,8 +138,8 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # Process supported FFMP QPE sources
         for choice in supportedQPESourceList:
-            qpeChoices.append(choice)
-            qpeDisplayNames.append(choice)
+            source = srcConfigMan.getSource(choice)
+            qpeDisplayNames.append(source.getDisplayName())
         
         supportedGuidanceSourceList = srcConfigMan.getGuidanceDisplayNames()
        
@@ -153,6 +159,8 @@ class Recommender(RecommenderTemplate.Recommender):
         radarChoices = sorted(set(radarChoices))
         radarChoices.insert(0, "---")
        
+        sessionObjectManager = eventSet.getAttribute(SESSION_OBJECT_KEY)
+        
         valueDict = {}           
 
         fieldDictList = []
@@ -160,29 +168,36 @@ class Recommender(RecommenderTemplate.Recommender):
         qpeDictLabel = {}
         qpeDictLabel['fieldType'] = 'Label'
         qpeDictLabel['fieldName'] = 'qpeDictLabel'
-        qpeDictLabel['values'] = 'QPE Source:'
+        qpeDictLabel['label'] = 'QPE Source:'
         fieldDictList.append(qpeDictLabel)
 
         qpeDict = {}
         qpeDict['fieldType'] = 'ComboBox'
         qpeDict['fieldName'] = QPE_SOURCE
-        qpeDict['label'] = 'QPE Source:'
-        qpeDict['choices'] = qpeChoices
-        qpeDict['defaultValues'] = qpeChoices[0]
+        qpeDict['choices'] = qpeDisplayNames
+        cachedQpeDisplayName = sessionObjectManager.get(QPE_SOURCE)
+        if cachedQpeDisplayName and cachedQpeDisplayName in qpeDisplayNames:
+            qpeDict['defaultValues'] = cachedQpeDisplayName
+        else: 
+            qpeDict['defaultValues'] = qpeDisplayNames[0]
         valueDict[QPE_SOURCE] = qpeDict['defaultValues']
         fieldDictList.append(qpeDict)
 
         radarDictLabel = {}
         radarDictLabel['fieldType'] = 'Label'
         radarDictLabel['fieldName'] = 'radarDictLabel'
-        radarDictLabel['values'] = 'Radar:'
+        radarDictLabel['label'] = 'Radar:'
         fieldDictList.append(radarDictLabel)
 
         radarDict = {}
         radarDict['fieldType'] = 'ComboBox'
         radarDict['fieldName'] = RADAR
         radarDict['choices'] = radarChoices
-        radarDict['defaultValues'] = radarChoices[1]
+        cachedRadarChoice = sessionObjectManager.get(RADAR)
+        if cachedRadarChoice and cachedRadarChoice in radarChoices:
+            radarDict['defaultValues'] = cachedRadarChoice
+        else:
+            radarDict['defaultValues'] = radarChoices[1]
         radarDict['extraData'] = { "choices": radarChoices }
         valueDict[RADAR] = radarDict['defaultValues']
         fieldDictList.append(radarDict)
@@ -190,21 +205,25 @@ class Recommender(RecommenderTemplate.Recommender):
         guidDictLabel = {}
         guidDictLabel['fieldType'] = 'Label'
         guidDictLabel['fieldName'] = 'guidDictLabel'
-        guidDictLabel['values'] = 'Guidance Source:'
+        guidDictLabel['label'] = 'Guidance Source:'
         fieldDictList.append(guidDictLabel)
        
         guidDict = {}
         guidDict['fieldType'] = 'ComboBox'
         guidDict['fieldName'] = GUID_SOURCE
         guidDict['choices'] = guidChoices
-        guidDict['defaultValues'] = guidChoices[0]
+        cachedGuidChoice = sessionObjectManager.get(GUID_SOURCE)
+        if cachedGuidChoice and cachedGuidChoice in guidChoices:
+            guidDict['defaultValues'] = cachedGuidChoice
+        else:
+            guidDict['defaultValues'] = guidChoices[0]
         valueDict[GUID_SOURCE] = guidDict['defaultValues']
         fieldDictList.append(guidDict)
 
         accumulationIntervalDictLabel = {}
         accumulationIntervalDictLabel['fieldType'] = 'Label'
         accumulationIntervalDictLabel['fieldName'] = 'accumulationIntervalDictLabel'
-        accumulationIntervalDictLabel['values'] = 'Time Duration (hrs):'
+        accumulationIntervalDictLabel['label'] = 'Time Duration (hrs):'
         fieldDictList.append(accumulationIntervalDictLabel)
        
         accumulationIntervalDict = {}
@@ -215,13 +234,17 @@ class Recommender(RecommenderTemplate.Recommender):
         accumulationIntervalDict['maxValue'] = 24
         accumulationIntervalDict['incrementDelta'] = .25
         accumulationIntervalDict['precision'] = 2
-        valueDict[ACCUMULATION_INTERVAL] = 1
+        cachedAccumulationInterval = sessionObjectManager.get(ACCUMULATION_INTERVAL)
+        if cachedAccumulationInterval and cachedAccumulationInterval >= accumulationIntervalDict['minValue'] and cachedAccumulationInterval <= accumulationIntervalDict['maxValue']:
+            valueDict[ACCUMULATION_INTERVAL] = cachedAccumulationInterval
+        else:
+            valueDict[ACCUMULATION_INTERVAL] = 1
         fieldDictList.append(accumulationIntervalDict)
 
         typeDictLabel = {}
         typeDictLabel['fieldType'] = 'Label'
         typeDictLabel['fieldName'] = 'typeDictLabel'
-        typeDictLabel['values'] = 'FFMP Fields:'
+        typeDictLabel['label'] = 'FFMP Fields:'
         fieldDictList.append(typeDictLabel)
 
         typeDict = {}
@@ -229,13 +252,17 @@ class Recommender(RecommenderTemplate.Recommender):
         typeDict['fieldName'] = TYPE_SOURCE
         typeDict['choices'] = VALUE_TYPES
         typeDict['defaultValues'] = VALUE_TYPES[0]
-        valueDict[TYPE_SOURCE] = typeDict['defaultValues']
+        cachedValueType = sessionObjectManager.get(TYPE_SOURCE)
+        if cachedValueType and cachedValueType in VALUE_TYPES:
+            valueDict[TYPE_SOURCE] = cachedValueType
+        else:
+            valueDict[TYPE_SOURCE] = typeDict['defaultValues']
         fieldDictList.append(typeDict)
 
         compareValueDictLabel = {}
         compareValueDictLabel['fieldType'] = 'Label'
         compareValueDictLabel['fieldName'] = 'compareValueDictLabel'
-        compareValueDictLabel['values'] = 'Value (inches/%):'
+        compareValueDictLabel['label'] = 'Value (inches/%):'
         fieldDictList.append(compareValueDictLabel)
        
         compareValueDict = {}
@@ -246,14 +273,31 @@ class Recommender(RecommenderTemplate.Recommender):
         compareValueDict['maxValue'] = 6
         compareValueDict['incrementDelta'] = 1.0
         compareValueDict['precision'] = 2
-        valueDict['compareValue'] = 1
+        cachedCompareValue = sessionObjectManager.get(COMPARE_VALUE)
+        if cachedCompareValue and cachedCompareValue >= compareValueDict['minValue'] and cachedCompareValue <= compareValueDict['maxValue']:
+            valueDict['compareValue'] = cachedCompareValue
+        else:
+            valueDict['compareValue'] = 1
         fieldDictList.append(compareValueDict)
 
+        recommenderAreaLabel = {}
+        recommenderAreaLabel['fieldType'] = 'Label'
+        recommenderAreaLabel['fieldName'] = 'recommenderAreaLabel'
+        recommenderAreaLabel['label'] = "Recommender Area:"
+        fieldDictList.append(recommenderAreaLabel)
+
+        recommenderAreaDict = {
+            "fieldType" : "ComboBox",
+            "fieldName" : RECOMMENDER_AREA,
+            "choices" : [ENTIRE_CWA, USER_DEFINED_AREA]
+            }
+        valueDict[RECOMMENDER_AREA] = ENTIRE_CWA
+        fieldDictList.append(recommenderAreaDict)
 
         combineHazardDictLabel = {}
         combineHazardDictLabel['fieldType'] = 'Label'
         combineHazardDictLabel['fieldName'] = 'combineHazardDictLabel'
-        combineHazardDictLabel['values'] = 'Combine Hazards Within (miles):'
+        combineHazardDictLabel['label'] = 'Combine Hazards Within (miles):'
         fieldDictList.append(combineHazardDictLabel)
 
         combineHazardDict = {}
@@ -264,7 +308,11 @@ class Recommender(RecommenderTemplate.Recommender):
         combineHazardDict['maxValue'] = 1000
         combineHazardDict['incrementDelta'] = .25
         combineHazardDict['precision'] = 2
-        valueDict[COMBINE_HAZARD_DISTANCE] = 10.0
+        cachedCombineHazardsDistance = sessionObjectManager.get(COMBINE_HAZARD_DISTANCE)
+        if cachedCombineHazardsDistance and cachedCombineHazardsDistance >= combineHazardDict['minValue'] and cachedCombineHazardsDistance <= combineHazardDict['maxValue']:
+            valueDict[COMBINE_HAZARD_DISTANCE] = cachedCombineHazardsDistance
+        else:
+            valueDict[COMBINE_HAZARD_DISTANCE] = 10.0
         fieldDictList.append(combineHazardDict)
 
         # A composite with multiple columns is used to better align the widgets
@@ -281,9 +329,121 @@ class Recommender(RecommenderTemplate.Recommender):
 
         dialogDict['fields'] = [fieldDictComposite]
         dialogDict['valueDict'] = valueDict
+
+        dialogDict['visualFeatures'] = VisualFeatures([
+                                                       self.getUserDefinedBoundingGeometry(False, True, None)
+                                                       ])
        
         return dialogDict
 
+    def handleDialogParameterChange(self, eventSet, triggeringDialogIdentifiers, mutableDialogProperties, triggeringVisualFeatureIdentifiers, visualFeatures, collecting):
+        '''
+        Respond to the dialog state changing in some way (but not the
+        dialog being closed), or visual features changing in some way,
+        or a request for read-only visual features prior to execution.
+        '''
+        changedMutableProperties = {}
+        newVisualFeatures = None
+
+        # If this invocation is to generate read-only visual features to
+        # be displayed while the recommender runs, provide a read-only
+        # version of the existing feature, or provide nothing if the
+        # "user defined area" option has not been selected.
+        if not collecting:
+            if mutableDialogProperties[RECOMMENDER_AREA]["values"] == USER_DEFINED_AREA:
+                newVisualFeatures = VisualFeatures([ self.getUserDefinedBoundingGeometry(True, False, visualFeatures[0].get("geometry")) ])
+            else:
+                newVisualFeatures = VisualFeatures([])
+            return (changedMutableProperties, newVisualFeatures)
+
+        # Determine whether or not the dialog is being initialized.
+        initializing = (not triggeringDialogIdentifiers and not triggeringVisualFeatureIdentifiers)
+        
+        # Ensure the compare-value megawidget has the right min, max, etc.
+        # with regard to the type source.
+        if initializing or TYPE_SOURCE in triggeringDialogIdentifiers:
+            if mutableDialogProperties[TYPE_SOURCE]["values"] == TYPE_DIFF:
+                changedMutableProperties[COMPARE_VALUE] = {
+                                                            "maxValue": 6,
+                                                            "minValue": -6,
+                                                            "incrementDelta": 1.0
+                                                            }
+            elif mutableDialogProperties[TYPE_SOURCE]["values"] == TYPE_RATIO:
+                changedMutableProperties[COMPARE_VALUE] = {
+                                                            "maxValue": 200,
+                                                            "minValue": 0,
+                                                            "incrementDelta": 1.0,
+                                                            "values": 100
+                                                            }
+            elif mutableDialogProperties[TYPE_SOURCE]["values"] == TYPE_QPE:
+                changedMutableProperties[COMPARE_VALUE] = {
+                                                            "maxValue": 24,
+                                                            "minValue": 0,
+                                                            "incrementDelta": 1.0,
+                                                            "values": 1
+                                                            }
+    
+        # Ensure the radar megawidget has the value based upon the
+        # QPE source.
+        if initializing or QPE_SOURCE in triggeringDialogIdentifiers:
+            if mutableDialogProperties[QPE_SOURCE]["values"] == "DHR":
+                changedMutableProperties[RADAR] = {
+                                                   "values": mutableDialogProperties[RADAR]["extraData"]["choices"][1]
+                                                   }
+            elif mutableDialogProperties[QPE_SOURCE]["values"] == "DPR":
+                changedMutableProperties[RADAR] = {
+                                                   "values": mutableDialogProperties[RADAR]["extraData"]["choices"][1]
+                                                   }
+            else:
+                changedMutableProperties[RADAR] = {
+                                                   "values": mutableDialogProperties[RADAR]["extraData"]["choices"][0]
+                                                   }
+
+        # If the visual feature has changed, alter the area selection
+        # to match. If the visual feature now has an empty geometry,
+        # set the geometry to None.
+        changedToUserDefinedArea = False
+        if triggeringVisualFeatureIdentifiers:
+            geometry = visualFeatures[0].get("geometry")
+            if geometry:
+                if geometry.asShapely().is_empty:
+                    visible = (mutableDialogProperties[RECOMMENDER_AREA]["values"] == USER_DEFINED_AREA)
+                    newVisualFeatures = VisualFeatures([ self.getUserDefinedBoundingGeometry(visible, True, None) ])
+                else:
+                    changedMutableProperties[RECOMMENDER_AREA] = {
+                                                                  "values": USER_DEFINED_AREA
+                                                                  }
+                    changedToUserDefinedArea = True
+
+        # Ensure that the visual feature for the user-defined bounding
+        # area is shown or hidden as appropriate.
+        if initializing or changedToUserDefinedArea or RECOMMENDER_AREA in triggeringDialogIdentifiers:
+            visible = (changedToUserDefinedArea or (mutableDialogProperties[RECOMMENDER_AREA]["values"] == USER_DEFINED_AREA))
+            newVisualFeatures = VisualFeatures([ self.getUserDefinedBoundingGeometry(visible, True, visualFeatures[0].get("geometry")) ])
+        elif not newVisualFeatures:
+            newVisualFeatures = visualFeatures
+            
+        return (changedMutableProperties, newVisualFeatures)
+
+    def getUserDefinedBoundingGeometry(self, visible, editable, geometry):
+        '''
+        Get the visual feature used to show the user-defined bounding area, visible
+        or invisible as specified, editable or not as specified, with the specified
+        geometry (which may be None).
+        '''
+        return {
+                "identifier": "userDefinedBoundingArea",
+                "visibilityConstraints": "always" if visible else "never",
+                "geometry": geometry,
+                "fillColor": { "red": 1.0, "green": 1.0, "blue": 1.0, "alpha": 0.25 },
+                "bufferColor": { "red": 0.0, "green": 0.0, "blue": 0.0, "alpha": 0.7 },
+                "borderThickness": 2,
+                "bufferThickness": 1,
+                "dragCapability": "all" if editable else "none",
+                "editableUsingGeometryOps": editable,
+                "rotatable": editable,
+                "scaleable": editable
+                }
         
     def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
@@ -300,22 +460,72 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential Flash Flood Hazard events. 
         '''
+        sessionAttributes = eventSet.getAttributes()
+
+        caveMode = sessionAttributes.get('runMode','PRACTICE').upper()
+        self.practice = True
+        if caveMode == 'OPERATIONAL':
+            self.practice = False
+
         self.smallBasinMap = {}
         self.currentTime = eventSet.getAttribute(CURRENT_TIME)
         self.currentSite = eventSet.getAttribute(CURRENT_SITE)
         self.cwaGeom = eventSet.getAttribute(CWA_GEOMETRY)
 
-        # pull these out of the dialog
+        # Pull these out of the dialog and cache them.
+        sessionObjectManager = eventSet.getAttribute(SESSION_OBJECT_KEY)
         self._sourceName = dialogInputMap.get(QPE_SOURCE)  
+        sessionObjectManager.set(QPE_SOURCE, self._sourceName)
         self._guidanceName = dialogInputMap.get(GUID_SOURCE)
+        sessionObjectManager.set(GUID_SOURCE, self._guidanceName)
         self._radar = dialogInputMap.get(RADAR)
+        sessionObjectManager.set(RADAR, self._radar)
         self.type = dialogInputMap.get(TYPE_SOURCE)
+        sessionObjectManager.set(TYPE_SOURCE, self.type)  
         self.compareValue = dialogInputMap.get(COMPARE_VALUE)       
+        sessionObjectManager.set(COMPARE_VALUE, self.compareValue)     
         self.accumulationHours = float(dialogInputMap.get(ACCUMULATION_INTERVAL))
+        sessionObjectManager.set(ACCUMULATION_INTERVAL, self.accumulationHours)
         self.combineHazardDistance = float(dialogInputMap.get(COMBINE_HAZARD_DISTANCE))
+        sessionObjectManager.set(COMBINE_HAZARD_DISTANCE, self.combineHazardDistance) 
+        
+        # Get the area in which to execute. If the user has selected
+        # "user defined area", there must be a polygon within the
+        # visual feature that the user drew, and the intersection of
+        # that polygon and the CWA must be non-empty, otherwise there
+        # is nothing for the recommender to do. If the user selected
+        # "CWA" as the execution area, use the passed-in CWA.
+        if dialogInputMap.get(RECOMMENDER_AREA) == USER_DEFINED_AREA:
+            userDefinedArea = visualFeatures[0].get("geometry", None)
+            if userDefinedArea:
+                userDefinedArea = userDefinedArea.asShapely()
+            errorMessagePrefix = None
+            if userDefinedArea and not userDefinedArea.is_empty:
+                
+                # Find the intersection of the user-defined area and the CWA.
+                # If the CWA is poorly formed, this could cause problems,
+                # so catch any exceptions.
+                try:
+                    userDefinedArea = userDefinedArea.intersection(self.cwaGeom)
+                except:
+                    errorMessagePrefix = "Invalid CWA"
+                    self.logger.warn("Attempt to intersect with CWA unsuccessful, CWA must be invalid in some way")
+            else:
+                errorMessagePrefix = "User-defined execution area not supplied"
+            if not errorMessagePrefix:
+                if userDefinedArea and not userDefinedArea.is_empty:
+                    self.executionArea = userDefinedArea
+                else:
+                    errorMessagePrefix = "User-defined execution area lies outside the CWA"
+            if errorMessagePrefix: 
+                mergedEvents = EventSet(None)
+                mergedEvents.addAttribute(RESULTS_MESSAGE_KEY, errorMessagePrefix + "; no recommendations can be made.")
+                return mergedEvents
+        else:
+            self.executionArea = self.cwaGeom
+        self.executionArea = prepared.prep(self.executionArea)
         
         # delete potential hazards
-        sessionAttributes = eventSet.getAttributes()
         deleteEventIdentifiers = self.getIdentifiersOfCurrentEventsToBeDeleted(eventSet, sessionAttributes)
         
         self._localize()
@@ -323,13 +533,15 @@ class Recommender(RecommenderTemplate.Recommender):
         cont = self.getQPEValues()
         if cont :
             haveGuidance = self.getGuidanceValues()
+        else:
+            self.logger.warn("No QPE data available")
 
         mergedEvents = EventSet(None)
         if haveGuidance:
             # Add recommended events if there is guidance.
             recommendedEvents = self.buildEvents(cont);
             mergedEvents.addAll(recommendedEvents)
-        else:
+        elif cont:
             self.logger.warn("No Flash Flood Guidance data available")
 
         mergedEvents.addAttribute(DELETE_EVENT_IDENTIFIERS_KEY, deleteEventIdentifiers)
@@ -477,12 +689,13 @@ class Recommender(RecommenderTemplate.Recommender):
                         g = geom.getGeometry()
                         basins.append(g)
                        
-            if basins :
-                # Remove any basins that are completely outside the CWA
+            if basins:
+                
+                # Remove any basins that are completely outside the execution area.
                 for basin in list(basins):
-                    if basin.intersects(self.cwaGeom) == False:
+                    if self.executionArea.intersects(basin) == False:
                         basins.remove(basin)
-                hazardEvent = EventFactory.createEvent()
+                hazardEvent = EventFactory.createEvent(self.practice)
                 hazardEvent.setSiteID(self.currentSite)
                 hazardEvent.setHazardStatus(POTENTIAL_TYPE)
                 hazardEvent.setPhenomenon(FLASH_FLOOD_PHENOMENON)
@@ -580,13 +793,9 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def getIdentifiersOfCurrentEventsToBeDeleted(self, eventSet, sessionAttributes):
         siteID = eventSet.getAttributes().get('siteID')
-        caveMode = sessionAttributes.get('hazardMode','PRACTICE').upper()
-        practice = True
-        if caveMode == 'OPERATIONAL':
-            practice = False
 
         if self.hazardEventLockUtils is None:
-            self.hazardEventLockUtils = HazardEventLockUtils(practice)
+            self.hazardEventLockUtils = HazardEventLockUtils(self.practice)
         lockedHazardIds = self.hazardEventLockUtils.getLockedEvents()
 
          # Get current events from Session Manager (could include pending / potential)
@@ -599,7 +808,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   and event.getStatus() == "POTENTIAL"):
                 currentEvents.append(event)
         # Add in those from the Database
-        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, practice) 
+        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, self.practice) 
         eventIDs = [event.getEventID() for event in currentEvents]
         for event in databaseEvents:
             if event.getEventID() not in eventIDs:
@@ -621,59 +830,4 @@ class Recommender(RecommenderTemplate.Recommender):
    
     def __str__(self):
         return 'Flash Flood Recommender'
-                        
-def applyInterdependencies(triggerIdentifiers, mutableProperties):
-  
-    if triggerIdentifiers == None or \
-        "typeSource" in triggerIdentifiers:
-        if mutableProperties["typeSource"]["values"] == TYPE_DIFF:
-            return {
-                    "compareValue": {
-                                       "maxValue": 6,
-                                       "minValue": -6,
-                                       "incrementDelta": 1.0
-                                    }
-                    }
-        elif mutableProperties["typeSource"]["values"] == TYPE_RATIO:
-            return {
-                    "compareValue": {
-                                       "maxValue": 200,
-                                       "minValue": 0,
-                                       "incrementDelta": 1.0,
-                                       "values": 100
-                                    }
-                    }
-        elif mutableProperties["typeSource"]["values"] == TYPE_QPE:
-            return {
-                    "compareValue": {
-                                       "maxValue": 24,
-                                       "minValue": 0,
-                                       "incrementDelta": 1.0,
-                                       "values": 1
-                                    }
-                    }
-
-    elif triggerIdentifiers == None or \
-          "qpeSource" in triggerIdentifiers:
-        if mutableProperties["qpeSource"]["values"] == "DHR":
-            return {
-                    "radar": {
-                              "values": mutableProperties["radar"]["extraData"]["choices"][1]
-                              }
-                    }
-        elif mutableProperties["qpeSource"]["values"] == "DPR":
-            return {
-                    "radar": {
-                              "values": mutableProperties["radar"]["extraData"]["choices"][1]
-                              }
-                    }
-        else:
-            return {
-                    "radar": {
-                              "values": mutableProperties["radar"]["extraData"]["choices"][0]
-                              }
-                    }
-        
-    else:
-        return None       
 

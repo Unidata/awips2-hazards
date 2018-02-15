@@ -26,6 +26,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.commons.beanutils;bundle-version="1.8.3",
  com.fasterxml.jackson,
  com.raytheon.uf.common.json,
+ com.raytheon.uf.common.dataplugin.text,
  com.raytheon.viz.core;bundle-version="1.12.1174",
  com.google.guava;bundle-version="1.0.0",
  org.apache.commons.lang;bundle-version="2.3.0",
@@ -49,6 +50,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
  com.raytheon.uf.viz.hazards.sessionmanager.alerts,
+ com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl,
  com.raytheon.uf.viz.hazards.sessionmanager.config,
  com.raytheon.uf.viz.hazards.sessionmanager.config.impl,
  com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types,
@@ -63,9 +65,10 @@ Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
  com.raytheon.uf.viz.hazards.sessionmanager.product.impl,
  com.raytheon.uf.viz.hazards.sessionmanager.recommenders,
  com.raytheon.uf.viz.hazards.sessionmanager.time,
- com.raytheon.uf.viz.hazards.sessionmanager.undoable
+ com.raytheon.uf.viz.hazards.sessionmanager.tools
 Eclipse-BuddyPolicy: ext, global
-Import-Package: org.eclipse.jface.dialogs,
+Import-Package: com.raytheon.viz.ui.simulatedtime,
+ org.eclipse.jface.dialogs,
  org.eclipse.swt,
  org.eclipse.swt.widgets,
  org.eclipse.ui

@@ -35,7 +35,6 @@
 from EventSet import EventSet
 from Event import Event
 
-from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
 from com.raytheon.uf.common.dataplugin.events import EventSet as JavaEventSet
 
 def createEventSet(events=None):        

@@ -9,13 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
+import java.io.Serializable;
+import java.util.Map;
+
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 
 /**
  * Description: Dialog for displaying results to the user following the running
@@ -33,33 +34,38 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
  *                                      future recommenders from running if
  *                                      the user closed a dialog via the X
  *                                      button in the title bar.
+ * May 22, 2018    3782    Chris.Golden Changed to have configuration options
+ *                                      passed in using dedicated objects and
+ *                                      having already been vetted, instead of
+ *                                      passing them in as raw maps. Also
+ *                                      changed to conform somewhat better to
+ *                                      the MVP design guidelines.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ToolResultDialog extends AbstractToolDialog {
+public class ToolResultDialog
+        extends AbstractToolDialog<ToolResultDialogSpecifier> {
 
     // Public Constructors
 
     /**
      * Construct a standard instance.
      * 
-     * @param presenter
-     *            Presenter.
      * @param parent
      *            Parent shell.
-     * @param type
-     *            Type of the tool.
-     * @param jsonParams
-     *            JSON string giving the parameters for this dialog. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param dialogParameters
+     *            Parameters for this subview. Within the set of all fields that
+     *            are defined by these parameters, all the fields (megawidget
+     *            specifiers) must have unique identifiers.
+     * @param toolDialogListener
+     *            Tool dialog listener.
      */
-    public ToolResultDialog(ToolsPresenter presenter, Shell parent,
-            ToolType type, String jsonParams) {
-        super(presenter, parent, type, jsonParams);
+    public ToolResultDialog(Shell parent,
+            ToolResultDialogSpecifier dialogSpecifier,
+            IToolDialogListener toolDialogListener) {
+        super(parent, dialogSpecifier, toolDialogListener);
     }
 
     // Protected Methods
@@ -77,10 +83,7 @@ public class ToolResultDialog extends AbstractToolDialog {
     }
 
     @Override
-    protected void cancelPressed() {
-        super.okPressed();
-        getPresenter().publish(new ToolAction(
-                ToolAction.RecommenderActionEnum.RECOMMENDER_RESULTS_DISPLAY_COMPLETE,
-                null, getType(), getState(), null));
+    protected Map<String, Serializable> getState() {
+        return null;
     }
 }

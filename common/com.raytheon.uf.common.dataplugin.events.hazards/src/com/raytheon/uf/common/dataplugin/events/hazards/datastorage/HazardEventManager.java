@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -85,14 +86,18 @@ import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
  *                                      historical versions of events from
  *                                      latest versions; this is needed until
  *                                      the latest version saving is fixed.
- * Apr 04, 2017  32732     Chris.Golden Fixed temporary code used to prune
+ * Apr 04, 2017  32732    Chris.Golden  Fixed temporary code used to prune
  *                                      event history lists of latest-version
  *                                      snapshots so that it does not return
  *                                      any empty history lists.
- * Apr 13, 2017  33142     Chris.Golden Added ability to delete all events
+ * Apr 13, 2017  33142    Chris.Golden  Added ability to delete all events
  *                                      with a particular event identifier.
- * Dec 17, 2017  20739     Chris.Golden Refactored away access to directly
+ * Dec 17, 2017  20739    Chris.Golden  Refactored away access to directly
  *                                      mutable session events.
+ * Feb 23, 2018  28387    Chris.Golden  Added getLatestByPhenomenonsAndSiteID()
+ *                                      method.
+ * Jun 06, 2018  15561    Chris.Golden  Added practice flag for hazard event
+ *                                      construction.
  * </pre>
  * 
  * @author mnash
@@ -158,8 +163,8 @@ public class HazardEventManager implements IHazardEventManager {
     // Public Methods
 
     @Override
-    public HazardEvent createEvent() {
-        return new HazardEvent();
+    public HazardEvent createEvent(boolean practice) {
+        return new HazardEvent(practice);
     }
 
     @Override
@@ -215,7 +220,7 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> queryHistory(
             HazardEventQueryRequest request)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         Map<String, HazardHistoryList> events = Collections.emptyMap();
         HazardEventResponse response = hazardDataAccess.retrieve(request);
         if (response.success()) {
@@ -505,6 +510,29 @@ public class HazardEventManager implements IHazardEventManager {
     }
 
     @Override
+    public Map<String, HazardEvent> getLatestByPhenomenonsAndSiteID(
+            Collection<String> phenomenons, String site,
+            boolean includeHistoricalVersions) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(practice,
+                HazardConstants.SITE_ID, site);
+        if ((phenomenons != null) && (phenomenons.isEmpty() == false)) {
+            request = request.and(HazardConstants.PHENOMENON, "in",
+                    phenomenons);
+        }
+        request.setInclude(includeHistoricalVersions
+                ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
+                : Include.LATEST_EVENTS);
+
+        try {
+            return queryLatest(request);
+        } catch (HazardEventServiceException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Error requesting latest event by event ID.", e);
+            return Collections.emptyMap();
+        }
+    }
+
+    @Override
     public void storeEventSet(EventSet<HazardEvent> set) {
         Iterator<HazardEvent> eventIter = set.iterator();
         while (eventIter.hasNext()) {
@@ -565,7 +593,7 @@ public class HazardEventManager implements IHazardEventManager {
      */
     private Map<String, Integer> queryHistorySize(
             HazardEventQueryRequest request)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         Map<String, Integer> historySizesForEventIdentifiers = Collections
                 .emptyMap();
 

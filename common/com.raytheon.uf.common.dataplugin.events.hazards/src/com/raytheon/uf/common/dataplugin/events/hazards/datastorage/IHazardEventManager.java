@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
+import java.util.Collection;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -59,6 +60,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  *                                      with a particular event identifier.
  * Dec 17, 2017  20739    Chris.Golden  Refactored away access to directly
  *                                      mutable session events.
+ * Feb 23, 2018  28387    Chris.Golden  Added getLatestByPhenomenonsAndSiteID()
+ *                                      method.
  * </pre>
  * 
  * @author mnash
@@ -214,6 +217,24 @@ public interface IHazardEventManager extends
      * @return Map of event identifiers to their latest versions.
      */
     Map<String, HazardEvent> getLatestBySiteID(String site,
+            boolean includeHistoricalVersions);
+
+    /**
+     * Retrieve the latest version of all hazards with the specified site
+     * identifier and phenomenons.
+     * 
+     * @param phenomenons
+     *            Phenomenons.
+     * @param site
+     *            Site identifier.
+     * @param includeHistoricalVersions
+     *            Flag indicating whether or not historical latest versions
+     *            should be included if they are later than the non-historical
+     *            latest versions.
+     * @return Map of event identifiers to their latest versions.
+     */
+    Map<String, HazardEvent> getLatestByPhenomenonsAndSiteID(
+            Collection<String> phenomenons, String site,
             boolean includeHistoricalVersions);
 
     /**

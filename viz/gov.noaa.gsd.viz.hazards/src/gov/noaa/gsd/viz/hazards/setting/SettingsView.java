@@ -36,11 +36,16 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.ImmutableList;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.FilterIconEntry;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.FilterIcons;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -50,6 +55,7 @@ import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
@@ -89,6 +95,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
  *                                           from public method.
  * Nov 17, 2015   11776    Roger.Ferrel      Use @{link {@link ISaveAs} to update
  *                                           settings menu.
+ * May 11, 2016   16374    mpduff            Add filter indicator toolbar buttons.
+ * Oct 27, 2017   36174    Kevin.Bisanz      Remove restriction to hydro products.
  * Feb 01, 2017   15556    Chris.Golden      Changed to work with settings changes
  *                                           as part of console refactor.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
@@ -450,6 +458,76 @@ public class SettingsView
         }
     }
 
+    /**
+     * Standard action.
+     */
+    private class FilterAction extends BasicAction {
+        private final String label;
+
+        private final String icon;
+
+        private final String colorIcon;
+
+        private final List<String> hazardTypes;
+
+        private final List<HazardStatus> statuses;
+
+        private String activeIcon;
+
+        private FilterAction(String label, String icon, String coloredIcon,
+                String[] hazardTypes, String[] statuses) {
+            super(label, icon, SWT.NONE, label);
+            this.label = label;
+            this.icon = icon;
+            this.colorIcon = coloredIcon;
+
+            this.hazardTypes = new ArrayList<>(hazardTypes.length);
+            for (String ht : hazardTypes) {
+                this.hazardTypes.add(ht);
+            }
+
+            this.statuses = new ArrayList<>(statuses.length);
+            for (String s : statuses) {
+                this.statuses.add(HazardConstants.hazardStatusFromString(s));
+            }
+        }
+
+        /**
+         * Run the action.
+         */
+        @Override
+        public void run() {
+            // Currently no-op. May be needed in the future
+        }
+
+        public void setActiveIcon(boolean filteringActive) {
+            if (filteringActive) {
+                activeIcon = this.colorIcon;
+            } else {
+                activeIcon = this.icon;
+            }
+
+            this.setImageDescriptor(getImageDescriptorForFile(activeIcon));
+        }
+
+        public String getLabel() {
+            return this.label;
+        }
+
+        public List<String> getHazardTypes() {
+            return hazardTypes;
+        }
+
+        public List<HazardStatus> getStatuses() {
+            return statuses;
+        }
+
+        @Override
+        public String toString() {
+            return getLabel() + getHazardTypes() + getStatuses();
+        }
+    }
+
     // Private Variables
 
     /**
@@ -486,6 +564,11 @@ public class SettingsView
      * Filters pulldown action.
      */
     private FiltersPulldownAction filtersPulldownAction = null;
+
+    /**
+     * List of filter actions.
+     */
+    private List<FilterAction> filterActions = null;
 
     /**
      * Setting dialog.
@@ -557,12 +640,21 @@ public class SettingsView
     @Override
     public final void initialize(SettingsPresenter presenter,
             List<Settings> settings, Field[] fields,
-            ObservedSettings currentSettings) {
+            ObservedSettings currentSettings, FilterIcons filterIcons) {
         this.presenter = presenter;
         setSettings(settings);
         setCurrentSettings(currentSettings);
 
         setFilterFields(fields);
+
+        filterActions = new ArrayList<>(filterIcons.size());
+
+        for (FilterIconEntry entry : filterIcons) {
+            FilterAction action = new FilterAction(entry.getLabel(),
+                    entry.getNormalIcon(), entry.getColoredIcon(),
+                    entry.getHazardTypes(), entry.getStatus());
+            filterActions.add(action);
+        }
     }
 
     @Override
@@ -584,6 +676,8 @@ public class SettingsView
                     ImmutableList.of(settingsPulldownAction));
             map.put(FILTERS_PULLDOWN_IDENTIFIER,
                     ImmutableList.of(filtersPulldownAction));
+            map.put(FILTER_INDICATORS_IDENTIFIER,
+                    ImmutableList.copyOf(filterActions));
             return map;
         }
         return Collections.emptyMap();
@@ -680,6 +774,42 @@ public class SettingsView
             }
         } catch (Exception e) {
             statusHandler.error("Failed to build a list of Map fields!", e);
+        }
+    }
+
+    @Override
+    public void updateFilterSettings(
+            Set<? extends IReadableHazardEvent> filteredEvents) {
+        updateFilterStates(filteredEvents);
+    }
+
+    // Private Methods
+
+    /**
+     * Update the state of the filter icons.
+     * 
+     * @param filteredEvents
+     *            The events that have been filtered out
+     */
+    private void updateFilterStates(
+            Set<? extends IReadableHazardEvent> filteredEvents) {
+        for (FilterAction action : filterActions) {
+            action.setActiveIcon(false);
+            List<String> hazardTypes = action.getHazardTypes();
+            List<HazardStatus> statuses = action.getStatuses();
+
+            for (IReadableHazardEvent event : filteredEvents) {
+
+                /*
+                 * Set the icon if this filtered hazard has both the type and
+                 * status to turn on the indicator.
+                 */
+                if (hazardTypes.contains(event.getHazardType())
+                        && statuses.contains(event.getStatus())) {
+                    action.setActiveIcon(true);
+                    break;
+                }
+            }
         }
     }
 }

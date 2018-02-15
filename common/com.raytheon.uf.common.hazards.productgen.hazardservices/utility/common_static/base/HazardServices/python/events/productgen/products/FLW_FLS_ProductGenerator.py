@@ -1,26 +1,10 @@
 '''
     Description: Product Generator for the FLW and FLS products.
-
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Nov 24, 2014    4937    Robert.Blum Initial creation
-    Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
-    Mar 23, 2015    7165    Robert.Blum Code consolidation - removed _prepareSection().
-    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
-    Jun 02, 2015    7138    Robert.Blum Defining productID.
-    Aug 26, 2015    9631    Robert.Blum Changed self._polygonBased to True.
-    Jan 28, 2016   13012    Robert.Blum Removed staging dialog when previewing WarnGen hazards.
-    Jun 08, 2016    9620    Robert.Blum Changed self._purgeHours to a float since purge hours can
-                                        include minutes (15min intervals).
-    Jul 06, 2016   18257    Kevin.Bisanz Added eventSet parameter to executeFrom(..)
-    Oct 21, 2016   22489    Robert.Blum  Removed unused flags.
     
     @author Robert.Blum@noaa.gov
     @version 1.0
 '''
 import collections
-from KeyInfo import KeyInfo
 import HydroGenerator
 
 # Bring in the interdependencies script from the metadata file.
@@ -62,8 +46,7 @@ class Product(HydroGenerator.Product):
             return {}
         productSegmentGroups = self._previewProductSegmentGroups(eventSet)
         self._productLevelMetaData_dict = self._getProductLevelMetaData(self._inputHazardEvents, 'MetaData_FFA_FLW_FLS', productSegmentGroups)          
-        cancel_dict = self._checkForCancel(self._inputHazardEvents, productSegmentGroups)
-        dialogDict = self._organizeByProductLabel(self._productLevelMetaData_dict, cancel_dict, 'FLW_FLS_tabs')
+        dialogDict = self._organizeByProductLabel(self._productLevelMetaData_dict, 'FLW_FLS_tabs')
         return dialogDict
 
     def _initialize(self):
@@ -80,6 +63,15 @@ class Product(HydroGenerator.Product):
         self._FLS_ProductName_Advisory = 'Flood Advisory'
         # Polygon-based, so locations listed will be limited to within the polygon rather than county area
         self._polygonBased = True
+
+    def _preProcessHazardEvents(self, hazardEvents):
+        '''
+        Add a expirationTime to each WarnGen event.
+        '''
+        for hazardEvent in hazardEvents:
+            if hazardEvent.getPhensig() in ['FA.W', 'FA.Y']:
+                expirationTime = self._tpc.round(hazardEvent.getEndTime())
+                hazardEvent.setExpirationTime(expirationTime)
 
     def execute(self, eventSet, dialogInputMap):
         '''
@@ -257,9 +249,11 @@ class Product(HydroGenerator.Product):
         geoType = productSegmentGroup.geoType
         productSegments = productSegmentGroup.productSegments
         if geoType == 'area':
-            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_area(productSegments))
+            productPartsDict = self._hydroProductParts.productParts_FFA_FLW_FLS_area(productSegments)
         elif geoType == 'point':
-            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_point(productSegments))
+            productPartsDict = self._hydroProductParts.productParts_FFA_FLW_FLS_point(productSegments)
+        productParts = self.createProductParts(productPartsDict)
+        productSegmentGroup.setProductParts(productParts)
 
     def _forceSingleSegmentInArealFLW(self):
         ''' NOTE:  Although the directive allows multiple segments in the areal FLW (FA.W), 
@@ -297,9 +291,9 @@ class Product(HydroGenerator.Product):
 
     #########################################
 
-    def executeFrom(self, dataList, eventSet, keyInfo=None):
-        if keyInfo is not None:
-            dataList = self.correctProduct(dataList, eventSet, keyInfo, True)
+    def executeFrom(self, dataList, eventSet, productParts=None):
+        if isinstance(productParts, list) and len(productParts) > 0:
+            dataList = self.correctProduct(dataList, eventSet, productParts, True)
         else:
             self.updateExpireTimes(dataList)
         return dataList

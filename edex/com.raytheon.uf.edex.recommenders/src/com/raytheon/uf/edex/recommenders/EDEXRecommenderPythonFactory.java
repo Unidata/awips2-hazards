@@ -35,7 +35,8 @@ import jep.JepException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 23, 2013            mnash       Initial creation
- * Mar 31, 2016 8837       Robert.Blum Added site for Service Backup.
+ * Dec 16, 2015 14019      Robert.Blum Updates for new PythonJobCoordinator API.
+ * Mar 31, 2016  8837      Robert.Blum Added site for Service Backup.
  * 
  * </pre>
  * 

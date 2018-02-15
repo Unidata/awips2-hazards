@@ -18,40 +18,6 @@
 # further licensing information.
 # #
 
-#
-# Basic information about the keys set in the dictionary.
-#   
-#
-#    
-#    SOFTWARE HISTORY
-#    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    02/20/13                      jsanchez        Initial Creation.
-#    08/20/13        1360          blawrenc       Added code to store an event
-#    11/05/13        2266          jsanchez        Added an intermediate step to just run formatters.
-#    12/05/13        2527          bkowal         Remove unused EventConverter import. Register
-#                                                 Hazard Event conversion capabilities with JUtil.
-#    01/20/14        2766          bkowal         Updated to use the Python Overrider
-#    10/10/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
-#    10/24/14        4934          mpduff         Additional metadata actions.
-#    01/15/15        5109          bphillip       Separated generated and formatter execution
-#    02/12/15        5071          Robert.Blum    Changed to inherit from the PythonOverriderInterface once
-#                                                 again along with other changes to allows the incremental 
-#                                                 overrides and also editing without closing Cave.
-#    02/26/15        6599          Robert.Blum    Picking up overrides of TextUtilities directory.
-#    03/11/15        6885          bphillip       Made product entries an ordered dict to ensure consistent ordering
-#    03/30/15        6929          Robert.Blum    Added a eventSet to each GeneratedProduct.
-#    04/16/15        7579          Robert.Blum    Changes for amended Product Editor.
-#    05/07/15        6979          Robert.Blum    Changes Product Corrections
-#    05/13/15        8161          mduff          Changes for Jep upgrade.
-#    02/12/16       14923          Robert.Blum    Picking up overrides of EventUtilities directory
-#    03/21/16       15640          Robert.Blum    Fixed custom edits not getting put in final product.
-#    03/31/16        8837          Robert.Blum    Added the site to the init method so that it can be used
-#                                                 to import the correct site files for service backup.
-#    07/06/16       18257          Kevin.Bisanz   Added eventSet to kwargs
-#    07/28/16       19222          Robert.Blum    Code cleanup.
-#
 import HazardServicesPythonOverriderInterface
 import HazardServicesPythonOverrider
 import JUtil, importlib
@@ -65,9 +31,13 @@ JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 from KeyInfoHandler import pyKeyInfoToJavaKeyInfo, javaKeyInfoToPyKeyInfo
 JUtil.registerPythonToJava(pyKeyInfoToJavaKeyInfo)
 JUtil.registerJavaToPython(javaKeyInfoToPyKeyInfo)
+from ProductPartHandler import pyProductPartToJavaProductPart, javaProductPartToPyProductPart
+JUtil.registerPythonToJava(pyProductPartToJavaProductPart)
+JUtil.registerJavaToPython(javaProductPartToPyProductPart)
+
 from collections import OrderedDict
 from java.util import ArrayList
-from com.raytheon.uf.common.hazards.productgen import GeneratedProduct, GeneratedProductList, EditableEntryMap
+from com.raytheon.uf.common.hazards.productgen import GeneratedProduct, GeneratedProductList
 import traceback, sys, os, string
 import logging, UFStatusHandler
 
@@ -82,6 +52,9 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
     def __init__(self, scriptPath, localizationPath, site):
         super(ProductInterface, self).__init__(scriptPath, localizationPath, site)
         self.pathMgr = PathManager()
+        # TODO - every file that exists in localization and is class based needs
+        # to be imported via PythonOverrider. Not just the 2 below directories.
+
         # Import the textUtilities dir using PythonOverrider
         self.importTextUtility(reloadModules=False)
         # Import the eventUtilities dir using PythonOverrider
@@ -108,7 +81,6 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
             raise Exception('Expecting a list from ' + moduleName + '.execute()')
 
         kwargs['dataList'] = dataList
-        kwargs['formats'] = formats
         # executeGeneratorFrom method is expecting a javaEventSet
         kwargs['eventSet'] = javaEventSet
         # dialogInputMap no longer needed for executeFrom method
@@ -138,8 +110,11 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
             genProdList = GeneratedProductList()
             eventSet = PythonEventSet(kwargs.get('eventSet'))
 
-        # executeFrom does not need formats
-        formats = kwargs.pop('formats')
+        productParts = kwargs.get('productParts', None)
+        # make sure keyInfoList is a python object
+        if hasattr(productParts, 'java_name'):
+            productParts = JUtil.javaObjToPyVal(productParts)
+            kwargs['productParts'] = productParts
 
         # call executeFrom from product generator
         dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)
@@ -166,7 +141,6 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
             raise Exception('Expecting a list from ' + moduleName + '.execute()')
 
         kwargs['dataList'] = dataList
-        kwargs['formats'] = formats
         # executeGeneratorFrom method is expected a javaEventSet
         kwargs['eventSet'] = javaEventSet
         genProdList = self.executeGeneratorFrom(moduleName, className, **kwargs)
@@ -179,24 +153,21 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
     def executeFormatter(self, moduleName, className, **kwargs):
         generatedProductList = kwargs['generatedProductList']
         formats = JUtil.javaObjToPyVal( kwargs['formats'])
-        overrideProductText = kwargs['overrideProductText']
 
         # Loop over each product that has been generated and format them
         for i in range(generatedProductList.size()):
             generatedProduct = generatedProductList.get(i)
-            self.formatProduct(generatedProduct, formats, overrideProductText)
+            self.formatProduct(generatedProduct, formats)
 
         return generatedProductList
 
-    def formatProduct(self, generatedProduct, formats, overrideProductText=False):
+    def formatProduct(self, generatedProduct, formats):
         # Retrieve the product's data to pass to the formatter
         productData = JUtil.javaObjToPyVal(generatedProduct.getData())
         # Retrieve the product's editableEntries if available
-        editableEntriesList = generatedProduct.getEditableEntries()
+        editableEntries = JUtil.javaObjToPyVal(generatedProduct.getEditableEntries())
 
-        data = self.keyInfoDictToPythonDict(productData)
-
-        if isinstance(data, dict): 
+        if isinstance(productData, dict): 
             errors = []
             # Dictionary containing the formatted products
             productDict = OrderedDict()
@@ -208,15 +179,9 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
                         self.clearModuleAttributes(format)
                     formatModule = HazardServicesPythonOverrider.importModule(scriptName, localizedSite=self.site)
                     instance = formatModule.Format()
-                    editableEntries = None
-                    if editableEntriesList:
-                        for i in range(editableEntriesList.size()):
-                            if format == editableEntriesList.get(i).getFormat():
-                                editableEntries = JUtil.javaObjToPyVal(editableEntriesList.get(i).getEditableEntries())
-                    product, editableEntries = instance.execute(data, editableEntries, overrideProductText)
+                    product, editableEntries = instance.execute(productData, editableEntries)
                     productDict[format] = product
-                    editableEntryMap = EditableEntryMap(format, JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(editableEntries)))
-                    generatedProduct.addEditableEntry(editableEntryMap)
+                    generatedProduct.setEditableEntries(JUtil.pyValToJavaObj(editableEntries))
 
                 except Exception as err:
                     errMsg = 'ERROR:  Failed to execute ' + format + '. ' + str(err)
@@ -271,6 +236,8 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
                     break
         javaEventSet = EventSet()
         javaEventSet.addAll(JUtil.pyValToJavaObj(productEventSet))
+        javaEventSet.addAttribute('runMode', eventSet.getAttribute('runMode'))
+
         return javaEventSet
 
     def getDialogInfo(self, moduleName, className, **kwargs):
@@ -289,73 +256,6 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
         """
         val = self.runMethod(moduleName, className, 'defineScriptMetadata', **kwargs)
         return JUtil.pyValToJavaObj(val)
-    
-    def pyDictToKeyInfoDict(self, data):
-        if isinstance(data, OrderedDict):
-            convertedDict = OrderedDict()
-        else:
-            convertedDict = {}
-            
-        for key in data:
-            value = data[key]
-            if isinstance(key, str):
-                keyInfo = KeyInfo(key)
-            elif isinstance(key, KeyInfo):
-                keyInfo = key
-            
-            if isinstance(value, dict):
-                convertedDict[keyInfo] = self.pyDictToKeyInfoDict(value)
-            elif isinstance(value, list):
-                convertedDict[keyInfo] = self.convertPyList(value)
-            else:
-                convertedDict[keyInfo] = value
-            
-        return convertedDict
-    
-    def convertPyList(self, data):
-        convertedList = []
-        for item in data:
-            if isinstance(item, dict):
-                convertedItem = self.pyDictToKeyInfoDict(item)
-            elif isinstance(item, list):
-                convertedItem = self.convertPyList(item)
-            else:
-                convertedItem = item
-
-            convertedList.append(convertedItem)
-    
-        return convertedList
-    
-    def keyInfoDictToPythonDict(self, data):
-        convertedDict = OrderedDict()
-        for key in data:      
-            value = data[key]
-            
-            if isinstance(value, dict):
-                value = self.keyInfoDictToPythonDict(value)
-            elif isinstance(value, list):
-                value = self.keyInfoListToPythonList(value)
-                          
-            if isinstance(key, KeyInfo) and key.isEditable() == False:
-                key = key.getName()
-            
-            convertedDict[key] = value
-            
-        return convertedDict
-    
-    def keyInfoListToPythonList(self, data):
-        convertedList = []
-        for item in data:
-            if isinstance(item, dict):
-                convertedItem = self.keyInfoDictToPythonDict(item)
-            elif isinstance(item, list):
-                convertedItem = self.keyInfoListToPythonList(item)
-            else:
-                convertedItem = item
-               
-            convertedList.append(convertedItem)
-    
-        return convertedList
 
     def importFormatters(self):
         locPath = 'HazardServices/python/events/productgen/formats/'

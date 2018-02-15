@@ -41,6 +41,7 @@ import com.raytheon.uf.common.util.StringUtil;
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * Aug 13, 2015 9670       mpduff      Added toString().
  * May 04, 2016 15584      Kevin.Bisanz Updated toString().
+ * Jun 16, 2017 35199      Robert.Blum Removed unneeded getter/setters.
  * 
  * </pre>
  * 
@@ -165,23 +166,6 @@ public final class SHEFObserved extends SHEFBase {
                 }
             }
         }
-    }
-
-    /**
-     * @param typeSource
-     *            the typeSource to set
-     */
-    @Override
-    public void setTypeSource(String typeSource) {
-        this.typeSource = typeSource;
-    }
-
-    /**
-     * @return the set typeSource
-     */
-    @Override
-    public String getTypeSource() {
-        return (this.typeSource);
     }
 
     /**

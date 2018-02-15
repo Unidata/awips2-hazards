@@ -65,6 +65,11 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential probabilistic hazard events. 
         '''
+        caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
+
         import sys
         sys.stderr.write("Running Paste MetaData Tool.\n")
 
@@ -79,12 +84,11 @@ class Recommender(RecommenderTemplate.Recommender):
         endTime = eventDict['endTime']
         endTime = datetime.datetime.strptime(endTime, '%Y-%m-%d %H:%M:%S')
         
-        hazardEvent = EventFactory.createEvent()
+        hazardEvent = EventFactory.createEvent(practice)
         hazardEvent.setCreationTime(currentTime)
         hazardEvent.setStartTime(startTime)
         hazardEvent.setEndTime(endTime)
         hazardEvent.setHazardStatus("pending")
-        hazardEvent.setHazardMode("O")
         hazardEvent.setPhenomenon("SIGMET")
         hazardEvent.setSignificance("Convective")
         hazardEvent.set('originalGeomType', eventDict['geomType'])

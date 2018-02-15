@@ -27,14 +27,16 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash       Initial Creation.
-#    
+#    01/22/13                      mnash          Initial Creation.
+#    06/06/18         15561        Chris.Golden   Added use of temporary event IDs. 
 # 
 #
 
 from Event import NullEvent
 from HazardEvent import HazardEvent
-from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
+from com.raytheon.uf.common.dataplugin.events.hazards.event import SessionHazardEvent
+from com.raytheon.uf.common.dataplugin.events.hazards.event import HazardServicesEventIdUtil
+
 
 def createNullEvent():        
     '''
@@ -44,11 +46,12 @@ def createNullEvent():
     ne = NullEvent()
     return ne
 
-def createEvent():
+def createEvent(practice):
     '''
     @return: a BaseEvent, any event that has an area and holds other information
     '''
-    bhe = BaseHazardEvent()
+    bhe = SessionHazardEvent(practice)
+    bhe.setEventID(HazardServicesEventIdUtil.getInstance(practice).getNewTemporaryEventID())
     he = HazardEvent(bhe)
     return he
     

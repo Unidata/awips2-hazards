@@ -22,8 +22,8 @@ import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.dataplugin.warning.config.GridSpacing;
 import com.raytheon.uf.common.dataplugin.warning.gis.GeospatialData;
 import com.raytheon.uf.common.dataplugin.warning.portions.GisUtil.Direction;
@@ -81,8 +81,8 @@ public class PartsOfCountyTest {
 
         IHazardEvent event = buildDummyEvent();
         String site = OAX;
-        partsOfCounty
-                .addPortionsDescriptionToEvent(hazardGeometry, event, site);
+        partsOfCounty.addPortionsDescriptionToEvent(hazardGeometry, event,
+                site);
         Map<String, String> partOfCounty = (Map<String, String>) event
                 .getHazardAttribute(HazardConstants.UGC_PARTS_OF_COUNTY);
         assertTrue(partOfCounty.get(NEC067).equals("West Central"));
@@ -126,7 +126,8 @@ public class PartsOfCountyTest {
 
         GeospatialData county0 = mockCounty0();
         GeospatialData county1 = mockCounty1();
-        GeospatialData[] countyAreas = new GeospatialData[] { county0, county1 };
+        GeospatialData[] countyAreas = new GeospatialData[] { county0,
+                county1 };
         when(result.getCountyAreasForSite(OAX)).thenReturn(countyAreas);
         return result;
     }
@@ -166,13 +167,13 @@ public class PartsOfCountyTest {
         Map<String, String> fipMapping = new HashMap<>();
         fipMapping.put("19", IOWA_ABBR);
         fipMapping.put("31", NEBRASKA_ABBR);
-        when(result.buildFIPStateIndexToAbbreviationMapping()).thenReturn(
-                fipMapping);
+        when(result.buildFIPStateIndexToAbbreviationMapping())
+                .thenReturn(fipMapping);
         return result;
     }
 
     private IHazardEvent buildDummyEvent() {
-        IHazardEvent result = new BaseHazardEvent();
+        IHazardEvent result = new SessionHazardEvent(true);
         Serializable ugcs = Lists.newArrayList(NEC067, NEC095);
         result.addHazardAttribute(HazardConstants.UGCS, ugcs);
         return result;

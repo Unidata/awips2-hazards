@@ -4,6 +4,7 @@ import sys
 import json
 
 import LocalizationInterface
+from UFStatusLogger import UFStatusLogger
 
 class HazardServicesConfig :
     """
@@ -26,6 +27,7 @@ class HazardServicesConfig :
                            "hazardMetaData", "startUpConfig"
         @param host: host identifier of localization server
         """
+        self.__logger = UFStatusLogger.getInstance()
         if isinstance(configType, unicode):
             configType = configType.encode()
         if configDir == None:
@@ -138,7 +140,9 @@ class HazardServicesConfig :
         if isinstance(criteriaInput, str) or isinstance(criteriaInput, unicode):
             try:
                 criteria = json.loads(criteriaInput)
-            except :
+            except Exception as e:
+                msg = "Caught exception loading criteria: " + str(e)
+                self.__logger.logMessage(msg, "Error")
                 criteria = None
         else :
             criteria = copy.deepcopy(criteriaInput)

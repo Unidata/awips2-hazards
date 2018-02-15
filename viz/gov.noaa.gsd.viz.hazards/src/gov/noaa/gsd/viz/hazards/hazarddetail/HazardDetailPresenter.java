@@ -55,7 +55,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager.EventType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
@@ -194,6 +193,12 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  * Apr 27, 2017   11866    Chris.Golden      Added code to prevent command buttons from
  *                                           being enabled when the event is ended or
  *                                           elapsed.
+ * May 01, 2017   16970    Roger.Ferrel      Have hazardDetailToggleAction close Product
+ *                                           editor when HID is "closed".
+ * May 15, 2017   30227    Roger.Ferrel      Allow event tabs to be closed with
+ *                                           confirmation.
+ * May 17, 2017   34069    mduff             Add HazardStatus.ELAPSING when updating
+ *                                           view type.
  * Jun 27, 2017   20347    Chris.Golden      Hazard detail view now pops up if a hazard
  *                                           event is changed to status ending and it is
  *                                           selected.
@@ -215,6 +220,11 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  *                                           checking for hazard conflicts.
  * Feb 13, 2018   44514    Chris.Golden      Removed event-modifying script code, as such
  *                                           scripts are not to be used.
+ * May 01, 2018   15561    Chris.Golden      Fixed until-further-notice to be editable
+ *                                           only if not ending, ended, elapsing, or 
+ *                                           elapsed. Also removed obsolete method having
+ *                                           to do with event modifying scripts, which
+ *                                           are no longer used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -506,6 +516,9 @@ public class HazardDetailPresenter
                 }
             } else {
                 detailViewShowing = false;
+                if (hazardDetailHandler != null) {
+                    hazardDetailHandler.closeProductEditor();
+                }
             }
         }
 
@@ -538,6 +551,20 @@ public class HazardDetailPresenter
         public void statesChanged(
                 Map<String, Pair<String, Integer>> valuesForIdentifiers) {
             handleUnsupportedOperationAttempt("visible event");
+        }
+    };
+
+    /**
+     * Deselect event invocation handler. The identifier is that of the hazard
+     * event version.
+     */
+    private final ICommandInvocationHandler<Pair<String, Integer>> deselectEventInvocationHandler = new ICommandInvocationHandler<Pair<String, Integer>>() {
+
+        @Override
+        public void commandInvoked(Pair<String, Integer> identifier) {
+            getModel().getSelectionManager()
+                    .removeEventVersionFromSelectedEvents(identifier,
+                            UIOriginator.HAZARD_INFORMATION_DIALOG);
         }
     };
 
@@ -1190,24 +1217,6 @@ public class HazardDetailPresenter
     }
 
     /**
-     * Respond to an event's megawidgets' mutable properties changing.
-     * 
-     * @param change
-     *            Changed mutable properties.
-     */
-    @Handler
-    public void sessionEventScriptMutablePropertiesModified(
-            SessionEventScriptExtraDataAvailable change) {
-        String eventIdentifier = change.getEvent().getEventID();
-        IHazardEventView event = getEventByIdentifier(eventIdentifier);
-        if (event != null) {
-            getView().getMetadataChanger().changeMegawidgetMutableProperties(
-                    new Pair<String, Integer>(eventIdentifier, null),
-                    change.getMutableProperties());
-        }
-    }
-
-    /**
      * Respond to the visible time range changing.
      * 
      * @param change
@@ -1297,6 +1306,8 @@ public class HazardDetailPresenter
                 .setStateChangeHandler(timeRangeChangeHandler);
         getView().getVisibleEventChanger()
                 .setStateChangeHandler(visibleEventChangeHandler);
+        getView().getDeselectEventInvoker()
+                .setCommandInvocationHandler(deselectEventInvocationHandler);
     }
 
     @Override
@@ -1784,12 +1795,10 @@ public class HazardDetailPresenter
         if (getModel().getEventManager().isEventHistorical(event) == false) {
             boolean hasPointId = (event
                     .getHazardAttribute(HazardConstants.POINTID) != null);
-            getView().getCategoryChanger()
-                    .setChoices(eventVersionIdentifier, (hasPointId ? categories
-                            : categoriesNoPointIdRequired),
-                            (hasPointId ? categories
-                                    : categoriesNoPointIdRequired),
-                            selectedCategory);
+            getView().getCategoryChanger().setChoices(eventVersionIdentifier,
+                    (hasPointId ? categories : categoriesNoPointIdRequired),
+                    (hasPointId ? categories : categoriesNoPointIdRequired),
+                    selectedCategory);
         } else {
             List<String> categories = Lists.newArrayList(selectedCategory);
             getView().getCategoryChanger().setChoices(eventVersionIdentifier,
@@ -1899,6 +1908,7 @@ public class HazardDetailPresenter
                 }
                 break;
             case ISSUED:
+            case ELAPSING:
                 updateReplacedEventTypeChoices(event, eventVersionIdentifier,
                         selectedType, selectedType, true);
                 break;
@@ -2049,7 +2059,8 @@ public class HazardDetailPresenter
                 editable);
         getView().getMetadataChanger().setEditable(eventVersionIdentifier,
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                editable);
+                (editable && (HazardStatus
+                        .endingEndedOrElapsed(event.getStatus()) == false)));
     }
 
     /**

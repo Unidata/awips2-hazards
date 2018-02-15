@@ -1,5 +1,4 @@
 /**
- * This software was developed and / or modified by the
  * National Oceanic and Atmospheric Administration (NOAA), 
  * Earth System Research Laboratory (ESRL), 
  * Global Systems Division (GSD), 
@@ -15,8 +14,10 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
@@ -36,7 +37,8 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * concrete representation of a visual feature at a particular point in time,
  * the
  * {@link #getStateAtTime(SpatialEntity, Object, boolean, boolean, Date, Color, double, BorderStyle, double, String, double, double, double, double, int)}
- * method is used to generate a {@link SpatialEntity} if appropriate.
+ * or {@link #getStateAtTime(SpatialEntity, Object, boolean, Date)} methods are
+ * used to generate a {@link SpatialEntity} if appropriate.
  * 
  * <pre>
  * 
@@ -99,6 +101,22 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  *                                      feature itself (not its templates) did
  *                                      not have the geometry defined for a time
  *                                      range enclosing the given time.
+ * Mar 22, 2018   15561    Chris.Golden Added ability to create a spatial entity
+ *                                      that is uneditable regardless of the
+ *                                      backing visual feature's editability.
+ * May 22, 2018   15561    Chris.Golden Added constructor allowing copying of a
+ *                                      visual feature, but with a new geometry.
+ *                                      Also added method to determine if there
+ *                                      is any geometry at all for any time
+ *                                      range. Also fixed bug that caused the
+ *                                      fetching of property values to only
+ *                                      look one level deep in templates, and
+ *                                      no farther (not down to templates of
+ *                                      templates, etc.). Also fixed bug in one
+ *                                      of the getStateAtTime() methods that
+ *                                      caused a spatial entity to be generated
+ *                                      even if the visiblilityConstraints
+ *                                      dictated otherwise.
  * </pre>
  * 
  * @author Chris.Golden
@@ -870,6 +888,20 @@ public class VisualFeature implements Serializable {
         }
     }
 
+    /**
+     * Construct a standard instance that is as copy of the specified visual
+     * feature, but with the specified geometry instead of that of the original.
+     * 
+     * @param original
+     *            Visual feature to be copied.
+     * @param geometry
+     *            Geometry to be used in place of that of the original.
+     */
+    public VisualFeature(VisualFeature original, IAdvancedGeometry geometry) {
+        this(original);
+        this.geometry = new TemporallyVariantProperty<>(geometry);
+    }
+
     // Package-Private Constructors
 
     /**
@@ -974,6 +1006,19 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Determine whether or not the visual feature has no geometries for any
+     * time ranges.
+     * 
+     * @return <code>true</code> if the visual feature has no geometry for any
+     *         time ranges, <code>false</code> if it has a geometry for at least
+     *         one time range.
+     */
+    public boolean isLackingGeometry() {
+        return (isValueExistingForAnyTimeRange(this,
+                GEOMETRY_FETCHER) == false);
+    }
+
+    /**
      * Get the geometry for the specified time.
      * 
      * @param time
@@ -982,7 +1027,7 @@ public class VisualFeature implements Serializable {
      *         <code>null</code> if none applies.
      */
     public IAdvancedGeometry getGeometry(Date time) {
-        return getValue(GEOMETRY_FETCHER, time, null);
+        return getValue(this, GEOMETRY_FETCHER, time, null);
     }
 
     /**
@@ -995,7 +1040,7 @@ public class VisualFeature implements Serializable {
      *         be the color of the event type.
      */
     public Color getBorderColor(Date time) {
-        return getValue(BORDER_COLOR_FETCHER, time, DEFAULT_BORDER_COLOR);
+        return getValue(this, BORDER_COLOR_FETCHER, time, DEFAULT_BORDER_COLOR);
     }
 
     /**
@@ -1006,7 +1051,7 @@ public class VisualFeature implements Serializable {
      * @return Buffer color that applies for the specified time.
      */
     public Color getBufferColor(Date time) {
-        return getValue(BUFFER_COLOR_FETCHER, time, DEFAULT_BUFFER_COLOR);
+        return getValue(this, BUFFER_COLOR_FETCHER, time, DEFAULT_BUFFER_COLOR);
     }
 
     /**
@@ -1019,7 +1064,7 @@ public class VisualFeature implements Serializable {
      *         the color of the event type.
      */
     public Color getFillColor(Date time) {
-        return getValue(FILL_COLOR_FETCHER, time, DEFAULT_FILL_COLOR);
+        return getValue(this, FILL_COLOR_FETCHER, time, DEFAULT_FILL_COLOR);
     }
 
     /**
@@ -1032,7 +1077,7 @@ public class VisualFeature implements Serializable {
      *         border thickness should be used.
      */
     public double getBorderThickness(Date time) {
-        return getValue(BORDER_THICKNESS_FETCHER, time,
+        return getValue(this, BORDER_THICKNESS_FETCHER, time,
                 DEFAULT_BORDER_THICKNESS);
     }
 
@@ -1044,7 +1089,7 @@ public class VisualFeature implements Serializable {
      * @return Buffer thickness that applies for the specified time.
      */
     public double getBufferThickness(Date time) {
-        return getValue(BUFFER_THICKNESS_FETCHER, time,
+        return getValue(this, BUFFER_THICKNESS_FETCHER, time,
                 DEFAULT_BUFFER_THICKNESS);
     }
 
@@ -1056,7 +1101,7 @@ public class VisualFeature implements Serializable {
      * @return Border style that applies for the specified time.
      */
     public BorderStyle getBorderStyle(Date time) {
-        return getValue(BORDER_STYLE_FETCHER, time, DEFAULT_BORDER_STYLE);
+        return getValue(this, BORDER_STYLE_FETCHER, time, DEFAULT_BORDER_STYLE);
     }
 
     /**
@@ -1067,7 +1112,7 @@ public class VisualFeature implements Serializable {
      * @return Fill style that applies for the specified time.
      */
     public FillStyle getFillStyle(Date time) {
-        return getValue(FILL_STYLE_FETCHER, time, DEFAULT_FILL_STYLE);
+        return getValue(this, FILL_STYLE_FETCHER, time, DEFAULT_FILL_STYLE);
     }
 
     /**
@@ -1080,7 +1125,7 @@ public class VisualFeature implements Serializable {
      *         point diameter should be used.
      */
     public double getDiameter(Date time) {
-        return getValue(DIAMETER_FETCHER, time, DEFAULT_DIAMETER);
+        return getValue(this, DIAMETER_FETCHER, time, DEFAULT_DIAMETER);
     }
 
     /**
@@ -1091,7 +1136,7 @@ public class VisualFeature implements Serializable {
      * @return Symbol shape that applies for the specified time.
      */
     public SymbolShape getSymbolShape(Date time) {
-        return getValue(SYMBOL_SHAPE_FETCHER, time, DEFAULT_SYMBOL_SHAPE);
+        return getValue(this, SYMBOL_SHAPE_FETCHER, time, DEFAULT_SYMBOL_SHAPE);
     }
 
     /**
@@ -1104,7 +1149,7 @@ public class VisualFeature implements Serializable {
      *         be the same as what the hazard event would have.
      */
     public String getLabel(Date time) {
-        return getValue(LABEL_FETCHER, time, null);
+        return getValue(this, LABEL_FETCHER, time, null);
     }
 
     /**
@@ -1117,7 +1162,7 @@ public class VisualFeature implements Serializable {
      *         text offset length be used.
      */
     public double getTextOffsetLength(Date time) {
-        return getValue(TEXT_OFFSET_LENGTH_FETCHER, time,
+        return getValue(this, TEXT_OFFSET_LENGTH_FETCHER, time,
                 DEFAULT_TEXT_OFFSET_LENGTH);
     }
 
@@ -1132,7 +1177,7 @@ public class VisualFeature implements Serializable {
      *         text offset direction should be used.
      */
     public double getTextOffsetDirection(Date time) {
-        return getValue(TEXT_OFFSET_DIRECTION_FETCHER, time,
+        return getValue(this, TEXT_OFFSET_DIRECTION_FETCHER, time,
                 DEFAULT_TEXT_OFFSET_DIRECTION);
     }
 
@@ -1146,7 +1191,7 @@ public class VisualFeature implements Serializable {
      *         text size should be used.
      */
     public int getTextSize(Date time) {
-        return getValue(TEXT_SIZE_FETCHER, time, DEFAULT_TEXT_SIZE);
+        return getValue(this, TEXT_SIZE_FETCHER, time, DEFAULT_TEXT_SIZE);
     }
 
     /**
@@ -1159,7 +1204,7 @@ public class VisualFeature implements Serializable {
      *         the color of the event type.
      */
     public Color getTextColor(Date time) {
-        return getValue(TEXT_COLOR_FETCHER, time, DEFAULT_TEXT_COLOR);
+        return getValue(this, TEXT_COLOR_FETCHER, time, DEFAULT_TEXT_COLOR);
     }
 
     /**
@@ -1170,7 +1215,8 @@ public class VisualFeature implements Serializable {
      * @return Drag capability that applies for the specified time.
      */
     public DragCapability getDragCapability(Date time) {
-        return getValue(DRAG_CAPABILITY_FETCHER, time, DEFAULT_DRAG_CAPABILITY);
+        return getValue(this, DRAG_CAPABILITY_FETCHER, time,
+                DEFAULT_DRAG_CAPABILITY);
     }
 
     /**
@@ -1188,7 +1234,7 @@ public class VisualFeature implements Serializable {
      *         single point.
      */
     public boolean isMultiGeometryPointsDraggable(Date time) {
-        return getValue(MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER, time,
+        return getValue(this, MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER, time,
                 DEFAULT_MULTI_GEOMETRY_POINTS_DRAGGABLE);
     }
 
@@ -1202,7 +1248,7 @@ public class VisualFeature implements Serializable {
      *         operations at the specified time, otherwise <code>false</code>.
      */
     public boolean isEditableUsingGeometryOps(Date time) {
-        return getValue(EDITABLE_USING_GEOMETRY_OPS_FETCHER, time,
+        return getValue(this, EDITABLE_USING_GEOMETRY_OPS_FETCHER, time,
                 DEFAULT_EDITABLE_USING_GEOMETRY_OPS);
     }
 
@@ -1215,7 +1261,7 @@ public class VisualFeature implements Serializable {
      *         time, otherwise <code>false</code>.
      */
     public boolean isRotatable(Date time) {
-        return getValue(ROTATABLE_FETCHER, time, DEFAULT_ROTATABLE);
+        return getValue(this, ROTATABLE_FETCHER, time, DEFAULT_ROTATABLE);
     }
 
     /**
@@ -1227,7 +1273,7 @@ public class VisualFeature implements Serializable {
      *         time, otherwise <code>false</code>.
      */
     public boolean isScaleable(Date time) {
-        return getValue(SCALEABLE_FETCHER, time, DEFAULT_SCALEABLE);
+        return getValue(this, SCALEABLE_FETCHER, time, DEFAULT_SCALEABLE);
     }
 
     /**
@@ -1240,7 +1286,7 @@ public class VisualFeature implements Serializable {
      *         the specified time, otherwise <code>false</code>.
      */
     public boolean isUseForCentering(Date time) {
-        return getValue(USE_FOR_CENTERING_FETCHER, time,
+        return getValue(this, USE_FOR_CENTERING_FETCHER, time,
                 DEFAULT_USE_FOR_CENTERING);
     }
 
@@ -1253,7 +1299,7 @@ public class VisualFeature implements Serializable {
      *         time, otherwise <code>false</code>.
      */
     public boolean isTopmost(Date time) {
-        return getValue(TOPMOST_FETCHER, time, DEFAULT_TOPMOST);
+        return getValue(this, TOPMOST_FETCHER, time, DEFAULT_TOPMOST);
     }
 
     /**
@@ -1351,21 +1397,10 @@ public class VisualFeature implements Serializable {
             double hazardMultiPointTextOffsetDirection, int hazardTextSize) {
 
         /*
-         * If the visibility constraints do not allow this visual feature to be
-         * visible, create nothing.
+         * Get the geometry at this time; if the feature is not visible, do
+         * nothing more.
          */
-        if ((visibilityConstraints == VisibilityConstraints.NEVER)
-                || ((visibilityConstraints == VisibilityConstraints.UNSELECTED)
-                        && selected)
-                || ((visibilityConstraints == VisibilityConstraints.SELECTED)
-                        && (selected == false))) {
-            return null;
-        }
-
-        /*
-         * If the geometry at this time is not visible create nothing.
-         */
-        IAdvancedGeometry geometry = getGeometry(time);
+        IAdvancedGeometry geometry = getGeometryIfVisible(time, selected);
         if (geometry == null) {
             return null;
         }
@@ -1427,6 +1462,9 @@ public class VisualFeature implements Serializable {
      *            <code>spatialEntity</code> is not <code>null</code>, its
      *            {@link SpatialEntity#getIdentifier()} method must return a
      *            result equivalent to this object.
+     * @param editable
+     *            Flag indicating whether or not the item represented by this
+     *            object is currently editable.
      * @param time
      *            Time for which to get the state of this visual feature object.
      * @return Spatial entity representing the state of this object at the
@@ -1437,12 +1475,13 @@ public class VisualFeature implements Serializable {
      *         provided by the caller.
      */
     public <I> SpatialEntity<I> getStateAtTime(SpatialEntity<I> spatialEntity,
-            I identifier, Date time) {
+            I identifier, boolean editable, Date time) {
 
         /*
-         * If the geometry at this time is not visible create nothing.
+         * Get the geometry at this time; if the feature is not visible, do
+         * nothing more.
          */
-        IAdvancedGeometry geometry = getGeometry(time);
+        IAdvancedGeometry geometry = getGeometryIfVisible(time, true);
         if (geometry == null) {
             return null;
         }
@@ -1468,9 +1507,12 @@ public class VisualFeature implements Serializable {
                 textOffsetDirection, textOffsetLength, textOffsetDirection,
                 getInteger(getTextSize(time), DEFAULT_TEXT_SIZE),
                 getColor(getTextColor(time), DEFAULT_TEXT_COLOR),
-                getDragCapability(time), isMultiGeometryPointsDraggable(time),
-                isEditableUsingGeometryOps(time), isRotatable(time),
-                isScaleable(time), isUseForCentering(time), isTopmost(time));
+                (editable ? getDragCapability(time) : DragCapability.NONE),
+                (editable && isMultiGeometryPointsDraggable(time)),
+                (editable && isEditableUsingGeometryOps(time)),
+                (editable && isRotatable(time)),
+                (editable && isScaleable(time)), isUseForCentering(time),
+                isTopmost(time));
     }
 
     /**
@@ -1488,7 +1530,7 @@ public class VisualFeature implements Serializable {
      *             this object's geometry, or one of its templates' geometries.
      */
     public void setGeometry(Date time, IAdvancedGeometry geometry) {
-        Range<Date> timeRange = getTimeRange(GEOMETRY_FETCHER, time);
+        Range<Date> timeRange = getTimeRange(this, GEOMETRY_FETCHER, time);
         if (timeRange == null) {
             throw new IllegalArgumentException(
                     "no time range found encompassing " + time);
@@ -1517,18 +1559,18 @@ public class VisualFeature implements Serializable {
         stringBuilder.append(identifier);
         stringBuilder.append(" [selection-based visibility: ");
         stringBuilder.append(visibilityConstraints.getDescription());
-        stringBuilder.append("] (");
+        stringBuilder.append("] (geometry ");
         boolean never = false;
         if (geometry != null) {
             if (geometry.getDefaultProperty() != null) {
-                stringBuilder.append("always visible");
+                stringBuilder.append("always available");
             } else {
                 Map<Range<Date>, IAdvancedGeometry> geometriesForTimeRanges = geometry
                         .getPropertiesForTimeRanges();
                 if (geometriesForTimeRanges.isEmpty()) {
                     never = true;
                 } else {
-                    stringBuilder.append("visible ");
+                    stringBuilder.append("available ");
                     boolean first = true;
                     for (Range<Date> range : geometriesForTimeRanges.keySet()) {
                         if (first) {
@@ -1545,7 +1587,7 @@ public class VisualFeature implements Serializable {
             never = true;
         }
         if (never) {
-            stringBuilder.append("never visible");
+            stringBuilder.append("never available");
         }
         stringBuilder.append(")");
         return stringBuilder.toString();
@@ -2048,10 +2090,48 @@ public class VisualFeature implements Serializable {
     // Private Methods
 
     /**
-     * Get the time range enclosing a property value for specified fetcher at
-     * the specified time, if any, checking first this instance, then any
-     * templates.
+     * Get the geometry for the feature at the specified time if the visual
+     * feature should be visible at said time.
      * 
+     * @param time
+     *            Time for which to get the geometry.
+     * @param selected
+     *            Flag indicating whether or not the visual feature is currently
+     *            selected; this will affect what is returned, since it will be
+     *            used in conjunction with the feature's visibility constraints
+     *            to determine if the feature is visible at all.
+     * @return The geometry visible at this time, or <code>null</code> if the
+     *         feature is invisible at said time.
+     */
+    private IAdvancedGeometry getGeometryIfVisible(Date time,
+            boolean selected) {
+
+        /*
+         * If the visibility constraints do not allow this visual feature to be
+         * visible, do nothing more.
+         */
+        if ((visibilityConstraints == VisibilityConstraints.NEVER)
+                || ((visibilityConstraints == VisibilityConstraints.UNSELECTED)
+                        && selected)
+                || ((visibilityConstraints == VisibilityConstraints.SELECTED)
+                        && (selected == false))) {
+            return null;
+        }
+
+        /*
+         * Return the geometry at this time, or nothing if the geometry is not
+         * visible at this time.
+         */
+        return getGeometry(time);
+    }
+
+    /**
+     * Get the time range, if any, enclosing a property value for the specified
+     * fetcher at the specified time in the specified visual feature, checking
+     * first the latter, then any templates of that visual feature.
+     * 
+     * @param visualFeature
+     *            Visual feature from which to fetch the time range.
      * @param propertyFetcher
      *            Property fetcher to be used.
      * @param time
@@ -2060,14 +2140,17 @@ public class VisualFeature implements Serializable {
      *         <code>null</code> if no such time range is found.
      */
     private <P extends Serializable> Range<Date> getTimeRange(
-            IPropertyFetcher<P> propertyFetcher, Date time) {
+            VisualFeature visualFeature, IPropertyFetcher<P> propertyFetcher,
+            Date time) {
 
         /*
          * If the property is provided by this visual feature, find the time
          * range within it.
          */
-        Range<Date> timeRange = getPropertyTimeRange(this, propertyFetcher,
-                time);
+        TemporallyVariantProperty<P> property = propertyFetcher
+                .getPropertyValue(visualFeature);
+        Range<Date> timeRange = (property == null ? null
+                : property.getTimeRange(time));
         if (timeRange != null) {
             return timeRange;
         }
@@ -2077,11 +2160,12 @@ public class VisualFeature implements Serializable {
          * feature, iterate through any templates provided, querying each in
          * turn for the time range, and using the first one that provides it.
          */
-        if (templates != null) {
-            List<VisualFeature> visualFeatures = templates.getProperty(time);
-            if (visualFeatures != null) {
-                for (VisualFeature visualFeature : visualFeatures) {
-                    timeRange = getPropertyTimeRange(visualFeature,
+        if (visualFeature.templates != null) {
+            List<VisualFeature> parentVisualFeatures = visualFeature.templates
+                    .getProperty(time);
+            if (parentVisualFeatures != null) {
+                for (VisualFeature parentVisualFeature : parentVisualFeatures) {
+                    timeRange = getTimeRange(parentVisualFeature,
                             propertyFetcher, time);
                     if (timeRange != null) {
                         return timeRange;
@@ -2097,48 +2181,31 @@ public class VisualFeature implements Serializable {
     }
 
     /**
-     * Get the specified property's time range enclosing the specified time for
-     * the specified visual feature, if any.
+     * Get a property value using the specified fetcher from the specified
+     * visual feature, checking first the latter, then any of its templates. If
+     * the value is not found, use the specified default.
      * 
      * @param visualFeature
-     *            Visual feature from which to fetch the property time range.
-     * @param propertyFetcher
-     *            Property fetcher to be used.
-     * @param time
-     *            Time for which to fetch the time range.
-     * @return Time range enclosing the specified time, or <code>null</code> if
-     *         there is no value for that time.
-     */
-    public <P extends Serializable> Range<Date> getPropertyTimeRange(
-            VisualFeature visualFeature, IPropertyFetcher<P> propertyFetcher,
-            Date time) {
-        TemporallyVariantProperty<P> property = propertyFetcher
-                .getPropertyValue(visualFeature);
-        return (property == null ? null : property.getTimeRange(time));
-    }
-
-    /**
-     * Get a property value using the specified fetcher, checking first this
-     * instance, then any templates. If the value is not found, use the
-     * specified default.
-     * 
+     *            Visual feature from which to fetch the property value.
      * @param propertyFetcher
      *            Property fetcher to be used.
      * @param time
      *            Time for which to get the property.
-     * @param defaultProperty
-     *            Default property.
+     * @param defaultValue
+     *            Default property value.
      * @return Value for the specified time.
      */
-    private <P extends Serializable> P getValue(
-            IPropertyFetcher<P> propertyFetcher, Date time, P defaultProperty) {
+    private <P extends Serializable> P getValue(VisualFeature visualFeature,
+            IPropertyFetcher<P> propertyFetcher, Date time, P defaultValue) {
 
         /*
          * If the property is provided by this visual feature, use it.
          */
-        P property = getPropertyValue(this, propertyFetcher, time);
-        if (property != null) {
-            return property;
+        TemporallyVariantProperty<P> property = propertyFetcher
+                .getPropertyValue(visualFeature);
+        P value = (property == null ? null : property.getProperty(time));
+        if (value != null) {
+            return value;
         }
 
         /*
@@ -2146,14 +2213,15 @@ public class VisualFeature implements Serializable {
          * iterate through any templates provided, querying each in turn for the
          * property value, and using the first one that provides it.
          */
-        if (templates != null) {
-            List<VisualFeature> visualFeatures = templates.getProperty(time);
-            if (visualFeatures != null) {
-                for (VisualFeature visualFeature : visualFeatures) {
-                    property = getPropertyValue(visualFeature, propertyFetcher,
-                            time);
-                    if (property != null) {
-                        return property;
+        if (visualFeature.templates != null) {
+            List<VisualFeature> parentVisualFeatures = visualFeature.templates
+                    .getProperty(time);
+            if (parentVisualFeatures != null) {
+                for (VisualFeature parentVisualFeature : parentVisualFeatures) {
+                    value = getValue(parentVisualFeature, propertyFetcher, time,
+                            null);
+                    if (value != null) {
+                        return value;
                     }
                 }
             }
@@ -2162,28 +2230,59 @@ public class VisualFeature implements Serializable {
         /*
          * If no property value was found anywhere, use the default value.
          */
-        return defaultProperty;
+        return defaultValue;
     }
 
     /**
-     * Get the specified property value for the specified visual feature at the
-     * specified time.
+     * Determine whether a specified property value exists for any time range
+     * for the specified visual feature, checking first the latter, then any of
+     * its templates.
      * 
      * @param visualFeature
-     *            Visual feature from which to fetch the property value.
+     *            Visual feature to be checked.
      * @param propertyFetcher
      *            Property fetcher to be used.
-     * @param time
-     *            Time for which to fetch the property value.
-     * @return Value at the specified time, or <code>null</code> if there is no
-     *         value for that time.
+     * @return <code>true</code> if the property value exists for any time
+     *         range, <code>false</code> otherwise.
      */
-    public <P extends Serializable> P getPropertyValue(
-            VisualFeature visualFeature, IPropertyFetcher<P> propertyFetcher,
-            Date time) {
+    private <P extends Serializable> boolean isValueExistingForAnyTimeRange(
+            VisualFeature visualFeature, IPropertyFetcher<P> propertyFetcher) {
+
+        /*
+         * See if the property is provided by the visual feature.
+         */
         TemporallyVariantProperty<P> property = propertyFetcher
                 .getPropertyValue(visualFeature);
-        return (property == null ? null : property.getProperty(time));
+        if ((property != null)
+                && property.isPropertyExistingForAnyTimeRange()) {
+            return true;
+        }
+
+        /*
+         * If no value was found for the property within the visual feature,
+         * iterate through any of its templates, querying each in turn to see if
+         * they have the property for any time range.
+         */
+        if (visualFeature.templates != null) {
+            Set<VisualFeature> parentVisualFeatures = new LinkedHashSet<>();
+            List<VisualFeature> defaultParentVisualFeatures = visualFeature.templates
+                    .getDefaultProperty();
+            if (defaultParentVisualFeatures != null) {
+                parentVisualFeatures.addAll(defaultParentVisualFeatures);
+            }
+            for (Map.Entry<Range<Date>, ImmutableList<VisualFeature>> entry : visualFeature.templates
+                    .getPropertiesForTimeRanges().entrySet()) {
+                parentVisualFeatures.addAll(entry.getValue());
+            }
+            for (VisualFeature parentVisualFeature : parentVisualFeatures) {
+                if (isValueExistingForAnyTimeRange(parentVisualFeature,
+                        propertyFetcher)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

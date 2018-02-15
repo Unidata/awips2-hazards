@@ -8,36 +8,12 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+        if self.hazardStatus == "ending":
             metaData = [
-                        self.getPreviousEditedText(),
                         self.getEndingOption(),
                         ]
-        elif self.hazardStatus == 'pending':
+        else:
             metaData = [
-                    self.getPreviousEditedText(),
-                    self.getAdvisoryType(),
-                    self.getImmediateCause(),
-                    self.getHiddenFloodSeverityNone(),
-                    self.getOptionalSpecificType(),
-                    self.getSource(),
-                    self.getEventType(),
-                    self.getMinorFloodOccurring(),
-                    self.getRainAmt(),
-                    self.getLocationsAffected(),
-                    self.getAdditionalInfo(),
-                    self.getCTAs(),   
-                    # Preserving CAP defaults for future reference.                 
-#                     self.getCAP_Fields([
-#                                           ("urgency", "Expected"),
-#                                           ("severity", "Minor"),
-#                                           ("certainty", "Likely"),
-#                                           ("responseType", "Avoid"),
-#                                         ]) 
-                    ]
-        else: # 'issued'
-            metaData = [
-                    self.getPreviousEditedText(),
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
                     self.getHiddenFloodSeverityNone(),
@@ -49,7 +25,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getLocationsAffected(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),
-                ]
+                ] 
         return {
                 METADATA_KEY: metaData
                 }    
@@ -143,8 +119,8 @@ class MetaData(CommonMetaData.MetaData):
                 self.immediateCauseDR(),
             ]
          
-    def getSource(self):
-        choices = [
+    def getSourceChoices(self):
+        return [
             self.dopplerSource(),
             self.dopplerGaugesSource(),
             self.trainedSpottersSource(),
@@ -154,26 +130,11 @@ class MetaData(CommonMetaData.MetaData):
             self.satelliteSource(),
             self.gaugesSource(),
                     ]
-        
-        return {
-             "fieldName": "source",
-            "fieldType":"RadioButtons",
-            "label":"Source:",
-            "values": self.defaultValue(choices),
-            "choices": choices,                
-                }  
-
-    def getEventType(self):
-        return {
-                 "fieldType":"ComboBox",
-                 "fieldName": "eventType",
-                 "label": "Event type:",
-                 "values": "thunderEvent",
-                 "choices": [
-                        self.eventTypeThunder(),
-                        self.eventTypeRain(),
-                        ]
-                }
+    def getEventTypeChoices(self):
+        return [
+                self.eventTypeThunder(),
+                self.eventTypeRain(),
+                ]
 
     def getMinorFloodOccurring(self, defaultOn=False):
         return {

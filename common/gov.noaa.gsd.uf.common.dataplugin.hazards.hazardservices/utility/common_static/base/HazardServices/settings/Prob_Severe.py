@@ -51,6 +51,7 @@ Prob_Severe = {
         "proposed",
         #"pending",
         "issued",
+        "elapsing",
         "elapsed",
         "ending",
         "ended"

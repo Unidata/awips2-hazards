@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.productstaging;
 import java.util.List;
 import java.util.Map;
 
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.IView;
 
@@ -29,6 +30,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  * ------------ ---------- ------------ --------------------------
  * Oct 06, 2014    4042    Chris.Golden Initial creation.
  * Feb 24, 2016   13929    Robert.Blum  Remove first part of staging dialog.
+ * Mar 21, 2017   29996    Robert.Blum  Added refreshStagingMetadata().
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
  *                                      toolbar contribution code.
  * </pre>
@@ -66,4 +68,24 @@ public interface IProductStagingViewDelegate<I, C, E extends Enum<E>>
      * Hide the dialog.
      */
     public void hide();
+
+    /**
+     * Refresh the megawidgets on the staging dialog and reset the correct
+     * visible pages.
+     * 
+     * @param productName
+     * @param megawidgetSpecifierManager
+     * @param visiblePages
+     */
+    public void refreshStagingMetadata(String productName,
+            MegawidgetSpecifierManager megawidgetSpecifierManager,
+            Map<String, Map<String, Object>> visiblePages);
+
+    /**
+     * Get the megawidget manager for the specified product.
+     * 
+     * @param productName
+     * @return
+     */
+    public MegawidgetManager getMegawidgetManager(String productName);
 }

@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      require hazard events to not be
  *                                      locked by other workstations. Also
  *                                      added rise/crest/fall editor.
+ * May 22, 2018    3782    Chris.Golden Added tool dialog as originator.
  * </pre>
  * 
  * @author mnash
@@ -47,7 +48,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  */
 
 public enum UIOriginator implements IOriginator {
-    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, STAGING_DIALOG, SETTINGS_MENU, SETTINGS_DIALOG, CONSOLE, RISE_CREST_FALL_EDITOR;
+    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, STAGING_DIALOG, SETTINGS_MENU, SETTINGS_DIALOG, TOOL_DIALOG, CONSOLE, RISE_CREST_FALL_EDITOR;
 
     @Override
     public boolean isDirectResultOfUserInput() {

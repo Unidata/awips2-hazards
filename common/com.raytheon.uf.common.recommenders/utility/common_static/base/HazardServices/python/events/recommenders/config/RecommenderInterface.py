@@ -54,11 +54,12 @@ from HazardEventHandler import pyHazardEventToJavaHazardEvent, javaHazardEventTo
 JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)
 JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 from PathManager import PathManager
+from com.raytheon.uf.common.recommenders.executors import MutablePropertiesAndVisualFeatures
 
 from EventSet import EventSet
 
 class RecommenderInterface(HazardServicesPythonOverriderInterface.HazardServicesPythonOverriderInterface):
-    
+
     def __init__(self, scriptPath, localizationPath, site):
         super(RecommenderInterface, self).__init__(scriptPath, localizationPath, site)
         self.pathMgr = PathManager()
@@ -69,6 +70,20 @@ class RecommenderInterface(HazardServicesPythonOverriderInterface.HazardServices
         # Import all the generator modules using PythonOverrider.
         self.importModules()
         
+        # This variable will be used to cache the Pythonic version of the
+        # event set supplied by the last call to getDialogInfo(), or the
+        # last call to getSpatialInfo() that included a non-None event set.
+        # It is then used as the event set between then and the next
+        # invocation of execute() for calls to the methods getSpatialInfo(),
+        # handleDialogParameterChange(), and isSpatialInfoComplete().
+        #
+        # This is done because event sets can have complex attributes that
+        # take a while to convert to Python values from the original Java
+        # objects (e.g. the geometry associated with CWAs if the scope is
+        # national), and since the event set should not change during
+        # parameter gathering, reusing it is OK.
+        self.parameterGatheringEventSet = None
+        
     def getScriptMetadata(self, moduleName, className, **kwargs):
         val = self.runMethod(moduleName, className, "defineScriptMetadata", **kwargs)
         if val is not None :
@@ -76,6 +91,15 @@ class RecommenderInterface(HazardServicesPythonOverriderInterface.HazardServices
         return val
     
     def execute(self, moduleName, className, **kwargs):
+
+        # Reset the parameter gathering event set, since parameter gathering
+        # is complete. The cached event set, if any, cannot be used for the
+        # execution, since that requires using the newly supplied input event
+        # set, which may be different from the cached one, since events may
+        # have been added, removed, etc. in the interval between the start
+        # of parameter gathering and recommender execution. 
+        self.parameterGatheringEventSet = None
+        
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
@@ -91,20 +115,67 @@ class RecommenderInterface(HazardServicesPythonOverriderInterface.HazardServices
         return val
     
     def getDialogInfo(self, moduleName, className, **kwargs):
+        
         if kwargs.get('eventSet') is not None:
             kwargs['eventSet'] = EventSet(kwargs['eventSet'])
         else:
             kwargs['eventSet'] = None
+
+        # Remember the event set in case it is needed for further processing
+        # during parameter gathering.
+        self.parameterGatheringEventSet = kwargs['eventSet']
+        
         val = self.runMethod(moduleName, className, "defineDialog", **kwargs)
         if val is not None :
             val = JUtil.pyValToJavaObj(val)
         return val
     
+    def handleDialogParameterChange(self, moduleName, className, **kwargs):
+
+        kwargs['eventSet'] = self.parameterGatheringEventSet
+        kwargs['triggeringDialogIdentifiers'] = JUtil.javaObjToPyVal(kwargs['triggeringDialogIdentifiers'])
+        mutableProperties = kwargs['mutableDialogProperties']
+        if mutableProperties is not None:
+            kwargs['mutableDialogProperties'] = JUtil.javaObjToPyVal(mutableProperties)
+        kwargs['triggeringVisualFeatureIdentifiers'] = JUtil.javaObjToPyVal(kwargs['triggeringVisualFeatureIdentifiers'])
+        visualFeatures = kwargs['visualFeatures']
+        if visualFeatures is not None:
+            kwargs['visualFeatures'] = JUtil.javaObjToPyVal(visualFeatures)
+
+        val = self.runMethod(moduleName, className, "handleDialogParameterChange", **kwargs)
+        
+        if val is None:
+            return MutablePropertiesAndVisualFeatures()
+        mutableProperties = None if val[0] is None else JUtil.pyValToJavaObj(val[0])
+        visualFeatures = None if val[1] is None else JUtil.pyValToJavaObj(val[1])
+        if mutableProperties is None and visualFeatures is None:
+            return MutablePropertiesAndVisualFeatures()
+        else:
+            return MutablePropertiesAndVisualFeatures(mutableProperties, visualFeatures)
+    
     def getSpatialInfo(self, moduleName, className, **kwargs):
+
+        # If an event set was supplied, remember it in case it is needed for
+        # further processing during parameter gathering; otherwise, assume that
+        # one was supplied by a previous call to this method, and use that.
+        if kwargs['eventSet'] is not None:
+            kwargs['eventSet'] = EventSet(kwargs['eventSet'])
+            self.parameterGatheringEventSet = kwargs['eventSet']
+        else:
+            kwargs['eventSet'] = self.parameterGatheringEventSet
+
+        javaSpatialInput = kwargs['visualFeatures']
+        if javaSpatialInput is not None :
+            kwargs['visualFeatures'] = JUtil.javaObjToPyVal(javaSpatialInput)
         val = self.runMethod(moduleName, className, "defineSpatialInfo", **kwargs)
         if val is not None :
             val = JUtil.pyValToJavaObj(val)
         return val
+    
+    def isSpatialInfoComplete(self, moduleName, className, **kwargs):
+        kwargs['eventSet'] = self.parameterGatheringEventSet
+        kwargs['visualFeatures'] = JUtil.javaObjToPyVal(kwargs['visualFeatures'])
+        return self.runMethod(moduleName, className, "isSpatialInfoComplete", **kwargs)
 
     def importEventUtility(self, reloadModules=True):
         locPath = 'HazardServices/python/events/utilities/'

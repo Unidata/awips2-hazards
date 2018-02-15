@@ -48,6 +48,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      cached so that they can be forced to be
  *                                      regenerated whenever a hazard event is
  *                                      reselected.
+ * May 01, 2018   15561    Chris.Golden Removed obsolete method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,21 +91,6 @@ class MetadataStateChangerDelegate extends
                                 eventVersionIdentifier, specifierManager,
                                 metadataStates, editable,
                                 reinitializeIfUnchanged);
-                    }
-                });
-    }
-
-    @Override
-    public void changeMegawidgetMutableProperties(
-            final Pair<String, Integer> eventVersionIdentifier,
-            final Map<String, Map<String, Object>> mutableProperties) {
-        runOrScheduleTask(
-                new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
-
-                    @Override
-                    public void run() {
-                        getPrincipal().changeMegawidgetMutableProperties(
-                                eventVersionIdentifier, mutableProperties);
                     }
                 });
     }

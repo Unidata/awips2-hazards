@@ -12,6 +12,8 @@ import GeometryFactory
 import HazardDataAccess
 
 import UFStatusHandler
+import EventFactory
+import EventSetFactory
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 
@@ -25,12 +27,17 @@ class Recommender(RecommenderTemplate.Recommender):
     def __init__(self):
         self.DEFAULT_FFW_DURATION_IN_MS = 10800000
         
-        self.NO_MAP_DATA_ERROR_MSG = '''No mapdata found for DAM BREAK inundation.
-See the alertviz log for more information.
-(Please verify your maps database contains the table mapdata.{})
+        self.NO_MAP_DATA_ERROR_MSG = '''No map data found for DAM BREAK inundation.
+        
+See the alertviz log for more information, and verify that your maps database
+contains the table mapdata.
 
-Please click CANCEL and manually draw an inundation area. 
+Please click OK and manually draw an inundation area. 
  '''.format(DAMINUNDATION_TABLE)
+        
+        self.NO_RECOMMENDED_HAZARD = "Recommender completed; no recommended hazard."
+        self.LOCKED_HAZARD_RESULTS_OUTPUT = '''\n\nThe {} already has a {} that is issued and locked.
+Unable to make new recommendations at this time.'''
         
         self.logger = logging.getLogger('DamBreakFloodRecommender')
         for handler in self.logger.handlers:
@@ -63,12 +70,6 @@ Please click CANCEL and manually draw an inundation area.
         """        
         dialogDict = {"title": "Dam/Levee Break Flood Recommender"}
         
-        damFieldDict = {}
-        damFieldDict["fieldName"] = "damOrLeveeName"
-        damFieldDict["label"] = "Please Select a Dam or Levee"
-        damFieldDict["fieldType"] = "ComboBox"
-        damFieldDict["autocomplete"] = True
-        
         self.damPolygonDict = {}
         try:
             self.mapsAccessor = MapsDatabaseAccessor()
@@ -77,15 +78,41 @@ Please click CANCEL and manually draw an inundation area.
             self.logger.exception("Could not retrieve dam inundation data.")
 
         if not self.damPolygonDict:
-            damFieldDict["values"] = self.NO_MAP_DATA_ERROR_MSG
-            damFieldDict["fieldType"] = "Label"
-            valueDict = {"damOrLeveeName": None}
-            dialogDict["fields"] = damFieldDict
-            dialogDict["valueDict"] = valueDict
-            return dialogDict
-
             
+            labelDict = {}
+            labelDict["fieldName"] = "noMapDataMessage"
+            labelDict["fieldType"] = "Label"
+            labelDict["label"] = self.NO_MAP_DATA_ERROR_MSG
+            dialogDict["fields"] = labelDict
+            dialogDict["valueDict"] = {}
+            dialogDict["buttons"] = [ { "identifier": "ok", "label": "OK", "default": True, "close": True, "cancel": True } ]
+            return dialogDict
+        
+        damFieldDict = {}
+        damFieldDict["fieldName"] = "damOrLeveeName"
+        damFieldDict["label"] = "Please Select a Dam or Levee"
+        damFieldDict["fieldType"] = "ComboBox"
+        damFieldDict["autocomplete"] = True
+            
+        # We want the "dropDownLabel" attribute in the metadata to be what is
+        # used to choose the dam in the recommender dialog, but default back
+        # to the name in the shape file if that is not available.
+        self.labelToImpact = {}
         damOrLeveeNameList = sorted(self.damPolygonDict.keys())
+        try :
+            damMeta = self.mapsAccessor.getAllDamInundationMetadata()
+            ddDamList = []
+            for damName in damOrLeveeNameList :
+                try :
+                    dropDown = damMeta[damName]["dropDownLabel"]
+                except :
+                    dropDown = damName
+                ddDamList.append(dropDown)
+                self.labelToImpact[dropDown] = damName
+            damOrLeveeNameList = ddDamList
+        except :
+            self.logger.exception("Could not retrieve dam metadata.")
+
         damFieldDict["choices"] = damOrLeveeNameList
         
         urgencyFieldDict = {}
@@ -93,7 +120,7 @@ Please click CANCEL and manually draw an inundation area.
         urgencyFieldDict["label"] = "Please Select Level of Urgency"
         urgencyFieldDict["fieldType"] = "RadioButtons"
         
-        urgencyList = ["WARNING (Structure has Failed / Structure Failure Imminent)",\
+        urgencyList = ["WARNING (Structure has Failed / Structure Failure Imminent)", \
                        "WATCH (Potential Structure Failure)"]
         urgencyFieldDict["choices"] = urgencyList
         
@@ -101,7 +128,7 @@ Please click CANCEL and manually draw an inundation area.
         dialogDict["fields"] = fieldDicts
         
         if len(damOrLeveeNameList):
-            damOrLeveeName =  damOrLeveeNameList[0]
+            damOrLeveeName = damOrLeveeNameList[0]
         else:
             damOrLeveeName = None
         valueDict = {"damOrLeveeName": damOrLeveeName, "urgencyLevel":urgencyList[0]}
@@ -119,25 +146,25 @@ Please click CANCEL and manually draw an inundation area.
         @return: List of objects that will be later converted to Java IEvent
         objects
         """
-        import EventFactory
-        import EventSetFactory
-
         urgencyLevel = dialogInputMap["urgencyLevel"]
 
         currentEvents = HazardDataAccess.getCurrentEvents(eventSet)
         damOrLeveeName = dialogInputMap.get("damOrLeveeName")
+        damOrLeveeName = self.labelToImpact.get(damOrLeveeName, damOrLeveeName)
+
+        caveMode = eventSet.getAttributes().get('runMomde', 'PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
 
         if self.hazardEventLockUtils is None:
-            caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
-            practice = True
-            if caveMode == 'OPERATIONAL':
-                practice = False
             self.hazardEventLockUtils = HazardEventLockUtils(practice)
 
         lockedHazardIds = self.hazardEventLockUtils.getLockedEvents()
         
         newEventSet = EventSetFactory.createEventSet()
         hazardEvent = None
+        resultsDetailMessage = ""
         for currentEvent in currentEvents:
             locked = currentEvent.getEventID() in lockedHazardIds
             if currentEvent.getHazardAttributes().get("damOrLeveeName") == damOrLeveeName:
@@ -148,20 +175,25 @@ Please click CANCEL and manually draw an inundation area.
                             currentEvent.setStatus('ending')
                             newEventSet.add(currentEvent)
                             break
+                        else:
+                            # Current Watch or Warning is Locked, don't recommend anything
+                            currentHazardType = "Warning"
+                            if currentEvent.getSignificance() == "A":
+                                currentHazardType = "Watch"
+                            newEventSet.addAttribute(RESULTS_MESSAGE_KEY, self.NO_RECOMMENDED_HAZARD + self.LOCKED_HAZARD_RESULTS_OUTPUT.format(damOrLeveeName, currentHazardType))
+                            return newEventSet
                     else:
                         # current Event and urgency level match
                         # return empty eventSet
+                        newEventSet.addAttribute(RESULTS_MESSAGE_KEY, self.NO_RECOMMENDED_HAZARD)
                         return newEventSet
-                elif not locked:
+                elif not locked and currentEvent.getStatus() not in ['ENDED', 'ELAPSED']:
                     # Current Event is not issue, update it.
                     hazardEvent = currentEvent
 
         if hazardEvent is None:
-            hazardEvent = EventFactory.createEvent()
+            hazardEvent = EventFactory.createEvent(practice)
 
-        # updateEventAttributes does all the stuff we can safely do in a unit
-        # test, basically whatever does not require Jep. It is up to the test
-        # to inject a pure python version of the hazard event.
         hazardEvent = self.updateEventAttributes(hazardEvent, eventSet.getAttributes(), \
                                       dialogInputMap)
 
@@ -187,8 +219,9 @@ Please click CANCEL and manually draw an inundation area.
         damOrLeveeName = dialogDict.get("damOrLeveeName")
         if not damOrLeveeName:
             return None
+        damOrLeveeName = self.labelToImpact.get(damOrLeveeName, damOrLeveeName)
         
-        hazardGeometry =  self.getFloodPolygonForDam(damOrLeveeName)
+        hazardGeometry = self.getFloodPolygonForDam(damOrLeveeName)
 
         if hazardGeometry is None:
             return None
@@ -227,7 +260,7 @@ Please click CANCEL and manually draw an inundation area.
                                    endTime / MILLIS_PER_SECOND))
         hazardEvent.setGeometry(GeometryFactory.createCollection([hazardGeometry]))
 
-        hazardEvent.setHazardAttributes({"cause":"Dam Failure",
+        hazardEvent.addHazardAttributes({"cause":"Dam Failure",
                                           "damOrLeveeName":damOrLeveeName,
                                           "riverName": riverName,
                                          })

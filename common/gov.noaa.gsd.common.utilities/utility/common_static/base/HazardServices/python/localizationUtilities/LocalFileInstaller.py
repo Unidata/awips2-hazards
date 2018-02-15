@@ -37,13 +37,16 @@ from com.raytheon.uf.common.auth.user import User
 from com.raytheon.uf.common.serialization.comm import RequestRouter
 from com.raytheon.uf.common.auth.req import AbstractPrivilegedRequest
 
+from ufpy import ThriftClient
+
 import numpy
 import sys, os, traceback
 import getpass
 
 class LocalFileInstaller():
-    def __init__(self, host="ec"):
+    def __init__(self, host="ec", service=None):
         self.__rr = RequestRouter
+        self.__service = service
         self.__context = LocalizationContext()
         self.__lspr = self.createPutRequest()
         self.__lspr.setContext(self.__context)
@@ -123,7 +126,7 @@ class LocalFileInstaller():
         self.__lspr.setBytes(numpy.fromstring(data, dtype=numpy.int8))
         
         try:
-            resp = self.__rr.route(self.__lspr)
+            resp = self.route(self.__lspr, self.__service)
         except ThriftClient.ThriftRequestException:
             raise LocalFileInstallerException("putFile: Error sending request to server")
 
@@ -144,7 +147,7 @@ class LocalFileInstaller():
             urmArray = jep.jarray(1, AbstractPrivilegedUtilityCommand)
             urmArray[0] = self.__duc
             urm.setCommands(urmArray)
-            resp = self.__rr.route(urm)
+            resp = self.route(urm, self.__service)
             if resp==None :
                 return False
         except :
@@ -165,7 +168,7 @@ class LocalFileInstaller():
         self.__lsgr.setContext(self.__context)
         resp = None
         try:
-            resp = self.__rr.route(self.__lsgr)
+            resp = self.route(self.__lsgr, self.__service)
             putReq = resp.getResponse()
             fileStr = str(putReq.getBytes())
         except:
@@ -188,7 +191,7 @@ class LocalFileInstaller():
             urmArray = jep.jarray(1, AbstractUtilityCommand)
             urmArray[0] = self.__luc
             urm.setCommands(urmArray)
-            resp = self.__rr.route(urm)            
+            resp = self.route(urm, self.__service)
             respList = resp.getResponses()
             entries = respList[0].getEntries()
             retList = []
@@ -198,8 +201,8 @@ class LocalFileInstaller():
                     retList.append(onefil)
                 else :
                     retList.append(onefil[nnn:])
-        except ThriftClient.ThriftRequestException:
-            raise LocalFileInstallerException("getList: Error sending request to server")
+        except ThriftClient.ThriftRequestException as e:
+            raise LocalFileInstallerException("getList: Error sending request to server: " + str(e))
         return retList
 
     def check(self, filname):
@@ -216,7 +219,7 @@ class LocalFileInstaller():
             urmArray = jep.jarray(1, AbstractUtilityCommand)
             urmArray[0] = self.__luc
             urm.setCommands(urmArray)
-            resp = self.__rr.route(urm)
+            resp = self.route(urm, self.__service)
             respList = resp.getResponses()
             entries = respList[0].getEntries()
             if len(entries)==1 and entries[0].getFileName()==filname :
@@ -225,6 +228,13 @@ class LocalFileInstaller():
             raise LocalFileInstallerException("getList: Error sending request to server")
 
         return False
+
+    def route(self, request, service):
+        if service:
+            response = self.__rr.route(request, service)
+        else:
+            response = self.__rr.route(request)
+        return response
 
 class LocalFileInstallerException(Exception):
     def __init__(self, value):

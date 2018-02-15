@@ -28,25 +28,37 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
+import java.util.Map.Entry;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseTrackListener;
+import org.eclipse.swt.events.MouseWheelListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.FontMetrics;
+import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
@@ -58,24 +70,21 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.undoable.IUndoRedoManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.undoable.IUndoRedoable;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
-import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
-
-import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * If there are any editable keys in the data dictionary returned by the product
@@ -115,28 +124,39 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
  * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
  * 08/31/2015   9617       Chris.Golden Modified to use local copy of parameters editor factory.
  * 09/11/2015   9508       Robert.Blum  Save MessageBox now notifies of missing required fields.
- * 06/08/2016   9620       Robert.Blum  Added controls to change the product expiration time.
- * 06/09/2016   9620       Robert.Blum  Fixed issue with rapidly changing the product purge hours.
- * 06/21/2016   9620       Robert.Blum  Accounting for arrow keys with expiration spinner.
- * 06/22/2016  19925      Thomas.Gurney Make "Toggle Labels" always checked by default
- * 09/29/2016  22602       Roger.Ferrel Disable mouse wheel on expires spinner.
- * 10/18/2016  22412       Roger.Ferrel When overview changes update the staging value entries.
+ * Jun 08, 2016 9620       Robert.Blum  Added controls to change the product expiration time.
+ * Jun 09, 2016 9620       Robert.Blum  Fixed issue with rapidly changing the product purge hours.
+ * Jun 21, 2016 9620       Robert.Blum  Accounting for arrow keys with expiration spinner.
+ * Jun 22, 2016 19925      Thomas.Gurney Make "Toggle Labels" always checked by default
+ * Sep 29, 2016 22602      Roger.Ferrel Disable mouse wheel on expires spinner.
+ * Oct 18, 2016 22412      Roger.Ferrel When overview changes update the staging value entries.
  *                                      Set the overview synopsis to the value in product.
- * 11/08/2016  22509       bkowal       Required fields should always be indicated.
- * 11/10/2016  22119       Kevin.Bisanz Add siteId so that saved/issued changes can be tagged with it.
- * 12/06/2016  26855       Chris.Golden Removed explicit use of scrollable composite, since the
+ * Nov 08, 2016 22509      bkowal       Required fields should always be indicated.
+ * Nov 10, 2016 22119      Kevin.Bisanz Add siteId so that saved/issued changes can be tagged with it.
+ * Dec 06, 2016 26855      Chris.Golden Removed explicit use of scrollable composite, since the
  *                                      megawidgets can be wrapped within a scrollable Composite
  *                                      megawidget instead, which will handle Label-wrapping behavior
  *                                      more correctly.
- * 12/12/2016  21504      Robert.Blum   Added method to set the enabled state of the Save button.
- * Dec 17, 2017  20739    Chris.Golden  Refactored away access to directly mutable session events.
+ * Dec 12, 2016 21504      Robert.Blum  Added method to set the enabled state of the Save button.
+ * Jan 10, 2017 28024      Robert.Blum  Added a method to set the editable state of the fields/megawidget manager.
+ * Feb 23, 2017 29170      Robert.Blum  Product Editor refactor.
+ * Feb 27, 2017 29170      Robert.Blum  Additional changes for Product Editor refactor.
+ * Mar 30, 2017 32569      Robert.Blum  Bolding and coloring blue Labels that divide product segments.
+ * Apr 03, 2017 32572      Roger.Ferrel Added {@link #getIncompleteRequiredFields()}.
+ * Apr 10, 2017 32735      Robert.Blum  Wrapping the uneditable Labels on Product Editor.
+ * Jun 05, 2017 29996      Robert.Blum  Updates for previous text design.
+ * Jun 12, 2017 35022      Kevin.Bisanz ProductText value changed from Serializable to String.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session events.
+ * Jun 06, 2018 15561      Chris.Golden Made typecasting to floats safer (in case the object is a Number
+ *                                      but not a Float).
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
 
-public class ProductDataEditor extends AbstractDataEditor {
+public class ProductDataEditor extends AbstractDataEditor
+        implements IUndoRedoManager {
 
     /** The log handler */
     private static final IUFStatusHandler handler = UFStatus
@@ -150,12 +170,6 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     /** Label for the Undo button on the editor tab */
     private static final String UNDO_BUTTON_LABEL = "Undo";
-
-    /* Prefix for key info overview synopsis names. */
-    private static final String OVERVIEW_KEY_PREFIX = "overviewSynopsis_";
-
-    /** Label for the Undo button on the editor tab */
-    private static final String TOGGLE_LABELS_BUTTON_LABEL = "Toggle Labels";
 
     /* Number of buttons */
     private final int BUTTON_COUNT = 3;
@@ -185,31 +199,31 @@ public class ProductDataEditor extends AbstractDataEditor {
      */
     private Label dateTimeLbl;
 
-    /** The toggle button widget */
-    private Button toggleLabelsButton;
-
     /** The save button widget */
     private Button saveButton;
 
     /** The undo button widget */
     private Button undoButton;
 
-    /** The parent composite for the megawidgets **/
+    /** The scrolled composite for the text components **/
+    private ScrolledComposite scrollerComposite;
+
+    /** The parent composite for the text components **/
     private Composite parentComposite;
 
-    /**
-     * The MegawidgetManager responsible for generating the GUI components for
-     * this product
-     */
-    private MegawidgetManager manager;
+    private ProductPartsManager partsManager;
 
-    /**
-     * The history of modifications made to editable data.
-     */
-    private final LinkedList<Pair<KeyInfo, EditableKeyInfo>> modificationHistory = new LinkedList<>();
+    /** Maps UI controls to their corresponding Product Part */
+    private Map<Control, ProductPart> textWidgetMap = new HashMap<>();
+
+    /** The history of modifications made to editable data. */
+    private final LinkedList<IUndoRedoable> modificationHistory = new LinkedList<>();
 
     /** The current site ID */
     private String siteId;
+
+    /** Bold Font used for Segment Divider Parts */
+    private Font boldFont;
 
     /**
      * Creates a new ProductDataEditor
@@ -234,6 +248,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         super(productDialog, productTab, product, parent, style);
         this.siteId = siteId;
         displayExpirationControls = true;
+        partsManager = new ProductPartsManager(product.getEditableEntries());
         for (IEvent event : product.getEventSet()) {
             IReadableHazardEvent hazard = (IReadableHazardEvent) event;
             HazardTypeEntry hazardTypeEntry = hazardTypes
@@ -244,10 +259,20 @@ public class ProductDataEditor extends AbstractDataEditor {
                 break;
             }
         }
+
+        addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                if (boldFont != null && boldFont.isDisposed() == false) {
+                    boldFont.dispose();
+                }
+            }
+        });
     }
 
     /**
-     * Creates the product specific GUI components using the megawidgets library
+     * Creates the product specific GUI components.
      * 
      * @param parent
      *            The parent composite to create the GUI components
@@ -255,11 +280,59 @@ public class ProductDataEditor extends AbstractDataEditor {
     @Override
     protected void initializeSubclass() {
 
-        // Determine the editable keys present in this product
-        editableKeys = new EditableKeys(product);
-
         // Set the tab label
         setText(TAB_LABEL);
+
+        // Create the scroller composite and the layouts
+        scrollerComposite = new ScrolledComposite(editorPane,
+                SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+        GridLayout gl = new GridLayout(1, false);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        scrollerComposite.setLayoutData(gd);
+        scrollerComposite.setLayout(gl);
+
+        parentComposite = new Composite(scrollerComposite, SWT.NONE);
+        gl = new GridLayout(1, false);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        parentComposite.setLayout(gl);
+        parentComposite.setLayoutData(gd);
+        scrollerComposite.setExpandHorizontal(true);
+        scrollerComposite.setExpandVertical(true);
+
+        scrollerComposite.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+                Point size = parentComposite.computeSize(SWT.DEFAULT,
+                        SWT.DEFAULT);
+                scrollerComposite.setMinSize(size);
+            }
+        });
+
+        scrollerComposite.addListener(SWT.MouseVerticalWheel, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+                event.doit = false;
+            }
+        });
+        scrollerComposite.addMouseWheelListener(new MouseWheelListener() {
+            @Override
+            public void mouseScrolled(MouseEvent e) {
+                Point origin = scrollerComposite.getOrigin();
+                origin.y += 20 * (e.count < 0 ? 1 : -1);
+                int maxOrigin = scrollerComposite.getContent()
+                        .getBounds().height
+                        - scrollerComposite.getClientArea().height;
+                if (origin.y < 0) {
+                    origin.y = 0;
+                } else if (origin.y > maxOrigin) {
+                    origin.y = maxOrigin;
+                }
+                scrollerComposite.setOrigin(origin);
+            }
+        });
+
+        // Create the componenets
+        createTextComponents();
 
         if (isDataEditable() == false) {
             handler.info(
@@ -267,142 +340,68 @@ public class ProductDataEditor extends AbstractDataEditor {
             return;
         }
 
-        // Create the scroller composite and the layouts
-        parentComposite = new Composite(editorPane, SWT.NONE);
-        ProductEditorUtil.setLayoutInfo(parentComposite, 1, false, SWT.FILL,
-                SWT.FILL, true, true, 500, 300);
-
-        // Create the Megawidgets
-        createMegawidgets();
+        scrollerComposite.setContent(parentComposite);
     }
 
-    private void createMegawidgets() {
+    private void createTextComponents() {
+        List<ProductPart> editableEntries = product.getEditableEntries();
+        if (editableEntries != null) {
+            for (ProductPart part : editableEntries) {
+                /*
+                 * If the Product Part is editable or displayable then a SWT
+                 * Control will be created.
+                 */
+                String value = part.getProductText();
+                /*
+                 * If the ProductPart is editable, create a TextComponent to
+                 * allow the user the ability to edit/modify the text.
+                 */
+                Control control = null;
+                if (part.isEditable()) {
+                    control = new ProductEditorTextComponent(parentComposite,
+                            this, part.getName(), value, part.getDisplayLabel(),
+                            this, part.isRequired(), part.getNumLines(),
+                            part.isUsePreviousText());
+                } else {
+                    // Not editable, add the text as a Label widget.
+                    control = new Label(parentComposite, SWT.WRAP);
 
-        /*
-         * If there is no parent composite, do nothing. This may be the case if
-         * there are no editable fields, for example.
-         */
-        if (parentComposite == null) {
-            return;
-        }
-
-        /* Dispose of any megawidget controls that may exist */
-        Control[] controls = parentComposite.getChildren();
-        if (controls.length != 0) {
-            for (int i = 0; i < controls.length; i++) {
-                controls[i].dispose();
-            }
-        }
-
-        /*
-         * Create the data structures necessary to pass to the megawidgets
-         * library
-         */
-        List<KeyInfo> keyInfos = new ArrayList<>();
-        Map<KeyInfo, Object> valuesForKeyInfos = new HashMap<>();
-        for (KeyInfo key : editableKeys.getKeyInfos()) {
-            keyInfos.add(key);
-            if (key.getName().startsWith(OVERVIEW_KEY_PREFIX)
-                    && product.getData().containsKey(key.getName())) {
-                valuesForKeyInfos.put(key,
-                        product.getData().get(key.getName()));
-            } else {
-                valuesForKeyInfos.put(key, editableKeys.getValue(key));
-            }
-        }
-
-        try {
-            /*
-             * Use factory to create megawidgets
-             */
-            ProductParametersEditorFactory factory = new ProductParametersEditorFactory();
-            manager = factory.buildParametersEditor(parentComposite, keyInfos,
-                    valuesForKeyInfos,
-                    System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1L),
-                    System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
-                    ProductEditorUtil.currentTimeProvider,
-                    new IProductParametersEditorListener() {
-                        @Override
-                        public void parameterValueChanged(KeyInfo keyInfo,
-                                Object value) {
-                            EditableKeyInfo editableKeyInfo = editableKeys
-                                    .getEditableKeyInfo(keyInfo);
-                            // Add a new entry in the undo queue
-                            modificationHistory.add(
-                                    new Pair<KeyInfo, EditableKeyInfo>(keyInfo,
-                                            editableKeyInfo));
-
-                            Serializable newValue = (Serializable) value;
-
-                            // Update the map with the new value
-                            updateKeyInfoValue(editableKeyInfo, keyInfo,
-                                    newValue);
-
-                            // Update the editable key value
-                            editableKeyInfo.updateValue(newValue);
-
-                            // Update the enabled state of the save and undo
-                            // buttons
-                            updateButtonState();
-
-                            // Update the tab label
-                            updateTabLabel();
-
-                            // Regenerate with the updated data
-                            productDialog.regenerate(keyInfo);
-
-                            // Update IssueAll button state
-                            productDialog.updateButtons();
+                    /*
+                     * Check if the Product Part was configured as a
+                     * "segmentDivider". If so, it needs to be bold and blue.
+                     */
+                    if (part.isSegmentDivider()) {
+                        if (boldFont == null || boldFont.isDisposed()) {
+                            FontData fontData = control.getFont()
+                                    .getFontData()[0];
+                            boldFont = new Font(control.getDisplay(),
+                                    new FontData(fontData.getName(),
+                                            fontData.getHeight(), SWT.BOLD));
                         }
-
-                        @Override
-                        public void parameterValuesChanged(
-                                Map<KeyInfo, Object> valuesForLabels) {
-                            for (Map.Entry<KeyInfo, Object> entry : valuesForLabels
-                                    .entrySet()) {
-                                parameterValueChanged(entry.getKey(),
-                                        entry.getValue());
-                            }
-                        }
-
-                        @Override
-                        public void sizeChanged(KeyInfo parameter) {
-
-                            /*
-                             * No action; size changes of any children should be
-                             * handled by scrollable wrapper megawidget.
-                             */
-                        }
-                    });
-
-            // Disables 'displayable'
-            // TODO Check if the megawidget for a list handled editable
-            List<KeyInfo> displayableKeys = editableKeys.getDisplayableKeys();
-            if (displayableKeys.isEmpty() == false) {
-                Map<String, Map<String, Object>> mutablePropertiesMap = manager
-                        .getMutableProperties();
-
-                for (KeyInfo displayableKey : displayableKeys) {
-                    Map<String, Object> properties = mutablePropertiesMap
-                            .get(displayableKey.toString());
-                    if (properties != null) {
-                        properties.put(IControlSpecifier.MEGAWIDGET_EDITABLE,
-                                Boolean.FALSE);
+                        control.setFont(boldFont);
+                        control.setForeground(Display.getCurrent()
+                                .getSystemColor(SWT.COLOR_BLUE));
                     }
+                    GridData gd = new GridData(SWT.FILL, SWT.FILL, true, false);
+                    GC gc = new GC(control);
+                    gc.setFont(control.getFont());
+                    FontMetrics fm = gc.getFontMetrics();
+
+                    gd.widthHint = fm.getAverageCharWidth()
+                            * HazardConstants.LEGACY_TEXT_WRAP_LIMIT;
+                    gc.dispose();
+                    gd.horizontalIndent = 4;
+                    control.setLayoutData(gd);
+                    ((Label) control).setText(value);
+                    control.setData(part);
                 }
-
-                manager.setMutableProperties(mutablePropertiesMap);
+                textWidgetMap.put(control, part);
             }
-
-        } catch (MegawidgetException e) {
-            handler.error("Error creating megawidgets: " + e, e);
         }
-
-        parentComposite.layout();
     }
 
     /**
-     * Creates the Save, Undo, and toggle buttons
+     * Creates the Save and Undo buttons
      * 
      * @param editorPane
      *            The parent composite
@@ -515,7 +514,6 @@ public class ProductDataEditor extends AbstractDataEditor {
          */
         saveButton = new Button(editorButtonPane, SWT.PUSH);
         undoButton = new Button(editorButtonPane, SWT.PUSH);
-        toggleLabelsButton = new Button(editorButtonPane, SWT.CHECK);
 
         /*
          * Configure Save button
@@ -523,6 +521,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         saveButton.setText(SAVE_BUTTON_LABEL);
         ProductEditorUtil.setButtonGridData(saveButton);
         saveButton.addSelectionListener(new SelectionAdapter() {
+
             @Override
             public void widgetSelected(SelectionEvent e) {
                 boolean displayMB = false;
@@ -539,11 +538,11 @@ public class ProductDataEditor extends AbstractDataEditor {
                 // Check if all required fields are filled in
                 if (requiredFieldsCompleted() == false) {
                     displayMB = true;
-                    List<String> incompleteFields = getIncompleteRequiredFields();
+                    List<ProductPart> incompleteFields = getIncompleteRequiredFields();
                     messageSB.append(
                             "\n\nThe following required fields are incomplete:\n");
-                    for (String field : incompleteFields) {
-                        messageSB.append(field);
+                    for (ProductPart part : incompleteFields) {
+                        messageSB.append(part.getLabel());
                         messageSB.append("\n");
                     }
                 }
@@ -573,40 +572,20 @@ public class ProductDataEditor extends AbstractDataEditor {
         undoButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                undoModification();
-                updateButtonState();
-                updateTabLabel();
+                undo();
             }
         });
 
         // Editor Undo button is always enabled.
         undoButton.setEnabled(true);
-
-        /*
-         * Configure toggle button
-         */
-        toggleLabelsButton.setText(TOGGLE_LABELS_BUTTON_LABEL);
-        ProductEditorUtil.setButtonGridData(toggleLabelsButton);
-        toggleLabelsButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                toggleLabels();
-            }
-        });
-
-        // Editor toggle button always enabled.
-        toggleLabelsButton.setEnabled(true);
-        toggleLabelsButton.setSelection(true);
-        toggleLabels();
     }
 
     private double getDefaultPurgeHours() {
         Map<String, Serializable> data = product.getData();
         if (data.containsKey(HazardConstants.PURGE_HOURS)) {
-            Number purgeHoursObj = (Number) data
-                    .get(HazardConstants.PURGE_HOURS);
-            if (purgeHoursObj != null) {
-                return purgeHoursObj.doubleValue();
+            Number purgeHours = (Number) data.get(HazardConstants.PURGE_HOURS);
+            if (purgeHours != null) {
+                return purgeHours.doubleValue();
             }
         }
         // Match GFE by defaulting to 12 hours
@@ -634,8 +613,8 @@ public class ProductDataEditor extends AbstractDataEditor {
                 + (minuteInc * 15); // minutes
 
         Date now = SimulatedTime.getSystemTime().getTime();
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-        cal.setTime(now);
+        Calendar cal = TimeUtil.newGmtCalendar(now);
+        expireLabelFmt.setTimeZone(cal.getTimeZone());
         cal.add(Calendar.MINUTE, purgeOffset);
         int min = cal.get(Calendar.MINUTE);
         if ((min % 15) >= 1) {
@@ -652,6 +631,7 @@ public class ProductDataEditor extends AbstractDataEditor {
 
             // regenerate with updated Product Expiration Time
             productDialog.regenerate(null);
+            partsManager.clearModifiedProductParts();
         }
     }
 
@@ -667,153 +647,6 @@ public class ProductDataEditor extends AbstractDataEditor {
         }
     }
 
-    /**
-     * Toggles the labels on the text fields contained in the Product Editor.
-     */
-    private void toggleLabels() {
-        /*
-         * Set the displayLabel flag on each KeyInfo object according to the
-         * button state.
-         */
-        for (KeyInfo key : editableKeys.getKeyInfos()) {
-            key.setDisplayLabel(toggleLabelsButton.getSelection());
-            if (key.isRequired()) {
-                /*
-                 * Required labels should always be displayed.
-                 */
-                key.setDisplayLabel(true);
-            }
-        }
-
-        // re-create the megawidgets with or without the labels
-        createMegawidgets();
-    }
-
-    /**
-     * Updates the value held in the keyinfo object
-     * 
-     * @param editableKeyInfo
-     *            The editable key info
-     * @param keyInfo
-     *            The key info object
-     * @param newValue
-     *            The new value to assign to the keyinfo object
-     */
-    private void updateKeyInfoValue(EditableKeyInfo editableKeyInfo,
-            KeyInfo keyInfo, Serializable newValue) {
-        String format = editableKeyInfo.getFormat();
-        for (EditableEntryMap map : product.getEditableEntries()) {
-            if (map.getFormat().equals(format)) {
-                map.getEditableEntries().put(keyInfo, newValue);
-            }
-        }
-    }
-
-    public void updateValues(IGeneratedProduct product) {
-        editableKeys.updateEditableKeys(product);
-        Map<String, Object> state = manager.getState();
-        for (KeyInfo key : editableKeys.getKeyInfos()) {
-            EditableKeyInfo editableKeyInfo = editableKeys
-                    .getEditableKeyInfo(key);
-            // updates the values displayed in the GUI
-            state.put(key.toString(), editableKeyInfo.getOriginalValue());
-
-        }
-
-        try {
-            manager.setState(state);
-        } catch (MegawidgetStateException exception) {
-            handler.error(
-                    "Error trying to reset megawidget state: " + exception,
-                    exception);
-        }
-    }
-
-    @Override
-    public void revertValues() {
-        Map<String, Object> state = manager.getState();
-        for (KeyInfo key : editableKeys.getKeyInfos()) {
-            EditableKeyInfo editableKeyInfo = editableKeys
-                    .getEditableKeyInfo(key);
-            if (editableKeyInfo.isModified()) {
-                editableKeyInfo.revertToOriginalValue();
-                updateKeyInfoValue(editableKeyInfo, key,
-                        editableKeyInfo.getOriginalValue());
-                // updates the values displayed in the GUI
-                state.put(key.toString(), editableKeyInfo.getOriginalValue());
-            }
-
-        }
-        // regenerate with updated data
-        productDialog.regenerate(null);
-        try {
-            manager.setState(state);
-        } catch (MegawidgetStateException exception) {
-            handler.error(
-                    "Error trying to reset megawidget state: " + exception,
-                    exception);
-        }
-    }
-
-    @Override
-    public void undoModification() {
-        if (modificationHistory.isEmpty()) {
-            String undoText = "No modifications to undo.";
-            Shell shell = this.getDisplay().getActiveShell();
-            MessageBox messageBox = new MessageBox(shell,
-                    SWT.OK | SWT.ICON_INFORMATION);
-            messageBox.setText("Unable to undo");
-            messageBox.setMessage(undoText);
-            messageBox.open();
-            handler.info(undoText);
-        } else {
-            Map<String, Object> state = manager.getState();
-
-            // Gets the previous state information
-            Pair<KeyInfo, EditableKeyInfo> keyInfoPair = modificationHistory
-                    .removeLast();
-
-            // Retrieve the key info object
-            KeyInfo keyInfo = keyInfoPair.getFirst();
-
-            // Retrieve the editable key info object
-            EditableKeyInfo editableKeyInfo = keyInfoPair.getSecond();
-
-            // Update the current value with the previous value
-            updateKeyInfoValue(editableKeyInfo, keyInfo,
-                    editableKeyInfo.getLastValue());
-
-            // Revert the editable key info object to the previous state
-            editableKeyInfo.revertToLastValue();
-
-            // updates the values displayed in the GUI
-            state.put(keyInfo.toString(), editableKeyInfo.getValue());
-
-            // Regenerate with the updated data
-            productDialog.regenerate(null);
-
-            // Update IssueAll button state
-            productDialog.updateButtons();
-            try {
-                manager.setState(state);
-            } catch (MegawidgetStateException exception) {
-                handler.error(
-                        "Error trying to reset megawidget state: " + exception,
-                        exception);
-            }
-        }
-    }
-
-    @Override
-    protected boolean undosRemaining() {
-        return !modificationHistory.isEmpty();
-    }
-
-    @Override
-    protected int getUndosRemaining() {
-        return modificationHistory.size();
-    }
-
     @Override
     public void refresh() {
         // no op
@@ -821,76 +654,52 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     @Override
     public boolean isDataEditable() {
-        return !editableKeys.isEmpty();
+        return !this.textWidgetMap.isEmpty();
     }
-
-    /**
-     * Checks to see if there are any required fields that needs to be
-     * completed.
-     */
 
     @Override
     public boolean requiredFieldsCompleted() {
-        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            Serializable value = editableKeys.getValue(keyInfo);
-            if (keyInfo.isRequired() && (value == null
-                    || String.valueOf(value).trim().length() == 0)) {
-                return false;
-            }
-        }
-        return true;
+        return partsManager.requiredFieldsCompleted();
     }
 
     @Override
     public boolean hasUnsavedChanges() {
-        return editableKeys.isModified();
+        return partsManager.hasUnsavedChanges();
     }
 
     @Override
     public void saveModifiedValues() {
-        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            Serializable value = editableKeys.getModifiedValue(keyInfo, true);
-            if (value != null) {
-                String key = keyInfo.getName();
-
-                ProductTextUtil.createOrUpdateProductText(key,
-                        keyInfo.getProductCategory(), keyInfo.getProductID(),
+        String mode = CAVEMode.getMode().toString();
+        for (ProductPart productPart : partsManager.getProductParts()) {
+            if (partsManager.hasUnsavedChanges(productPart)) {
+                partsManager.updateProductPartForSave(productPart);
+                Control control = getControlForPart(productPart);
+                if (control instanceof ProductEditorTextComponent) {
+                    ((ProductEditorTextComponent) control).updateUseSavedText();
+                }
+                KeyInfo keyInfo = productPart.getKeyInfo();
+                String value = productPart.getCurrentText();
+                // Don't set productID due to pil changing
+                ProductTextUtil.createOrUpdateProductText(keyInfo.getName(),
+                        keyInfo.getProductCategory(), mode,
                         keyInfo.getSegment(),
                         new ArrayList<>(keyInfo.getEventIDs()), siteId, value);
-                if (key.startsWith(OVERVIEW_KEY_PREFIX)) {
-                    /*
-                     * Update the overview for staging values for each eventID.
-                     * Staging dialog expects a quoted string.
-                     */
-                    String stagingValue = "\"" + value + "\"";
-                    for (String eventId : keyInfo.getEventIDs()) {
-                        ArrayList<String> list = new ArrayList<>(1);
-                        list.add(eventId);
-
-                        ProductTextUtil.createOrUpdateProductText(key, "", "",
-                                "", list, siteId, stagingValue);
-                    }
-                }
             }
+            partsManager.clearModified(productPart);
         }
-        editableKeys.clearModifiedValues();
+
+        // Regenerate the product on saves
+        productDialog.regenerate(partsManager.getModifiedProductParts());
+        partsManager.clearModifiedProductParts();
     }
 
-    /**
-     * Returns the last modified value
-     * 
-     * @return
-     */
-    public Serializable getLastModifiedValue() {
-        Serializable value = null;
-        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            Serializable modifiedValue = editableKeys.getModifiedValue(keyInfo,
-                    false);
-            if (modifiedValue != null) {
-                value = modifiedValue;
+    private Control getControlForPart(ProductPart productPart) {
+        for (Entry<Control, ProductPart> entry : textWidgetMap.entrySet()) {
+            if (entry.getValue().equals(productPart)) {
+                return entry.getKey();
             }
         }
-        return value;
+        return null;
     }
 
     /**
@@ -910,7 +719,7 @@ public class ProductDataEditor extends AbstractDataEditor {
     @Override
     protected void updateButtonState() {
         // Update the undo button with how many undo actions are available
-        if (undosRemaining()) {
+        if (isUndoable()) {
             undoButton.setText(
                     UNDO_BUTTON_LABEL + "(" + getUndosRemaining() + ")");
         } else {
@@ -918,22 +727,9 @@ public class ProductDataEditor extends AbstractDataEditor {
         }
     }
 
-    /**
-     * Returns a List (of Labels) of all the required fields that have not been
-     * completed. If all the required fields are completed it returns a empty
-     * List.
-     */
-    private List<String> getIncompleteRequiredFields() {
-        List<String> incompleteFields = new ArrayList<>(
-                editableKeys.getKeyInfos().size());
-        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            String value = String.valueOf(editableKeys.getValue(keyInfo));
-            if (keyInfo.isRequired()
-                    && (value == null || value.trim().length() == 0)) {
-                incompleteFields.add(keyInfo.getLabel());
-            }
-        }
-        return incompleteFields;
+    @Override
+    public List<ProductPart> getIncompleteRequiredFields() {
+        return partsManager.getIncompleteRequiredFields();
     }
 
     /**
@@ -943,5 +739,174 @@ public class ProductDataEditor extends AbstractDataEditor {
      */
     public void setSaveButtonState(boolean enabled) {
         saveButton.setEnabled(enabled);
+    }
+
+    @Override
+    public boolean undo() {
+        if (isUndoable()) {
+            IUndoRedoable undoable = modificationHistory.removeLast();
+            undoable.undo();
+            if (undoable instanceof ProductEditorTextComponent) {
+                ProductEditorTextComponent peTextComp = (ProductEditorTextComponent) undoable;
+                ProductPart productPart = textWidgetMap.get(peTextComp);
+                /*
+                 * Previous value was set in the undo call above, update
+                 * corresponding data structures to match.
+                 */
+                String newValue = peTextComp.getText();
+                partsManager.setPrevValue(productPart, newValue);
+                partsManager.updateValue(productPart, newValue);
+            }
+
+            updateButtonState();
+            updateTabLabel();
+
+            // Update IssueAll button state
+            productDialog.updateButtons();
+            return true;
+        } else {
+            String undoText = "No modifications to undo.";
+            Shell shell = this.getDisplay().getActiveShell();
+            MessageBox messageBox = new MessageBox(shell,
+                    SWT.OK | SWT.ICON_INFORMATION);
+            messageBox.setText("Unable to undo");
+            messageBox.setMessage(undoText);
+            messageBox.open();
+            handler.info(undoText);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isUndoable() {
+        return !modificationHistory.isEmpty();
+    }
+
+    @Override
+    public void addUndo(IUndoRedoable undo) {
+        modificationHistory.add(undo);
+    }
+
+    @Override
+    protected int getUndosRemaining() {
+        return modificationHistory.size();
+    }
+
+    @Override
+    public boolean isRedoable() {
+        return false;
+    }
+
+    @Override
+    public boolean redo() {
+        // Not implemented, this functionality has not been requested.
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public void addRedo(IUndoRedoable redo) {
+        // Not implemented, this functionality has not been requested.
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public void clearUndoRedo() {
+        modificationHistory.clear();
+    }
+
+    /**
+     * Clears the list of modified Product Parts.
+     */
+    public void clearModifiedProductParts() {
+        partsManager.clearModifiedProductParts();
+    }
+
+    /**
+     * Gets the list of Product Parts in this Editor.
+     * 
+     * @return
+     */
+    public List<ProductPart> getProductParts() {
+        return partsManager.getProductParts();
+    }
+
+    /**
+     * Gets the list of modified Product Parts in this Editor.
+     * 
+     * @return
+     */
+    public List<ProductPart> getModifiedProductParts() {
+        return partsManager.getModifiedProductParts();
+    }
+
+    /**
+     * Sets the previous value on the corresponding Product Part for the widget
+     * specified.
+     * 
+     * @param widget
+     * @param currentValue
+     */
+    public void setPrevValue(ProductEditorTextComponent widget,
+            String currentValue) {
+        partsManager.setPrevValue(textWidgetMap.get(widget), currentValue);
+    }
+
+    /**
+     * Sets the current value on the corresponding Product Part for the widget
+     * specified.
+     * 
+     * @param widget
+     * @param currentValue
+     */
+    public void updateValue(ProductEditorTextComponent widget,
+            String currentValue) {
+        ProductPart part = textWidgetMap.get(widget);
+        int index = product.getEditableEntries().indexOf(part);
+        ProductPart tempPart = product.getEditableEntries().get(index);
+        tempPart.setCurrentText(currentValue);
+        partsManager.updateValue(textWidgetMap.get(widget), currentValue);
+    }
+
+    /**
+     * Sets the usePreviousText state on the corresponding Product Part for the
+     * widget specified.
+     * 
+     * @param widget
+     * @param selected
+     */
+    public void setUsePreviousText(ProductEditorTextComponent widget,
+            boolean selected) {
+        textWidgetMap.get(widget).setUsePreviousText(selected);
+    }
+
+    /**
+     * Gets the saved text for the specified widget.
+     * 
+     * @param widget
+     * @return
+     */
+    public String getSavedText(ProductEditorTextComponent widget) {
+        return textWidgetMap.get(widget).getPreviousText();
+    }
+
+    /**
+     * Gets the generated text for the specified widget.
+     * 
+     * @param widget
+     * @return
+     */
+    public String getGeneratedText(ProductEditorTextComponent widget) {
+        return textWidgetMap.get(widget).getGeneratedText();
+
+    }
+
+    /**
+     * Returns whether or not the product needs regenerated based on this
+     * editors content.
+     * 
+     * @return
+     */
+    public boolean needsRegenerated() {
+        return partsManager.hasModifiedParts();
     }
 }

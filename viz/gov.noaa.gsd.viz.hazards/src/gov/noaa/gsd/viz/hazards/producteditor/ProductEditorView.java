@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.dialogs.MessageDialog;
 
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -52,6 +53,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
  *                                      expiration product.
  * Mar 30, 2016  8837      Robert.Blum  Added changeSite() for service backup.
+ * Sep 19, 2016 16871      Robert.Blum  Closing Product Editor when a hazard elapses.
  * Dec 12, 2016 21504      Robert.Blum  Updates for disabling IssueAll and Save 
  *                                      when events become locked on the Product Editor.
  * Apr 05, 2017 32733      Robert.Blum  Removed unused parameter.
@@ -59,6 +61,10 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  *                                      added a method to check to see if the
  *                                      product editor is open. Also made thread usage
  *                                      more consistent.
+ * May 17, 2017 34152      Robert.Blum  Fix Product Generation case that results in
+ *                                      invalid products.
+ * May 23, 2017 34152      Robert.Blum  Ensure Product Editor is open before
+ *                                      displaying invalid products error.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
  * Jan 17, 2018 33428      Chris.Golden Changed to work with new, more flexible
@@ -218,5 +224,15 @@ public final class ProductEditorView
         productEditor.setHazardEventLocked(true);
         productEditor.updateButtons();
         productEditor.disableSaveButtons();
+    }
+
+    @Override
+    public void closeEditorWithError(String title, String msg) {
+        // First check that the Product Editor is displayed
+        if (isProductEditorOpen()) {
+            // Display messagebox to user showing the error.
+            MessageDialog.openInformation(productEditor.getShell(), title, msg);
+            closeProductEditor();
+        }
     }
 }

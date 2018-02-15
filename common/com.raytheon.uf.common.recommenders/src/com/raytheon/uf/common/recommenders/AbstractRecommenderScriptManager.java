@@ -22,6 +22,7 @@ package com.raytheon.uf.common.recommenders;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
+import com.raytheon.uf.common.recommenders.executors.MutablePropertiesAndVisualFeatures;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -92,14 +94,20 @@ import jep.JepException;
  * Feb 26, 2015 6306       mduff        Pass site id in to build paths for provided site.
  * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices
  *                                      localization dir.
+ * Dec 16, 2015 14019      Robert.Blum  Updates for new PythonJobCoordinator API.
  * Feb 12, 2016 14923      Robert.Blum  Picking up overrides of EventUtilities directory
  * Mar 04, 2016 14032      Ben.Phillippe Fixed python path to include geospatial query
  *                                       configuration directory
  * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
- * Jul 28, 2016 19222       Robert.Blum Recommenders now care about the textUtilities directory.
+ * Jul 28, 2016 19222      Robert.Blum  Recommenders now care about the textUtilities directory.
  * Jun 06, 2017 15561      Chris.Golden Changed to use HazardsConfigurationConstants constants
  *                                      instead of string literals.
+ * May 22, 2018  3782     Chris.Golden  Changed recommender parameter gathering to be much more
+ *                                      flexible, allowing the user to change dialog parameters
+ *                                      together with visual features, and allowing visual
+ *                                      feature changes to be made multiple times before the
+ *                                      execution proceeds.
  * </pre>
  * 
  * @author mnash
@@ -521,6 +529,64 @@ public abstract class AbstractRecommenderScriptManager
     }
 
     /**
+     * Method to allow the recommender to handle changes to dialog-related
+     * parameters.
+     * 
+     * @param recName
+     *            Recommender name.
+     * @param eventSet
+     *            Event set providing context.
+     * @param triggeringDialogIdentifiers
+     *            Zero or more identifiers of megawidgets within the dialog that
+     *            have experienced invocation or a state change.
+     * @param mutableDialogProperties
+     *            Mutable properties of the dialog's megawidgets.
+     * @param triggeringVisualFeatureIdentifiers
+     *            Zero or more identifiers of visual features that have
+     *            experienced a state change.
+     * @param visualFeatures
+     *            Visual features that were supplied with the dialog, as
+     *            modified by the user and by previous calls to this method; may
+     *            be <code>null</code>.
+     * @param collecting
+     *            Flag indicating whether or not the visual features to be
+     *            generated are to be used for collecting information.
+     * @return The mutable properties of the dialog that are to be modified, and
+     *         the new set of visual features to be shown along with the dialog.
+     */
+    public MutablePropertiesAndVisualFeatures handleDialogParameterChange(
+            String recName, EventSet<IEvent> eventSet,
+            Collection<String> triggeringDialogIdentifiers,
+            Map<String, Map<String, Object>> mutableDialogProperties,
+            Collection<String> triggeringVisualFeatureIdentifiers,
+            VisualFeaturesList visualFeatures, boolean collecting) {
+        if (this.verifyRecommenderIsLoaded(recName) == false) {
+            return new MutablePropertiesAndVisualFeatures();
+        }
+        try {
+            final Map<String, Object> args = getStarterMap(recName);
+            args.put("eventSet", eventSet);
+            args.put("triggeringDialogIdentifiers",
+                    triggeringDialogIdentifiers);
+            args.put("mutableDialogProperties", mutableDialogProperties);
+            args.put("triggeringVisualFeatureIdentifiers",
+                    triggeringVisualFeatureIdentifiers);
+            args.put("visualFeatures", visualFeatures);
+            args.put("collecting", collecting);
+            return (MutablePropertiesAndVisualFeatures) execute(
+                    HazardConstants.RECOMMENDER_HANDLE_DIALOG_PARAMETER_CHANGE_METHOD,
+                    INTERFACE, args);
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to handle dialog parameter changes from "
+                            + HazardConstants.RECOMMENDER_HANDLE_DIALOG_PARAMETER_CHANGE_METHOD
+                            + " for recommender " + recName,
+                    e);
+            return new MutablePropertiesAndVisualFeatures();
+        }
+    }
+
+    /**
      * Method to retrieve the list of visual features, if any, that the
      * recommender is to use to gather spatial input from the user.
      * 
@@ -528,18 +594,26 @@ public abstract class AbstractRecommenderScriptManager
      *            Recommender name.
      * @param eventSet
      *            Event set providing context.
+     * @param visualFeatures
+     *            Visual features to be passed in, if any.
+     * @param collecting
+     *            Flag to be passed in indicating whether the user is to be
+     *            asked for information (<code>true</code>) or simply shown
+     *            information (<code>false</code>). If <code>null</code>, no
+     *            flag is to be passed.
      * @return List of visual features.
      */
     public VisualFeaturesList getVisualFeatures(String recName,
-            EventSet<IEvent> eventSet) {
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
+            Boolean collecting) {
         if (this.verifyRecommenderIsLoaded(recName) == false) {
             return new VisualFeaturesList();
         }
         try {
             final Map<String, Object> args = getStarterMap(recName);
-            if (eventSet != null) {
-                args.put("eventSet", eventSet);
-            }
+            args.put("eventSet", eventSet);
+            args.put("visualFeatures", visualFeatures);
+            args.put("collecting", collecting);
             return (VisualFeaturesList) execute(
                     HazardConstants.RECOMMENDER_GET_SPATIAL_INFO_METHOD,
                     INTERFACE, args);
@@ -550,6 +624,43 @@ public abstract class AbstractRecommenderScriptManager
                             + " for recommender " + recName,
                     e);
             return new VisualFeaturesList();
+        }
+    }
+
+    /**
+     * Method to check the specified list of visual features to see if they
+     * constitute a complete set of spatial input information that may be used
+     * to execute the specified recommender.
+     * 
+     * @param recName
+     *            Recommender name.
+     * @param eventSet
+     *            Event set providing context.
+     * @param visualFeatures
+     *            Visual features constituting the spatial input info; may be
+     *            <code>null</code>.
+     * @return <code>true</code> if the specified spatial info is complete,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isVisualFeaturesCompleteSetOfSpatialInfo(String recName,
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures) {
+        if (this.verifyRecommenderIsLoaded(recName) == false) {
+            return true;
+        }
+        try {
+            final Map<String, Object> args = getStarterMap(recName);
+            args.put("eventSet", eventSet);
+            args.put("visualFeatures", visualFeatures);
+            return (Boolean) execute(
+                    HazardConstants.RECOMMENDER_CHECK_SPATIAL_INFO_METHOD,
+                    INTERFACE, args);
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to check spatial info from "
+                            + HazardConstants.RECOMMENDER_CHECK_SPATIAL_INFO_METHOD
+                            + " for recommender " + recName,
+                    e);
+            return true;
         }
     }
 

@@ -37,16 +37,18 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 24, 2013 1257       bsteffen    Initial creation
- * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
- * Jan 10, 2014 2890       bkowal      Added an identifier to associate a
- *                                     ProductInformation with a product generation
- *                                     request.
- * Mar 18, 2014 2917       jsanchez    Added getter/setters for ProductFormats.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 24, 2013 1257       bsteffen     Initial creation
+ * Nov  5, 2013 2266       jsanchez     Used GeneratedProductList.
+ * Jan 10, 2014 2890       bkowal       Added an identifier to associate a
+ *                                      ProductInformation with a product generation
+ *                                      request.
+ * Mar 18, 2014 2917       jsanchez     Added getter/setters for ProductFormats.
  * Oct 03, 2014 4042       Chris.Golden Changed dialog info (list of maps specifying
  *                                      megawidgets) to megawidget specifier manager.
+ * Mar 21, 2017 29996      Robert.Blum  Added Set of metadata identifiers that
+ *                                      trigger a refresh.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
  *                                      mutable session events.
  * </pre>
@@ -63,6 +65,8 @@ public class ProductGeneratorInformation {
     private Set<IReadableHazardEvent> possibleProductEvents;
 
     private MegawidgetSpecifierManager stagingMegawidgetSpecifierManager;
+
+    private Set<String> metadataReloadIdentifiers;
 
     private Map<String, Serializable> dialogSelections = Collections.emptyMap();
 
@@ -147,5 +151,14 @@ public class ProductGeneratorInformation {
 
     public void setGenerationID(String generationID) {
         this.generationID = generationID;
+    }
+
+    public Set<String> getMetadataReloadIdentifiers() {
+        return metadataReloadIdentifiers;
+    }
+
+    public void setMetadataReloadIdentifiers(
+            Set<String> metadataReloadIdentifiers) {
+        this.metadataReloadIdentifiers = metadataReloadIdentifiers;
     }
 }

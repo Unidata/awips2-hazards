@@ -29,15 +29,17 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardAttribute;
+import com.raytheon.uf.common.registry.ebxml.slots.SlotConverter;
+
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.BooleanValueType;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.FloatValueType;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.IntegerValueType;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.SlotType;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.ValueType;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardAttribute;
-import com.raytheon.uf.common.registry.ebxml.slots.SlotConverter;
 
 /**
  * 
@@ -67,6 +69,13 @@ import com.raytheon.uf.common.registry.ebxml.slots.SlotConverter;
  *                                       pre- and postprocessed around
  *                                       serialization/deserialization within
  *                                       a hazard attribute.
+ * Apr 05, 2017   32734    Kevin.Bisanz  Add validSlots collection to limit
+ *                                       which attributes are turned into
+ *                                       slots. (One more slot was added
+ *                                       beyond those included in the original
+ *                                       IOC changeset, since querying by
+ *                                       hazard type is done, so that needs to
+ *                                       be a slot.)
  * </pre>
  * 
  * @author bphillip
@@ -74,15 +83,23 @@ import com.raytheon.uf.common.registry.ebxml.slots.SlotConverter;
  */
 public class HazardAttributeSlotConverter implements SlotConverter {
 
+    /**
+     * Attribute names that are allowed to be slotted.
+     */
+    private static final Set<String> VALID_SLOTS = ImmutableSet.of(
+            HazardConstants.ETNS, HazardConstants.POINTID,
+            HazardConstants.PRACTICE, HazardConstants.SITE_ID_4,
+            HazardConstants.UGCS, HazardConstants.HAZARD_EVENT_TYPE);
+
     @SuppressWarnings("unchecked")
     @Override
     public List<SlotType> getSlots(String slotName, Object slotValue)
             throws IllegalArgumentException {
         if (!(slotValue instanceof Set)) {
-            throw new IllegalArgumentException("Object of type "
-                    + slotValue.getClass().getName()
-                    + " cannot be converted by "
-                    + HazardAttributeSlotConverter.class.getName());
+            throw new IllegalArgumentException(
+                    "Object of type " + slotValue.getClass().getName()
+                            + " cannot be converted by "
+                            + HazardAttributeSlotConverter.class.getName());
         }
 
         Set<HazardAttribute> attributes = (Set<HazardAttribute>) slotValue;
@@ -92,6 +109,13 @@ public class HazardAttributeSlotConverter implements SlotConverter {
          * Handle each attribute separately.
          */
         for (HazardAttribute attr : attributes) {
+
+            /*
+             * Only create a slot if this attribute should be slotted.
+             */
+            if (VALID_SLOTS.contains(attr.getKey()) == false) {
+                continue;
+            }
 
             /*
              * Do nothing with this attribute if it is not slottable.
@@ -107,9 +131,9 @@ public class HazardAttributeSlotConverter implements SlotConverter {
             Class<?> valueType = attr.getValueType();
             if (valueType == null) {
                 Object valueObject = attr.getValueObject();
-                ValueType val = getValueType(HazardAttribute
-                        .isSubstitutedBeforeSerialization(valueObject) ? valueObject
-                        : attr.getValue());
+                ValueType val = getValueType(
+                        HazardAttribute.isSubstitutedBeforeSerialization(
+                                valueObject) ? valueObject : attr.getValue());
                 SlotType slot = new SlotType(attr.getKey(), val);
                 slotList.add(slot);
             } else {
@@ -184,14 +208,15 @@ public class HazardAttributeSlotConverter implements SlotConverter {
         } else if (value instanceof Boolean) {
             retVal = new BooleanValueType((Boolean) value);
         } else if (value instanceof Date) {
-            retVal = new IntegerValueType(new BigInteger(String.valueOf(
-                    ((Date) value).getTime()).trim()));
+            retVal = new IntegerValueType(new BigInteger(
+                    String.valueOf(((Date) value).getTime()).trim()));
         } else if (value instanceof Float) {
             retVal = new FloatValueType(((Float) value).floatValue());
         } else if (value instanceof Double) {
             retVal = new FloatValueType(((Double) value).floatValue());
         } else if (value instanceof Long) {
-            retVal = new IntegerValueType(new BigInteger(String.valueOf(value)));
+            retVal = new IntegerValueType(
+                    new BigInteger(String.valueOf(value)));
         } else if (value instanceof Integer) {
             retVal = new IntegerValueType((Integer) value);
         } else {

@@ -3,6 +3,8 @@
 '''
 import CommonMetaData
 from HazardConstants import *
+import traceback
+import sys
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -25,10 +27,15 @@ class MetaData(CommonMetaData.MetaData):
 
         self.hydrologicCause = None
         self.damOrLeveeName = None
+        self.damMetadata = None
         if hazardEvent is not None:
             # The dictionary default mirrors the default in getHydrologicCause()
             self.hydrologicCause = hazardEvent.get("hydrologicCause", self.HYDROLOGIC_CAUSE_DEFAULT)
             self.damOrLeveeName = hazardEvent.get('damOrLeveeName')
+            from MapsDatabaseAccessor import MapsDatabaseAccessor
+            mapsAccessor = MapsDatabaseAccessor()
+            self.damMetadata = \
+              mapsAccessor.getDamInundationMetadata(self.damOrLeveeName, True)
 
         metaData = self.buildMetaDataList()
         
@@ -37,52 +44,26 @@ class MetaData(CommonMetaData.MetaData):
                 }    
        
     def buildMetaDataList(self):
-        if self.hazardStatus == 'pending' or self.hazardStatus == 'proposed':
+        if self.hazardStatus == 'ending':
             metaData = [
-                     self.getPreviousEditedText(),
-                     self.getInclude(),
-                     self.getFloodSeverity(),
-                     self.getHydrologicCause(),
-                     self.getSource(),
-                     self.getAdditionalInfo(),
-                     self.getScenario(),
-                     self.getRiver(self.damOrLeveeName),
-                     self.getFloodLocation(),
-                     self.getUpstreamLocation(),
-                     self.getDownstreamLocation(),
-                     self.getLocationsAffected(),
-                     self.getCTAs(), 
+                        self.getEndingOption(),
                         ]
-        elif self.hazardStatus == "issued":
-            metaData = [
-                     self.getPreviousEditedText(),
-                     self.getInclude(),
-                     self.getFloodSeverity(),
-                     self.getHydrologicCause(editable=False),
-                     self.getSource(),
-                     self.getAdditionalInfo(),
-                     self.getScenario(),
-                     self.getRiver(self.damOrLeveeName),
-                     self.getFloodLocation(),
-                     self.getUpstreamLocation(),
-                     self.getDownstreamLocation(),
-                     # TODO this should only be on the HID for EXT and not CON
-                     self.getLocationsAffected(),
-                     self.getCTAs(), 
-                     # Preserving CAP defaults for future reference.
-#                      self.getCAP_Fields([
-#                                           ("urgency", "Immediate"),
-#                                           ("severity", "Severe"),
-#                                           ("certainty", "Likely"),
-#                                           ("responseType", "Avoid"),
-#                                          ]) 
-                    ]
+            return metaData
         else:
             metaData = [
-                    self.getPreviousEditedText(),
-                    self.getEndingOption(),
+                    self.getInclude(),
+                    self.getFloodSeverity(),
+                    self.getHydrologicCause(),
+                    self.getSource(),
+                    self.getAdditionalInfo(),
+                    self.getScenario(),
+                    self.getRiver(),
+                    self.getFloodLocation(),
+                    self.getUpstreamLocation(),
+                    self.getDownstreamLocation(),
+                    self.getLocationsAffected(),
+                    self.getCTAs(),
                     ]
-            return metaData
 
         if self.hazardEvent is not None:
             if self.hazardEvent.get('cause') == 'Dam Failure' and self.damOrLeveeName:
@@ -95,17 +76,6 @@ class MetaData(CommonMetaData.MetaData):
         if self.hydrologicCause in self.addVolcanoList:
             metaData.insert(len(metaData)-2,self.getVolcano())
         return metaData
-
-    def getSource(self):
-        choices = self.sourceChoices()
-        
-        return {
-            "fieldName": "source",
-            "fieldType":"RadioButtons",
-            "label":"Source:",
-            "values": self.defaultValue(choices),
-            "choices": choices,
-            } 
         
     # INCLUDE  -- include
     #
@@ -115,7 +85,76 @@ class MetaData(CommonMetaData.MetaData):
         return [
             self.includeEmergency(),
             ]      
-        
+
+    def getCTAs(self,values=None):
+        basemeta = super(MetaData ,self).getCTAs(values)
+
+        # If values is not null, then we are not initializing metadata new
+        # from scratch and we should just respect those settings.
+        if values != None or self.damMetadata == None :
+            return basemeta
+        if self.damMetadata.get("sitespecSelected") != "YES" :
+            return basemeta
+
+        try:
+            basemeta["pages"][0]["pageFields"][0]['values'].append("sitespecCTA")
+        except:
+            try:
+                basemeta["pages"][0]["pageFields"][0]['values']=["sitespecCTA"]
+            except:
+                tb = traceback.format_stack()
+                sys.stderr.write("\nUNEXPECTED CONDITION!!! Can't find hooks "+\
+                                 "for modifying set of active CTAs in MetaData.\n")
+                for tbentry in tb[:-1] :
+                     sys.stderr.write(tbentry)
+                sys.stderr.write(tb[-1].split('\n')[0]+"\n\n")
+        return basemeta
+ 
+    def ctaSiteSpec(self) :
+        dspStr = "Dam Specific"
+        prdStr1 = '''If you are in low lying areas below the |*damName*| you should move
+                      to higher ground immediately.'''
+        prdStr2 = '''Follow evacuation instructions provided
+                     by your local emergency officials. Do not attempt to drive across
+                     flooded roadways.'''
+
+        # Get the site specific CTA text from the dam metadata.
+        if self.damMetadata != None :
+            sitespecCTA = self.damMetadata.get("sitespecCTA")
+            if isinstance(sitespecCTA, str) :
+                prdStr1 = sitespecCTA
+                dspStr = "for "+self.damOrLeveeName
+            else :
+                prdStr1 = prdStr1.replace('|*damName*|', self.damOrLeveeName)
+        elif isinstance(self.damOrLeveeName, str) :
+            prdStr1 = prdStr1.replace('|*damName*|', self.damOrLeveeName)
+
+        return {"identifier": "sitespecCTA",
+                "displayString": dspStr,
+                "productString": prdStr1+" "+prdStr2 }
+
+    def includeEmergency(self):
+        # Pick up existing emergency headline metadata from base class
+        basemeta = super(MetaData ,self).includeEmergency()
+
+        # Attempt to get the information we need to modify this.
+        if self.damMetadata == None :
+            return basemeta
+        emergencyText = self.damMetadata.get("emergencyText")
+        if not isinstance(emergencyText, str) :
+            return basemeta
+
+        # Remove the prompt and set a value that is the emergencyHeadline string.
+        try :
+            fieldDict = basemeta["detailFields"][0]["fields"][0]
+            if fieldDict["maxChars"] < len(emergencyText) :
+                fieldDict["maxChars"] = len(emergencyText)
+            del fieldDict["promptText"]
+            fieldDict["values"] = emergencyText
+        except :
+            pass
+        return basemeta
+
     def floodSeverityChoices(self):
         return [
             self.floodSeverityUnknown(),
@@ -284,7 +323,7 @@ class MetaData(CommonMetaData.MetaData):
     # <bullet bulletName="cascadeVoc" bulletText="Cascades Volcano Observatory" bulletGroup="source" parseString="CASCADES VOLCANO OBSERVATORY "/>
     # <!--   GP end  -->
     #    
-    def sourceChoices(self):
+    def getSourceChoices(self):
         choices = [  
             self.countyDispatchSource(),
             self.localLawEnforcementSource(),
@@ -304,8 +343,8 @@ class MetaData(CommonMetaData.MetaData):
 
         return choices
 
-    def getAdditionalInfo(self):
-        result = super(MetaData, self).getAdditionalInfo()
+    def getAdditionalInfo(self, refreshMetadata=False):
+        result = super(MetaData, self).getAdditionalInfo(refreshMetadata)
         result["values"] = "listOfDrainages"
         return result
 
@@ -342,30 +381,26 @@ class MetaData(CommonMetaData.MetaData):
             "fieldType":"ComboBox",
             "label":"Scenario:",
             "choices": self.scenarioChoices(),
-            } 
+            }
+
     def scenarioChoices(self):
-        return [
-                self.scenarioHighFast(),
-                self.scenarioHighNormal(),
-                self.scenarioMediumFast(),
-                self.scenarioMediumNormal(),
-                ]        
-    def scenarioHighFast(self):
-        return {"identifier":"highfast", 
-                "displayString": "High Fast",
-                "productString": "High Fast"}
-    def scenarioHighNormal(self):
-        return {"identifier":"highnormal", 
-                "displayString": "High Normal",
-                "productString": "High Normal"}
-    def scenarioMediumFast(self):
-        return {"identifier":"mediumfast", 
-                "displayString": "Medium Fast",
-                "productString": "Medium Fast"}
-    def scenarioMediumNormal(self):
-        return {"identifier":"mediumnormal", 
-                "displayString": "Medium Normal",
-                "productString": "Medium Normal"}
+        scenarioDict = None
+        if self.damMetadata != None :
+            scenarioDict = self.damMetadata.get("scenarios")
+        try :
+            scenarioList = []
+            for scenarioId in scenarioDict.keys() :
+                scenarioList.append( \
+                    {"identifier": scenarioId, \
+                     "displayString": scenarioDict[scenarioId]["displayString"], \
+                     "productString": scenarioDict[scenarioId]["productString"]} )
+            return scenarioList
+        except :
+            # Hard code some defaults just in case
+            return [
+                    {"identifier": "no_scenario", "displayString": "None",
+                     "productString": "|* Enter scenario text. *|" }
+                    ]
 
     def countyDispatchSource(self):
         return {"identifier":"countySource", 
@@ -399,6 +434,7 @@ class MetaData(CommonMetaData.MetaData):
     def getCTA_Choices(self):
         return [
             self.ctaFFWEmergency(),
+            self.ctaSiteSpec(),
             self.ctaTurnAround(),
             self.ctaActQuickly(),
             self.ctaChildSafety(),
@@ -413,26 +449,6 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             self.ctaFlashFloodWarningMeans(),
             ]
-         
-    def cancellationStatement(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "cancellationStatement",
-             "expandHorizontally": True,
-             "visibleChars": 12,
-             "lines": 2,
-             "promptText": "Enter source text",
-            } 
-
-         
-    def CAP_WEA_Values(self):
-        if self.hazardStatus == "pending":
-           return ["WEA_activated"]
-        else:
-           return [] 
-       
-    def CAP_WEA_Text(self):
-        return "Flash Flood Warning this area til %s. Avoid flooded areas. Check local media. -NWS"
 
     def endingOptionChoices(self):
         return [
@@ -461,17 +477,20 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     if triggerIdentifiers:
         if "damOrLeveeName" in triggerIdentifiers:
-            damOrLeveeName = mutableProperties["damOrLeveeName"]["values"]
-            if damOrLeveeName:
-                # Attempt to populate the riverName from the dam metadata if available
-                from MapsDatabaseAccessor import MapsDatabaseAccessor
-                mapsAccessor = MapsDatabaseAccessor()
-                damMetaData = mapsAccessor.getDamInundationMetadata(damOrLeveeName)
-                if damMetaData:
-                    riverName = damMetaData.get("riverName", "")
-                    if not propertyChanges:
-                        propertyChanges = {}
-                    propertyChanges["riverName"] = {
-                                                    "values":riverName
-                                                    }
+            damOrLeveeNameDict = mutableProperties.get("damOrLeveeName")
+            if damOrLeveeNameDict is not None:
+                damOrLeveeName = damOrLeveeNameDict.get("values")
+                if damOrLeveeName is not None:
+                    # Attempt to populate the riverName from the dam metadata if available
+                    from MapsDatabaseAccessor import MapsDatabaseAccessor
+                    mapsAccessor = MapsDatabaseAccessor()
+                    damMetaData = mapsAccessor.getDamInundationMetadata(damOrLeveeName)
+                    if damMetaData:
+                        riverName = damMetaData.get("riverName", "")
+                        if not propertyChanges:
+                            propertyChanges = {}
+                        propertyChanges["riverName"] = {
+                                                        "values":riverName
+                                                        }
+
     return propertyChanges

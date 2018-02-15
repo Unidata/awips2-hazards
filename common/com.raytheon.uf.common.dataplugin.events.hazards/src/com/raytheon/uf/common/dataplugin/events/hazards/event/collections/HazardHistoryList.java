@@ -48,6 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 16, 2017 29138     Chris.Golden  Changed to use HazardEvent instead of
  *                                      IHazardEvent, since only the former
  *                                      has a unique identifier.
+ * Mar 23, 2017 28470     Kevin.Bisanz  Added method to getLatestEvent()
  * </pre>
  * 
  * @author mnash
@@ -61,8 +62,8 @@ public class HazardHistoryList implements List<HazardEvent> {
     public IEvent getEventAtTime(Date date) {
         for (int i = 0; i < size(); i++) {
             IEvent event = get(i);
-            if ((event.getStartTime().before(date) && event.getEndTime().after(
-                    date))
+            if ((event.getStartTime().before(date)
+                    && event.getEndTime().after(date))
                     || event.getStartTime().equals(date)
                     || event.getEndTime().equals(date)) {
                 return event;
@@ -349,5 +350,18 @@ public class HazardHistoryList implements List<HazardEvent> {
      */
     public void setEvents(List<HazardEvent> events) {
         this.events = events;
+    }
+
+    /**
+     * @return The latest (most recent) event in the history or null if there is
+     *         no history.
+     */
+    public HazardEvent getLatestEvent() {
+        if (events.isEmpty()) {
+            return null;
+        } else {
+            int lastIndex = events.size() - 1;
+            return events.get(lastIndex);
+        }
     }
 }

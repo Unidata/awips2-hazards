@@ -9,22 +9,35 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
+import java.io.Serializable;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
+import org.eclipse.swt.widgets.Display;
+
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import net.engio.mbassy.listener.Handler;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
+ * <p>
+ * TODO: Convert to use H.S. MVP style loose coupling between view and presenter
+ * (state changers and invokers), which will make this safer for multithreading.
+ * </p>
  * 
  * <pre>
  * 
@@ -58,6 +71,14 @@ import net.engio.mbassy.listener.Handler;
  *                                           session events.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * May 22, 2018    3782    Chris.Golden      Changed to have tool dialog configuration
+ *                                           options passed in using dedicated objects and
+ *                                           having already been vetted, instead of
+ *                                           passing them in as raw maps. Also changed to
+ *                                           conform somewhat better to the MVP design 
+ *                                           guidelines. Also added ability to change the
+ *                                           tool dialog's mutable properties while the
+ *                                           dialog is open.
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,32 +132,223 @@ public class ToolsPresenter
      * Show a tool subview that is used to gather parameter values for a tool
      * that is to be executed.
      * 
-     * @param type
-     *            Type of the tool.
-     * @param jsonParams
-     *            JSON string giving the parameters for this subview. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param toolIdentifier
+     *            Tool execution identifier.
+     * @param dialogSpecifier
+     *            Specifier of the dialog to be created to gather parameters.
+     * @param notifyOfIncrementalChanges
+     *            Flag indicating whether or not the recommender manager should
+     *            be notified of incremental changes to the dialog as the latter
+     *            occur.
      */
-    public void showToolParameterGatherer(ToolType type, String jsonParams) {
-        getView().showToolParameterGatherer(type, jsonParams);
+    public void showToolParameterGatherer(
+            final ToolExecutionIdentifier toolIdentifier,
+            final ToolParameterDialogSpecifier dialogSpecifier,
+            final boolean notifyOfIncrementalChanges) {
+
+        /*
+         * TODO: When reimplementing using loose coupling between presenter and
+         * view, there should not be a need to ensure the UI thread is being
+         * used anymore.
+         */
+        if (Display.getDefault().getThread() == Thread.currentThread()) {
+            IToolDialogListener listener = new IToolDialogListener() {
+
+                @Override
+                public void toolDialogInitialized(
+                        final Map<String, Map<String, Object>> mutableProperties) {
+                    if (notifyOfIncrementalChanges) {
+
+                        /*
+                         * TODO: This should not need to be run explicitly
+                         * asynchronously; this would occur implicitly if the
+                         * presenter and view were more loosely coupled as per
+                         * the MVP design, but until this package is refactored
+                         * to conform to the design, this is required so as to
+                         * avoid having the "dialog initialized" notification be
+                         * propagated before the dialog is fully created.
+                         */
+                        Display.getDefault().asyncExec(new Runnable() {
+                            @Override
+                            public void run() {
+                                getModel().getRecommenderManager()
+                                        .parameterDialogChanged(toolIdentifier,
+                                                null, mutableProperties);
+                            }
+                        });
+                    }
+                }
+
+                @Override
+                public void toolDialogCommandInvoked(String identifier,
+                        Map<String, Map<String, Object>> mutableProperties) {
+                    if (notifyOfIncrementalChanges) {
+                        getModel().getRecommenderManager()
+                                .parameterDialogChanged(toolIdentifier,
+                                        Sets.newHashSet(identifier),
+                                        mutableProperties);
+                    }
+                }
+
+                @Override
+                public void toolDialogStateElementChanged(String identifier,
+                        Object state,
+                        Map<String, Map<String, Object>> mutableProperties) {
+                    if (notifyOfIncrementalChanges) {
+                        getModel().getRecommenderManager()
+                                .parameterDialogChanged(toolIdentifier,
+                                        Sets.newHashSet(identifier),
+                                        mutableProperties);
+                    }
+                }
+
+                @Override
+                public void toolDialogStateElementsChanged(
+                        Map<String, ?> statesForIdentifiers,
+                        Map<String, Map<String, Object>> mutableProperties) {
+                    if (notifyOfIncrementalChanges) {
+                        getModel().getRecommenderManager()
+                                .parameterDialogChanged(toolIdentifier,
+                                        statesForIdentifiers.keySet(),
+                                        mutableProperties);
+                    }
+                }
+
+                @Override
+                public void toolDialogVisibleTimeRangeChanged(String identifier,
+                        long lower, long upper) {
+                    getModel().getTimeManager().setVisibleTimeRange(
+                            new TimeRange(lower, upper),
+                            UIOriginator.TOOL_DIALOG);
+                }
+
+                @Override
+                public void toolDialogClosed(
+                        Map<String, Serializable> statesForIdentifiers,
+                        boolean cancelled) {
+                    if (cancelled) {
+                        getModel().getRecommenderManager()
+                                .parameterDialogCancelled(toolIdentifier);
+                    } else {
+                        getModel().getRecommenderManager()
+                                .parameterDialogComplete(toolIdentifier,
+                                        statesForIdentifiers);
+                    }
+                }
+            };
+            getView().showToolParameterGatherer(dialogSpecifier, listener);
+        } else {
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    showToolParameterGatherer(toolIdentifier, dialogSpecifier,
+                            notifyOfIncrementalChanges);
+                }
+            });
+        }
+    }
+
+    /**
+     * Update the tool subview that is being used to gather parameter values for
+     * a tool that is to be executed.
+     * 
+     * @param toolIdentifier
+     *            Tool execution identifier.
+     * @param changedMutableProperties
+     *            Mutable properties of the subview that have changed.
+     */
+    public void updateToolParameterGatherer(
+            final ToolExecutionIdentifier toolIdentifier,
+            final Map<String, Map<String, Object>> changedMutableProperties) {
+
+        /*
+         * TODO: When reimplementing using loose coupling between presenter and
+         * view, there should not be a need to ensure the UI thread is being
+         * used anymore.
+         */
+        if (Display.getDefault().getThread() == Thread.currentThread()) {
+            getView().updateToolParameterGatherer(changedMutableProperties);
+        } else {
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    updateToolParameterGatherer(toolIdentifier,
+                            changedMutableProperties);
+                }
+            });
+        }
     }
 
     /**
      * Show a tool subview that is used to display results for a tool that was
      * executed.
      * 
-     * @param type
-     *            Type of the tool.
-     * @param jsonParams
-     *            JSON string giving the parameters for this subview. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param toolIdentifier
+     *            Tool execution identifier.
+     * @param dialogSpecifier
+     *            Specifier of the dialog to be created to gather parameters.
      */
-    public void showToolResults(ToolType type, String jsonParams) {
-        getView().showToolResults(type, jsonParams);
+    public void showToolResults(final ToolExecutionIdentifier toolIdentifier,
+            final ToolResultDialogSpecifier dialogSpecifier) {
+
+        /*
+         * TODO: When reimplementing using loose coupling between presenter and
+         * view, there should not be a need to ensure the UI thread is being
+         * used anymore.
+         */
+        if (Display.getDefault().getThread() == Thread.currentThread()) {
+            IToolDialogListener listener = new IToolDialogListener() {
+
+                @Override
+                public void toolDialogInitialized(
+                        Map<String, Map<String, Object>> mutableProperties) {
+                }
+
+                @Override
+                public void toolDialogCommandInvoked(String identifier,
+                        Map<String, Map<String, Object>> mutableProperties) {
+                }
+
+                @Override
+                public void toolDialogStateElementChanged(String identifier,
+                        Object state,
+                        Map<String, Map<String, Object>> mutableProperties) {
+                }
+
+                @Override
+                public void toolDialogStateElementsChanged(
+                        Map<String, ?> statesForIdentifiers,
+                        Map<String, Map<String, Object>> mutableProperties) {
+                }
+
+                @Override
+                public void toolDialogVisibleTimeRangeChanged(String identifier,
+                        long lower, long upper) {
+                    getModel().getTimeManager().setVisibleTimeRange(
+                            new TimeRange(lower, upper),
+                            UIOriginator.TOOL_DIALOG);
+                }
+
+                @Override
+                public void toolDialogClosed(
+                        Map<String, Serializable> statesForIdentifiers,
+                        boolean cancelled) {
+                    getModel().getRecommenderManager()
+                            .resultDialogClosed(toolIdentifier);
+                }
+            };
+            getView().showToolResults(dialogSpecifier, listener);
+        } else {
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    showToolResults(toolIdentifier, dialogSpecifier);
+                }
+            });
+        }
     }
 
     // Protected Methods

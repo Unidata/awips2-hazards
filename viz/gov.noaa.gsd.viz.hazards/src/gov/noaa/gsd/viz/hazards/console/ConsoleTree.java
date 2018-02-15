@@ -178,6 +178,8 @@ import gov.noaa.gsd.viz.widgets.WidgetUtilities;
  *                                      between the presenter asking for the item
  *                                      to be replaced and the code executing; at
  *                                      least, that's the guess).
+ * Apr 17, 2018   32693    Chris.Golden Added code to disallow console context
+ *                                      menus when a preview is ongoing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -506,6 +508,11 @@ class ConsoleTree implements IConsoleTree {
      * Date formatter for date-time strings with seconds resolution.
      */
     private final DateFormat secondsDateTimeFormatter;
+
+    /**
+     * Flag indicating whether or not context-sensitive menus are allowed.
+     */
+    private boolean allowContextMenus = true;
 
     /**
      * Bidirectional map pairing column identifiers with the corresponding
@@ -1733,6 +1740,18 @@ class ConsoleTree implements IConsoleTree {
     }
 
     @Override
+    public void setAllowContextMenus(boolean allowContextMenus) {
+        this.allowContextMenus = allowContextMenus;
+        if (allowContextMenus == false) {
+            Menu menu = tree.getMenu();
+            if ((menu != null) && (menu.isDisposed() == false)
+                    && menu.isVisible()) {
+                menu.setVisible(false);
+            }
+        }
+    }
+
+    @Override
     public void setSorts(ImmutableList<Sort> sorts) {
         this.sorts = sorts;
         updateColumnSortVisualCues();
@@ -2222,6 +2241,14 @@ class ConsoleTree implements IConsoleTree {
         tree.addMenuDetectListener(new MenuDetectListener() {
             @Override
             public void menuDetected(MenuDetectEvent e) {
+
+                /*
+                 * If context menus are not allowed right now, do nothing.
+                 */
+                if (allowContextMenus == false) {
+                    e.doit = false;
+                    return;
+                }
 
                 /*
                  * Determine whether or not the point clicked is within the

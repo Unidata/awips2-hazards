@@ -33,6 +33,7 @@ import java.util.Set;
 
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil.IdDisplayType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
@@ -307,7 +308,8 @@ public class SimpleSessionEventManager implements ISessionEventManager {
 
     @Override
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
-            IReadableHazardEvent hazardEvent, boolean checkGeometryValidity) {
+            IReadableHazardEvent hazardEvent, boolean checkGeometryValidity,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -397,7 +399,8 @@ public class SimpleSessionEventManager implements ISessionEventManager {
     public EventPropertyChangeResult mergeHazardEvents(
             IReadableHazardEvent newEvent, IHazardEventView oldEvent,
             boolean forceMerge, boolean persistOnStatusChange,
-            boolean useModifiedValue, IOriginator originator) {
+            boolean fromDatabase, boolean useModifiedValue,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -440,6 +443,11 @@ public class SimpleSessionEventManager implements ISessionEventManager {
             IHazardEventView event, IOriginator originator) {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public boolean initiateSelectedEventsEndingProcess(IOriginator originator) {
+        return false;
     }
 
     @Override
@@ -500,5 +508,81 @@ public class SimpleSessionEventManager implements ISessionEventManager {
     public boolean isEventInDatabase(IReadableHazardEvent event) {
         // TODO Auto-generated method stub
         return false;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * setIdDisplayType(com.raytheon.uf.common.dataplugin.events.hazards.event.
+     * HazardServicesEventIdUtil.IdDisplayType)
+     */
+    @Override
+    public void setIdDisplayType(IdDisplayType displayType) {
+        // TODO Auto-generated method stub
+
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * isHazardous(com.raytheon.uf.common.dataplugin.events.hazards.event.
+     * IReadableHazardEvent)
+     */
+    @Override
+    public boolean isHazardous(IReadableHazardEvent event) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * getFilteredEvents()
+     */
+    @Override
+    public Set<IHazardEventView> getFilteredEvents() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * changeEventProperty(java.lang.String,
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager.
+     * EventPropertyChange, java.lang.Object)
+     */
+    @Override
+    public <T> EventPropertyChangeResult changeEventProperty(
+            String eventIdentifier, EventPropertyChange<T> propertyChange,
+            T parameters) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * changeEventProperty(java.lang.String,
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager.
+     * EventPropertyChange, java.lang.Object,
+     * com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator)
+     */
+    @Override
+    public <T> EventPropertyChangeResult changeEventProperty(
+            String eventIdentifier, EventPropertyChange<T> propertyChange,
+            T parameters, IOriginator originator) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

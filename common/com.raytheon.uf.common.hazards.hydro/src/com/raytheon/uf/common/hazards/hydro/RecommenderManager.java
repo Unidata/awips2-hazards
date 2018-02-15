@@ -31,6 +31,8 @@ import com.raytheon.uf.common.dataplugin.shef.tables.Vtecaction;
 import com.raytheon.uf.common.hazards.hydro.HydroEvent.HydroEventReason;
 import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants.HydroFloodCategories;
 import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants.HydroGraphTrend;
+import com.raytheon.uf.common.status.IPerformanceStatusHandler;
+import com.raytheon.uf.common.status.PerformanceStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -49,6 +51,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 13, 2016 20374      Mark.Fegan   Corrected logic used to determine if a forecast
  *                                      point is included in the recommendation.
  * Nov 18, 2016 26439      Kevin.Bisanz Add siteId argument to data cache methods.
+ * Feb 10, 2017 28649      mduff        Added performance logging and removed data cache.
  * Jun 01, 2017 15561      Chris.Golden Changed to no longer use "type" attribute,
  *                                      so that the latter's existence is not relied
  *                                      upon; hazard type is already provided for each
@@ -60,6 +63,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 
 public class RecommenderManager {
+
+    private final IPerformanceStatusHandler perfLog = PerformanceStatus
+            .getHandler("RecommenderManager:");
 
     /**
      * The River Forcast Manager data accessor object.
@@ -109,28 +115,13 @@ public class RecommenderManager {
     public RecommenderData getRiverFloodRecommenderData(long cacheSystemTime,
             String siteId) {
 
-        RecommenderData recommenderData = null;
-        RecommenderDataCache recommenderDataCache = RecommenderDataCache
-                .getInstance();
+        long t0 = System.currentTimeMillis();
+        RecommenderData recommenderData = queryAndComputeRecommenderData(
+                cacheSystemTime, siteId);
+        long t1 = System.currentTimeMillis();
+        perfLog.logDuration("Query and compute recommender data", (t1 - t0));
 
-        if (recommenderDataCache.isCacheValid(siteId,
-                cacheSystemTime) == true) {
-            recommenderData = recommenderDataCache.getCachedData(siteId,
-                    cacheSystemTime);
-        } else {
-            recommenderDataCache.purgeCachedData();
-        }
-
-        if (recommenderData == null) {
-            recommenderData = queryAndComputeRecommenderData(cacheSystemTime,
-                    siteId);
-            if (recommenderData != null) {
-                recommenderDataCache.putCachedData(siteId, cacheSystemTime,
-                        recommenderData);
-            }
-        }
-
-        return (recommenderData);
+         return recommenderData;
     }
 
     /**
@@ -153,10 +144,9 @@ public class RecommenderManager {
 
         RecommenderData recommenderData = buildRecommenderRiverForecastData(
                 currentSystemTime, siteId);
-
         processHydroEventRecommendationData(currentSystemTime, recommenderData);
 
-        return (recommenderData);
+        return recommenderData;
     }
 
     /**
@@ -178,12 +168,13 @@ public class RecommenderManager {
         if (cacheSystemTime == 0) {
             cacheSystemTime = TimeUtil.currentTimeMillis();
         }
+        long t0 = System.currentTimeMillis();
         List<RiverForecastGroup> recAllRiverForecastGroupList = queryAllHsaRiverForecastData(
                 hsaId);
-
+        long t1 = System.currentTimeMillis();
         List<RiverForecastPoint> recAllRiverForecastPointList = buildAllRiverForecastList(
                 recAllRiverForecastGroupList);
-
+        long t2 = System.currentTimeMillis();
         Map<String, Object> previousEventMap = Maps.newHashMap();
 
         /*
@@ -194,12 +185,17 @@ public class RecommenderManager {
         List<HydroEvent> recAllHydroEventList = constructHydroEventList(hsaId,
                 recAllRiverForecastPointList, previousEventMap,
                 cacheSystemTime);
-
+        long t3 = System.currentTimeMillis();
         // Now all data has been assembled. Process and set recommendations
         RecommenderData recommenderData = buildRecommenderData(hsaId,
                 cacheSystemTime, recAllRiverForecastGroupList,
                 recAllRiverForecastPointList, recAllHydroEventList,
                 previousEventMap);
+        long t4 = System.currentTimeMillis();
+        perfLog.logDuration("queryAllHsaRiverForecastData", (t1 - t0));
+        perfLog.logDuration("buildAllRiverForecastList", (t2 - t1));
+        perfLog.logDuration("constructHydroEventList", (t3 - t2));
+        perfLog.logDuration("buildRecommenderData", (t4 - t3));
 
         return (recommenderData);
 

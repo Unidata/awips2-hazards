@@ -10,16 +10,21 @@
 package gov.noaa.gsd.viz.hazards.tools;
 
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 
 import gov.noaa.gsd.viz.mvp.IView;
 
 /**
  * Interface describing the methods required for implementing a tools view, used
  * by the user to view, execute, and manipulate tools.
+ * <p>
+ * TODO: Convert to use H.S. MVP style loose coupling between view and presenter
+ * (state changers and invokers), which will make this safer for multithreading.
+ * </p>
  * 
  * <pre>
  * 
@@ -38,6 +43,13 @@ import gov.noaa.gsd.viz.mvp.IView;
  * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender manager.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible toolbar
  *                                           contribution code.
+ * May 22, 2018    3782    Chris.Golden      Changed to have configuration options passed
+ *                                           in using dedicated objects and having already
+ *                                           been vetted, instead of passing them in as
+ *                                           raw maps. Also changed to conform somewhat
+ *                                           better to the MVP design guidelines. Also added
+ *                                           ability to set the dialog's mutable properties
+ *                                           while it is showing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,47 +77,45 @@ public interface IToolsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      * @param presenter
      *            Presenter managing this view.
      * @param tools
-     *            - a List of Tool objects
+     *            List of tool objects
      */
     public void initialize(ToolsPresenter presenter, List<Tool> tools);
 
     /**
      * Show a tool subview that is used to gather parameter values for a tool
      * that is to be executed.
-     * <p>
-     * TODO: Consider renaming this whole package and its classes from "ToolXXX"
-     * to "RecommenderXXX", since everything here is used for recommenders only.
-     * It doesn't make sense that a {@link RecommenderExecutionContext} is being
-     * passed in if it's for tools, not specifically recommenders.
      * 
-     * @param type
-     *            Type of the tool.
-     * @param jsonParams
-     *            JSON string giving the parameters for this subview. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param dialogSpecifier
+     *            Specifier of the dialog to be created to gather parameters.
+     * @param listener
+     *            Tool dialog listener.
      */
-    public void showToolParameterGatherer(ToolType type, String jsonParams);
+    public void showToolParameterGatherer(
+            ToolParameterDialogSpecifier dialogSpecifier,
+            IToolDialogListener listener);
+
+    /**
+     * Update the tool subview that is being used to gather parameter values for
+     * a tool that is to be executed.
+     * 
+     * @param changedMutableProperties
+     *            Map of identifiers of parameters to their mutable properties
+     *            that have changed.
+     */
+    public void updateToolParameterGatherer(
+            final Map<String, Map<String, Object>> changedMutableProperties);
 
     /**
      * Show a tool subview that is used to display results for a tool that was
      * executed.
-     * <p>
-     * TODO: Consider renaming this whole package and its classes from "ToolXXX"
-     * to "RecommenderXXX", since everything here is used for recommenders only.
-     * It doesn't make sense that a {@link RecommenderExecutionContext} is being
-     * passed in if it's for tools, not specifically recommenders.
      * 
-     * @param type
-     *            Type of the tool.
-     * @param jsonParams
-     *            JSON string giving the parameters for this subview. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param dialogSpecifier
+     *            Specifier of the dialog to be created to gather parameters.
+     * @param listener
+     *            Tool dialog listener.
      */
-    public void showToolResults(ToolType type, String jsonParams);
+    public void showToolResults(ToolResultDialogSpecifier dialogSpecifier,
+            IToolDialogListener listener);
 
     /**
      * Set the tools to those specified.

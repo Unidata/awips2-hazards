@@ -138,7 +138,9 @@ class AttributionFirstBulletText(AFB.AttributionFirstBulletText):
         if self.phenSig == 'FF.W':
             if self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
                 qualifiers += '\n'
-                qualifiers += self.dm_river_qualifiers()
+                qualifiers += self._dm_river_qualifiers()
+                if '|* riverName *|' in qualifiers and self.riverName:
+                    qualifiers = qualifiers.replace('|* riverName *|', self.riverName)
 
                 if addPreposition:
                     qualifiers += ' in '

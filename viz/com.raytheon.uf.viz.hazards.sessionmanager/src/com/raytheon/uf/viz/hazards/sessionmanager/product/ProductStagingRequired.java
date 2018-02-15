@@ -25,6 +25,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * ------------ ---------- ------------ --------------------------
  * Oct 08, 2014    4042    Chris.Golden Initial creation.
  * Feb 24, 2016   13929    Robert.Blum  Remove first part of staging dialog.
+ * Mar 21, 2017   29996    Robert.Blum  Removed stagingRequired member var.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>

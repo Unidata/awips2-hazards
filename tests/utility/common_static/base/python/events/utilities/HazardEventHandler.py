@@ -30,7 +30,6 @@
 #    12/02/13        2527          bkowal         Initial Creation.
 #
 
-from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
 from com.raytheon.uf.common.dataplugin.events.hazards.event import IHazardEvent
 from com.raytheon.uf.common.python import PyJavaUtil
 

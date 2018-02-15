@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.gfe;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -38,9 +36,9 @@ import org.springframework.util.StringUtils;
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
@@ -72,8 +70,11 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.StringUtil;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 /**
  * Handles a HazardEvent object, such as creating and deleting a GFE grid. This
@@ -121,6 +122,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries now used in
  *                                      hazard events.
  * Feb 16, 2017 29138      Chris.Golden Changed to work with new hazard event manager.
+ * Feb 16, 2017 28708      Chris.Golden Changed to work with new HazardServicesEventIdUtil.
+ * Mar 13, 2017 28708      Chris.Golden Further work with new(er) HazardServicesEventIdUtil.
  * Apr 13, 2017 33142      Chris.Golden Changed to use newly available method to delete all
  *                                      copies of a hazard event with a particular identifier.
  * </pre>
@@ -207,8 +210,8 @@ public class HazardEventHandler {
 
     private void handleGridParmInfoException(String siteID, Throwable e) {
         this.initialized = false;
-        statusHandler.error(
-                "Unable to create hazard event handler. Please verify you have "
+        statusHandler
+                .error("Unable to create hazard event handler. Please verify you have "
                         + siteID + " activated via GFE.", e);
     }
 
@@ -222,8 +225,8 @@ public class HazardEventHandler {
          * GridParmInfo to use.
          */
         if (this.initialized == false) {
-            statusHandler
-                    .warn("Initialization failed ... unable to process the Hazard Notification!");
+            statusHandler.warn(
+                    "Initialization failed ... unable to process the Hazard Notification!");
             return;
         }
 
@@ -249,7 +252,8 @@ public class HazardEventHandler {
             }
             break;
         case DELETE:
-            deleteGrid(hazardEvent, gridParmInfo, notification.isPracticeMode());
+            deleteGrid(hazardEvent, gridParmInfo,
+                    notification.isPracticeMode());
             break;
         case DELETE_ALL:
             break;
@@ -264,7 +268,8 @@ public class HazardEventHandler {
             for (Object object : (Collection<?>) msg) {
                 if (object instanceof GridUpdateNotification) {
                     GridUpdateNotification gridUpdateNotification = (GridUpdateNotification) object;
-                    this.handleHazardsGridUpdateNotification(gridUpdateNotification);
+                    this.handleHazardsGridUpdateNotification(
+                            gridUpdateNotification);
                 }
             }
         } else if (msg instanceof GridUpdateNotification) {
@@ -275,7 +280,8 @@ public class HazardEventHandler {
 
     private HazardEventManager getHazardEventManager(String parmID) {
         boolean practice = this.isHazardsModePractice(parmID);
-        HazardEventManager hazardEventManager = new HazardEventManager(practice);
+        HazardEventManager hazardEventManager = new HazardEventManager(
+                practice);
 
         return hazardEventManager;
     }
@@ -300,8 +306,8 @@ public class HazardEventHandler {
     private void handleHazardsGridUpdateNotification(
             GridUpdateNotification gridUpdateNotification)
             throws HazardEventServiceException {
-        if (HAZARD_PARM_NAME.equals(gridUpdateNotification.getParmId()
-                .getParmName()) == false) {
+        if (HAZARD_PARM_NAME.equals(
+                gridUpdateNotification.getParmId().getParmName()) == false) {
             return;
         }
 
@@ -412,9 +418,8 @@ public class HazardEventHandler {
                 /* Polygons */
                 MultiPolygon hazardMultiPolygon = null;
                 Geometry gfeMultiPolygon = null;
-                Grid2DBit grid2DBit = this
-                        .mergeGridDataStructures(gridsToProcessMap
-                                .get(discreteKey));
+                Grid2DBit grid2DBit = this.mergeGridDataStructures(
+                        gridsToProcessMap.get(discreteKey));
                 ReferenceData referenceData = new ReferenceData(gridLocation,
                         new ReferenceID("temp"), grid2DBit);
                 hazardMultiPolygon = referenceData
@@ -442,8 +447,8 @@ public class HazardEventHandler {
                     // no hazard(s) to update; create a new hazard.
 
                     HazardEvent hazardEvent = this.createNewHazard(
-                            hazardEventManager, hazardState, startDate,
-                            endDate, siteID, hazardType, hazardMultiPolygon,
+                            hazardEventManager, hazardState, startDate, endDate,
+                            siteID, hazardType, hazardMultiPolygon,
                             this.isHazardsModePractice(parmID));
                     if (hazardEvent == null) {
                         statusHandler.handle(Priority.PROBLEM,
@@ -485,15 +490,15 @@ public class HazardEventHandler {
                             }
 
                             ReferenceData gfeReferenceData = new ReferenceData(
-                                    gridLocation, new ReferenceID("temp"), data);
+                                    gridLocation, new ReferenceID("temp"),
+                                    data);
                             gfeMultiPolygon = gfeReferenceData
                                     .getPolygons(CoordinateType.LATLON);
                         }
                     } catch (Exception e) {
-                        statusHandler
-                                .handle(Priority.PROBLEM,
-                                        "Failed to convert the hazard polygon to a GFE polygon!",
-                                        e);
+                        statusHandler.handle(Priority.PROBLEM,
+                                "Failed to convert the hazard polygon to a GFE polygon!",
+                                e);
                     }
                 }
 
@@ -518,12 +523,10 @@ public class HazardEventHandler {
                     for (HazardEvent updateCandidateHazardEvent : updateCandidates) {
                         Date creationTime = new Date();
 
-                        if (updateCandidateHazardEvent.getStatus() == HazardStatus.PENDING) {
+                        if (updateCandidateHazardEvent
+                                .getStatus() == HazardStatus.PENDING) {
                             updateCandidateHazardEvent
                                     .setCreationTime(creationTime);
-
-                            updateCandidateHazardEvent.setHazardMode(this
-                                    .determineProductClass(parmID));
 
                             hazardsToUpdate.add(updateCandidateHazardEvent);
                         }
@@ -558,8 +561,7 @@ public class HazardEventHandler {
                          */
                         HazardEvent hazardEvent = this.createNewHazard(
                                 hazardEventManager, hazardState, startDate,
-                                endDate, siteID, hazardType,
-                                differenceGeometry,
+                                endDate, siteID, hazardType, differenceGeometry,
                                 this.isHazardsModePractice(parmID));
                         if (hazardEvent == null) {
                             statusHandler.handle(Priority.PROBLEM,
@@ -590,8 +592,8 @@ public class HazardEventHandler {
                     hazardEventManager.storeEvents(hazardsToCreate);
 
                     synchronized (this) {
-                        HazardEventInteropServicesSoapClient.getServices(
-                                this.isHazardsModePractice(parmID))
+                        HazardEventInteropServicesSoapClient
+                                .getServices(this.isHazardsModePractice(parmID))
                                 .storeEventList(gfeInteroperabilityRecords);
                     }
                 }
@@ -631,13 +633,16 @@ public class HazardEventHandler {
             HazardStatus hazardState, Date startDate, Date endDate,
             String siteID, String hazardType, Geometry hazardMultiPolygon,
             boolean practice) {
-        HazardEvent hazardEvent = hazardEventManager.createEvent();
+        HazardEvent hazardEvent = hazardEventManager.createEvent(practice);
 
         try {
-            hazardEvent.setEventID(HazardServicesEventIdUtil.getNewEventID());
+            AbstractHazardServicesEventIdUtil eventIdUtil = HazardServicesEventIdUtil
+                    .getInstance(practice);
+            hazardEvent.setEventID(eventIdUtil.getNewEventID(siteID,
+                    LocalizationManager.getInstance().getCurrentSite()));
         } catch (Exception e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Hazard ID generation failed.", e);
+            statusHandler.handle(Priority.ERROR, "Hazard ID generation failed.",
+                    e);
             return null;
         }
 
@@ -707,7 +712,8 @@ public class HazardEventHandler {
     private void constructGridsToProcessMap(
             Map<DiscreteKey, List<Grid2DBit>> gridsToProcessMap,
             DiscreteGridSlice discreteGridSlice) {
-        for (int keyIndex = 0; keyIndex < discreteGridSlice.getKeyList().size(); keyIndex++) {
+        for (int keyIndex = 0; keyIndex < discreteGridSlice.getKeyList()
+                .size(); keyIndex++) {
             DiscreteKey discreteKey = discreteGridSlice.getKeys()[keyIndex];
             String hazardType = discreteGridSlice.getKeyList().get(keyIndex);
             if (DiscreteGridSliceUtil.DK_NONE.equals(hazardType)) {
@@ -728,8 +734,8 @@ public class HazardEventHandler {
                             new ArrayList<Grid2DBit>());
                 }
                 // geometry - convert the bit data
-                gridsToProcessMap.get(discreteKey).add(
-                        discreteGridSlice.eq(discreteKey));
+                gridsToProcessMap.get(discreteKey)
+                        .add(discreteGridSlice.eq(discreteKey));
             }
         }
     }
@@ -743,17 +749,6 @@ public class HazardEventHandler {
         }
 
         return true;
-    }
-
-    private ProductClass determineProductClass(String parmID) {
-        if (PARM_OPERATIONAL_PATTERN.matcher(parmID).matches()
-                || PARM_PRACTICE_PATTERN.matcher(parmID).matches()) {
-            return ProductClass.OPERATIONAL;
-        } else if (PARM_TEST_PATTERN.matcher(parmID).matches()) {
-            return ProductClass.TEST;
-        }
-
-        return null;
     }
 
     /**
@@ -786,9 +781,9 @@ public class HazardEventHandler {
         HazardInteroperabilityRecord existingRecord = null;
         if (record != null) {
             existingRecord = record;
-            Geometry gfeGeometry = GFERecordUtil
-                    .translateHazardPolygonToGfe(gridParmInfo.getGridLoc(),
-                            hazardEvent.getProductGeometry());
+            Geometry gfeGeometry = GFERecordUtil.translateHazardPolygonToGfe(
+                    gridParmInfo.getGridLoc(),
+                    hazardEvent.getProductGeometry());
 
             /* update the geometry of the new record. */
             statusHandler
@@ -800,13 +795,13 @@ public class HazardEventHandler {
                         .update(existingRecord);
             }
         } else {
-            Geometry gfeGeometry = GFERecordUtil
-                    .translateHazardPolygonToGfe(gridParmInfo.getGridLoc(),
-                            hazardEvent.getProductGeometry());
+            Geometry gfeGeometry = GFERecordUtil.translateHazardPolygonToGfe(
+                    gridParmInfo.getGridLoc(),
+                    hazardEvent.getProductGeometry());
             HazardInteroperabilityRecord newRecord = this
                     .constructInteroperabilityRecord(hazardEvent.getSiteID(),
-                            hazardEvent.getPhenomenon(), hazardEvent
-                                    .getSignificance(), timeRange.getStart(),
+                            hazardEvent.getPhenomenon(),
+                            hazardEvent.getSignificance(), timeRange.getStart(),
                             timeRange.getEnd(), hazardEvent.getEventID(),
                             gridParmInfo.getParmID().toString(), gfeGeometry);
             synchronized (this) {
@@ -824,8 +819,8 @@ public class HazardEventHandler {
                 .findIntersectedGrid(gridParmInfo.getParmID(), timeRange);
 
         // create a new grid slice from the hazard event
-        GFERecord convertedHazardEvent = GFERecordUtil.createGFERecord(
-                hazardEvent, gridParmInfo);
+        GFERecord convertedHazardEvent = GFERecordUtil
+                .createGFERecord(hazardEvent, gridParmInfo);
         if (convertedHazardEvent == null) {
             /*
              * If the geometry is not closed, then a grid already exists and the
@@ -890,9 +885,9 @@ public class HazardEventHandler {
                             DiscreteGridSliceUtil.separate(slice, tr, null));
                 } catch (Exception ex) {
                     if (statusHandler.isPriorityEnabled(Priority.ERROR)) {
-                        String message = String
-                                .format("Unable to obtain Discrete Grid Slice for ParamID: %s, in the time range: %s",
-                                        parmID.getParmId(), tr.toString());
+                        String message = String.format(
+                                "Unable to obtain Discrete Grid Slice for ParamID: %s, in the time range: %s",
+                                parmID.getParmId(), tr.toString());
                         statusHandler.error(message, ex);
                     }
                 }
@@ -978,7 +973,8 @@ public class HazardEventHandler {
         addParam(queryRequest, HazardConstants.EVENT_ID, "=", eventID);
         addParam(queryRequest, HazardConstants.HAZARD_EVENT_START_TIME, ">=",
                 start);
-        addParam(queryRequest, HazardConstants.HAZARD_EVENT_END_TIME, "<=", end);
+        addParam(queryRequest, HazardConstants.HAZARD_EVENT_END_TIME, "<=",
+                end);
         addParam(queryRequest, HazardConstants.ETN, "=", etn);
         List<HazardInteroperabilityRecord> result = HazardEventInteropServicesSoapClient
                 .getServices(practice).retrieve(queryRequest)

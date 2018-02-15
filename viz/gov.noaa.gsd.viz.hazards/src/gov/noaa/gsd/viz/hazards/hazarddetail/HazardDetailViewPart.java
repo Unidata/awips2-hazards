@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -99,6 +100,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 import gov.noaa.gsd.viz.widgets.CustomizableTabFolder;
+import gov.noaa.gsd.viz.widgets.CustomizableTabFolderAdapter;
+import gov.noaa.gsd.viz.widgets.CustomizableTabFolderEvent;
 import gov.noaa.gsd.viz.widgets.CustomizableTabFolderRenderer;
 import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
 
@@ -268,6 +271,7 @@ import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
+ * May 15, 2017  30227     Roger.Ferrel      Allow event tabs to be closed with confirmation.
  * Oct 10, 2017  39151     Chris.Golden      Changed to allow interdependency scripts to
  *                                           alter the editability of time megawidgets.
  * Dec 20, 2017  20739     Chris.Golden      Added code to allow the removal of megawidget
@@ -276,6 +280,8 @@ import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
  *                                           a hazard event is reselected.
  * Feb 13, 2018  44514     Chris.Golden      Removed event-modifying script code, as such
  *                                           scripts are not to be used.
+ * May 01, 2018  15561     Chris.Golden      Removed obsolete methods related to event
+ *                                           modifying scripts, which are no longer used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1215,6 +1221,32 @@ public class HazardDetailViewPart extends DockTrackingViewPart
     };
 
     /**
+     * Deselect event invocation handler. The identifier is that of the hazard
+     * event version.
+     */
+    private ICommandInvocationHandler<Pair<String, Integer>> deselectEventInvocationHandler;
+
+    /**
+     * Deselect event invoker. The identifier is that of the hazard event
+     * version.
+     */
+    private final ICommandInvoker<Pair<String, Integer>> deselectEventInvoker = new ICommandInvoker<Pair<String, Integer>>() {
+
+        @Override
+        public void setEnabled(Pair<String, Integer> identifier,
+                boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of deselect event invoker");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<Pair<String, Integer>> handler) {
+            deselectEventInvocationHandler = handler;
+        }
+    };
+
+    /**
      * Category combo box state change handler. The identifier is that of the
      * hazard event version being changed.
      */
@@ -1625,13 +1657,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart
         }
 
         @Override
-        public void changeMegawidgetMutableProperties(
-                Pair<String, Integer> qualifier,
-                Map<String, Map<String, Object>> mutableProperties) {
-            changeMetadataMutableProperties(qualifier, mutableProperties);
-        }
-
-        @Override
         public void removeMegawidgetSpecifierManager(
                 Pair<String, Integer> qualifier) {
             removeMetadataSpecifierManager(qualifier);
@@ -1867,6 +1892,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
         }
         visibleTimeRangeChangeHandler = null;
         visibleEventChangeHandler = null;
+        deselectEventInvocationHandler = null;
         categoryChangeHandler = null;
         typeChangeHandler = null;
         timeRangeChangeHandler = null;
@@ -1916,6 +1942,37 @@ public class HazardDetailViewPart extends DockTrackingViewPart
         standardSelectedColor = eventTabFolder.getSelectionBackground();
         eventTabFolder.setBorderVisible(true);
         eventTabFolder.setTabHeight(eventTabFolder.getTabHeight() + 8);
+        eventTabFolder.addCustomizableTabFolderListener(
+                new CustomizableTabFolderAdapter() {
+
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public void close(CustomizableTabFolderEvent event) {
+
+                        /*
+                         * Proceed with deselection if the user confirms the
+                         * action.
+                         */
+                        Pair<String, Integer> eventVersionIdentifier = (Pair<String, Integer>) event.item
+                                .getData();
+                        if (MessageDialog.openQuestion(
+                                event.widget.getDisplay().getActiveShell(),
+                                "Hazard Services",
+                                "Remove "
+                                        + (eventVersionIdentifier
+                                                .getSecond() != null
+                                                        ? "historical version of "
+                                                        : "")
+                                        + eventVersionIdentifier.getFirst()
+                                        + " from selected events?")) {
+                            if (deselectEventInvocationHandler != null) {
+                                deselectEventInvocationHandler
+                                        .commandInvoked(eventVersionIdentifier);
+                            }
+                        }
+                        event.doit = false;
+                    }
+                });
         eventTabFolder.addSelectionListener(new SelectionAdapter() {
 
             @SuppressWarnings("unchecked")
@@ -2102,6 +2159,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart
     @Override
     public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> getVisibleEventChanger() {
         return visibleEventChanger;
+    }
+
+    @Override
+    public ICommandInvoker<Pair<String, Integer>> getDeselectEventInvoker() {
+        return deselectEventInvoker;
     }
 
     @Override
@@ -2433,7 +2495,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
             this.visibleEventVersionIdentifier = null;
             for (int j = 0; j < choices.size(); j++) {
                 CustomizableTabItem tabItem = new CustomizableTabItem(
-                        eventTabFolder, SWT.NONE);
+                        eventTabFolder, SWT.CLOSE);
                 tabItem.setText(choiceDisplayables.get(j).getDescription());
                 tabItem.setData(choices.get(j));
                 tabItem.setControl(tabPagePanel);
@@ -2545,7 +2607,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      *            List of categories to be used.
      */
     private void setCategories(List<String> categories) {
-        setComboBoxChoices(categoryMegawidget, categories, null, "category");
+        setComboBoxChoices(categoryMegawidget, categories, null,
+                CATEGORY_IDENTIFIER);
     }
 
     /**
@@ -3179,35 +3242,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                     HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
             layoutMetadataPanel(panel);
             metadataPanel.setRedraw(true);
-        }
-    }
-
-    /**
-     * Set the metadata mutable properties to that specified for an event
-     * version identifier.
-     * 
-     * @param eventVersionIdentifier
-     *            Event version identifier for which the mutable properties are
-     *            being set.
-     * @param mutableProperties
-     *            Mutable properties to be used.
-     */
-    private void changeMetadataMutableProperties(
-            Pair<String, Integer> eventVersionIdentifier,
-            Map<String, Map<String, Object>> mutableProperties) {
-        if (isAlive() == false) {
-            return;
-        }
-        MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
-                .get(eventVersionIdentifier);
-        if (manager != null) {
-            try {
-                manager.setMutableProperties(mutableProperties);
-            } catch (Exception e) {
-                statusHandler
-                        .error("Error while trying to set metadata mutable properties: "
-                                + e, e);
-            }
         }
     }
 

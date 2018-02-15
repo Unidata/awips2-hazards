@@ -21,13 +21,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.ClearPracticeHazardVtecTableRequest;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataResponse;
@@ -50,9 +49,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISpatialContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlertsManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.IHazardAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
@@ -64,6 +63,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionPreviewOrIssueOngoingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionSelectionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.locks.SessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -76,6 +76,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl.SessionRecom
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.simulatedtime.SimulatedTimeOperations;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
@@ -146,12 +147,19 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  * Dec 14, 2016 22119      Kevin.Bisanz Add flags to export config, ProductText, and ProductData
  *                                      individually.
  * Dec 12, 2016 21504      Robert.Blum  Added SessionLockManager instance.
+ * Jan 04, 2017 26746      Chris.Golden Made geo map utilities a component of this class.
+ * Jan 12, 2017 28034      mduff        Added getSiteId convenience method.
+ * Jan 18, 2017 26671      dgilling     Prompt user to add modified but unselected events to the
+ *                                      selection for a preview.
+ * Jan 26, 2017 21635      Roger.Ferrel Added issue site id.
+ * Jan 31, 2017 28013      dgilling     Display warning when in SimulatedTime mode.
  * Feb 01, 2017 15556      Chris.Golden Changed construction of time manager to take this object.
  *                                      Also added use of new session selection manager.
  * Feb 16, 2017 29138      Chris.Golden Changed to allow recommenders to specify that they want
  *                                      resulting events to be saved to either the "latest
  *                                      version" set in the database, or the history list in the
  *                                      database.
+ * Feb 16, 2017 28708      mduff        Removed setup event id.
  * Feb 21, 2017 29138      Chris.Golden Added method to get runnable asynchronous scheduler. Also
  *                                      fixed null exception that occurred if a recommender passed
  *                                      back a null value as one of the elements in the list of
@@ -177,6 +185,9 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  *                                      recommender execution commencement, so that when events
  *                                      are returned by recommenders, any that have been removed
  *                                      while the recommender was executing can be ignored.
+ * Apr 17, 2017 33082      Robert.Blum  Validate multiple events at once.
+ * Apr 19, 2017 33274      mduff        Remove the prompt to include other changed hazards.
+ * May 05, 2017 33738      Robert.Blum  Allow adding alerts at any time..
  * May 31, 2017 34684      Chris.Golden Moved recommender-specific methods to the session
  *                                      recommender manager where they belong.
  * Sep 27, 2017 38072      Chris.Golden Removed getter for the event bus, as it should not be
@@ -265,12 +276,16 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
 
     private final IFrameContextProvider frameContextProvider;
 
+    private final GeoMapUtilities geoMapUtilities;
+
     private final IMessenger messenger;
 
     /*
      * Flag indicating whether or not automatic hazard checking is running.
      */
     private boolean autoHazardChecking = false;
+
+    private IHazardAlertStrategy alertStrategy;
 
     /*
      * Flag indicating whether or not hazard hatch areas are displayed.
@@ -294,6 +309,8 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
         configManager = new SessionConfigurationManager(this, pathManager,
                 timeManager, sender);
         lockManager = new SessionLockManager(this, sender, messenger);
+        geoMapUtilities = new GeoMapUtilities(this.configManager,
+                this.messenger);
         SessionEventManager eventManager = new SessionEventManager(this,
                 timeManager, configManager, hazardEventManager, sender,
                 messenger);
@@ -306,10 +323,10 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
                 messenger);
         alertsManager = new HazardSessionAlertsManager(sender,
                 getRunnableAsynchronousScheduler(), timeManager);
+        alertStrategy = new HazardEventExpirationAlertStrategy(alertsManager,
+                timeManager, configManager, eventManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
-                new HazardEventExpirationAlertStrategy(alertsManager,
-                        timeManager, configManager, hazardEventManager,
-                        new AllHazardsFilterStrategy()));
+                alertStrategy);
         hazardManager = hazardEventManager;
         this.spatialContextProvider = spatialContextProvider;
         this.displayResourceContextProvider = displayResourceContextProvider;
@@ -384,6 +401,11 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
     }
 
     @Override
+    public GeoMapUtilities getGeoMapUtilities() {
+        return geoMapUtilities;
+    }
+
+    @Override
     public void shutdown() {
 
         eventManager.shutdown();
@@ -438,6 +460,10 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
     @Override
     public void reset() {
 
+        /*
+         * TODO All locks should be unlocked, regardless of the owner of the
+         * locks.
+         */
         startBatchedChanges();
         eventManager.resetEvents(Originator.OTHER);
         finishBatchedChanges();
@@ -606,28 +632,25 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
 
     @Override
     public void generate(boolean issue) {
-        if (isSetOfSelectedHazardEventsValid()) {
-            if (issue) {
-                setIssueOngoing(true);
-            } else {
-                setPreviewOngoing(true);
+        if (SimulatedTimeOperations.isTransmitAllowed()) {
+            if (isSetOfSelectedHazardEventsValid()) {
+                if (issue) {
+                    setIssueOngoing(true);
+                } else {
+                    setPreviewOngoing(true);
+                }
+                try {
+                    productManager.generateProducts(issue);
+                } catch (Exception e) {
+                    setPreviewOngoing(false);
+                    setIssueOngoing(false);
+                    statusHandler.error("Error during product generation", e);
+                }
             }
-            try {
-                productManager.generateProducts(issue);
-            } catch (Exception e) {
-                setPreviewOngoing(false);
-                setIssueOngoing(false);
-                statusHandler.error("Error during product generation", e);
-            }
+        } else {
+            messenger.getWarner()
+                    .warnUserOfSimulatedTimeProblem("Product Generation");
         }
-    }
-
-    @Override
-    public void setupEventIdDisplay() throws HazardEventServiceException {
-        boolean isPracticeMode = (CAVEMode.OPERATIONAL
-                .equals(CAVEMode.getMode()) == false);
-        HazardServicesEventIdUtil.setupHazardEventId(isPracticeMode,
-                configManager.getSiteID());
     }
 
     /**
@@ -703,31 +726,25 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
     }
 
     /**
-     * Examine all selected hazards to ensure they are valid prior to issuance
-     * or previewing.
+     * Examine all the selected hazards that have hazard types to ensure they
+     * are valid prior to issuance or previewing.
      * 
-     * @return <code>true</code> if the selected hazards are all valid,
-     *         <code>false</code> if at least one is invalid.
+     * @return <code>true</code> if the selected hazards with types are all
+     *         valid, <code>false</code> if at least one is invalid.
      */
     private boolean isSetOfSelectedHazardEventsValid() {
-
-        /*
-         * Iterate through the selected hazard events, checking each in turn for
-         * validity. If one is found to be invalid, display a warning to the
-         * user and return false to indicate that validation failed.
-         */
-        for (IHazardEventView event : selectionManager.getSelectedEvents()) {
-            String errorMessage = configManager.validateHazardEvent(event);
-            if (errorMessage != null) {
-                messenger.getWarner().warnUser("Invalid Hazard Event",
-                        errorMessage);
-                return false;
-            }
+        String errorMessage = configManager
+                .validateHazardEvents(selectionManager.getSelectedEvents());
+        if (errorMessage != null) {
+            messenger.getWarner().warnUser("Invalid Hazard Event(s)",
+                    errorMessage);
+            return false;
         }
-
-        /*
-         * Validation succeeded.
-         */
         return true;
+    }
+
+    @Override
+    public String getSiteId() {
+        return configManager.getSiteID();
     }
 }

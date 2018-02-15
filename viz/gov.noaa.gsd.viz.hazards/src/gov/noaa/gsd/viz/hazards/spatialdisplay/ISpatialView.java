@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import com.raytheon.uf.common.colormap.Color;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
@@ -73,6 +74,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Dec 14, 2016   26813    bkowal            Use the active Hazard Services site when
  *                                           determining which counties to render for
  *                                           "Select by Area".
+ * Jun 27, 2017   14789    Robert.Blum       Added passing of select by area color to
+ *                                           view.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code, and to provide
  *                                           new enhanced geometry-operation-based
@@ -80,6 +83,12 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Jan 22, 2018   25765    Chris.Golden      Added ability for the settings to specify
  *                                           which drag-and-drop manipulation points
  *                                           are to be prioritized.
+ * Mar 22, 2018   15561    Chris.Golden      Added code to ensure that the spatial
+ *                                           display's editability is factored into the
+ *                                           editability (and visual cues thereof) of
+ *                                           spatial entities, into the enabled state of
+ *                                           toolbar buttons, and into whether context
+ *                                           menu items are provided.
  * </pre>
  * 
  * @author Chris.Golden
@@ -144,11 +153,21 @@ public interface ISpatialView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      *            This will be kept up to date by the presenter.
      * @param priorityForDragAndDropGeometryEdits
      *            Priority for drag-and-drop geometry edits.
+     * @param selectByAreaColor
+     *            Color to be used for select-by-area operations.
      */
     public void initialize(SpatialPresenter presenter, String localizedSite,
             String currentSite,
             Set<IEntityIdentifier> selectedSpatialEntityIdentifiers,
-            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits);
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits,
+            Color selectByAreaColor);
+
+    /**
+     * Get the spatial view editability state changer.
+     * 
+     * @return Spatial view editability state changer.
+     */
+    public IStateChanger<Object, Boolean> getEditabilityChanger();
 
     /**
      * Get the selected spatial entity identifiers state changer.

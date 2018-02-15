@@ -18,27 +18,14 @@ import Legacy_Hydro_Formatter
 class Format:
 
     def initialize(self, editableEntries) :
-        self.initProductPartMethodMapping()
         super(Format, self).initialize(editableEntries)
 
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-#             'setUp_segment': self._setUp_segment,
-#             'wmoHeader': self._wmoHeader,
-#             'ugcHeader': self._ugcHeader,
-#             'productHeader': self._productHeader,
-#             'headlineStatement': self._headlineStatement,
-#             'narrativeInformation': self._narrativeInformation,
-#             'floodPointTable': self._floodPointTable,
-#             'initials': self._initials,
-        }
-
-    def execute(self, productDict, editableEntries=None, overrideProductText=None):
+    def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
         #self.initialize(editableEntries)
         #self.timezones = productDict['timezones']
         legacyText = productDict.get('productText', "Here is an example product")
-        self._editableParts = OrderedDict()
+        self._editableParts = []
         #legacyText = self._createTextProduct()
         return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 

@@ -128,7 +128,8 @@ class Product(HydroGenerator.Product):
         #ensure hazard events are processed in order of creation, based on hazard event number
         for event in self._inputHazardEvents:
             eventID = event.getEventID()
-            eventNumber = int(eventID[-6:])
+            lastHyphenIndex = eventID.rfind("-")
+            eventNumber = int(eventID[lastHyphenIndex+1:])
             eventNumberList.append(eventNumber)
             
         eventNumberList.sort()

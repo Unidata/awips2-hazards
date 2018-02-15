@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -21,14 +22,9 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
-import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
@@ -38,6 +34,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertsConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -73,33 +70,35 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Aug 06, 2015 9968       Chris.Cody    Changes for processing ENDED/ELAPSED events
  * Aug 20, 2015 6895       Ben.Phillippe Routing registry requests through request server
  * Sep 15, 2015 7629       Robert.Blum   Updates for saving pending hazards.
+ * Oct 29, 2015 11864      Robert.Blum   Expiration time field is now a Date instead
+ *                                       of long and also added null safety check.
  * Mar 14, 2016 12145      mduff         Handle error thrown by event manager.
  * May 06, 2016 18202      Robert.Blum   Changes for operational/test mode.
  * May 26, 2016 17529      bkowal        Do not schedule alerts for ended Hazard Events.
+ * Sep 15, 2016 21460      Robert.Blum   Added null check for expiration time.
  * Feb 16, 2017 29138      Chris.Golden  Changed to use more efficient database
  *                                       query.
+ * May 05, 2017 33738      Robert.Blum   Added addAlerts().
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy {
-
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardEventExpirationAlertStrategy.class);
+public class HazardEventExpirationAlertStrategy
+        implements IHazardAlertStrategy {
 
     private final IHazardSessionAlertsManager alertsManager;
 
-    private final IHazardEventManager hazardEventManager;
+    private final ISessionEventManager sessionEventManager;
 
     private final HazardEventExpirationAlertsConfig alertConfiguration;
 
     private final HazardEventExpirationAlertFactory alertFactory;
 
     /**
-     * {@link IHazardEvent}s for which there are alerts.
+     * {@link IReadableHazardEvent}s for which there are alerts.
      */
-    private final Map<String, IHazardEvent> alertedEvents;
+    private final Map<String, IReadableHazardEvent> alertedEvents;
 
     private final ISessionTimeManager sessionTimeManager;
 
@@ -107,11 +106,11 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
             IHazardSessionAlertsManager alertsManager,
             ISessionTimeManager sessionTimeManager,
             ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager,
-            IHazardEventManager hazardEventManager,
-            IHazardFilterStrategy hazardFilterStrategy) {
+            ISessionEventManager sessionEventManager) {
         this.alertsManager = alertsManager;
-        this.alertConfiguration = loadAlertConfiguration(sessionConfigurationManager);
-        this.hazardEventManager = hazardEventManager;
+        this.alertConfiguration = loadAlertConfiguration(
+                sessionConfigurationManager);
+        this.sessionEventManager = sessionEventManager;
         this.sessionTimeManager = sessionTimeManager;
         this.alertFactory = new HazardEventExpirationAlertFactory(
                 sessionTimeManager);
@@ -124,8 +123,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
      * Session is active. Not clear if we need to support that pathway.
      */
     private HazardEventExpirationAlertsConfig loadAlertConfiguration(
-            ISessionConfigurationManager<ObservedSettings> sessionManager) {
-        HazardAlertsConfig config = sessionManager.getAlertConfig();
+            ISessionConfigurationManager<ObservedSettings> sessionConfigManager) {
+        HazardAlertsConfig config = sessionConfigManager.getAlertConfig();
         return config.getEventExpirationConfig();
     }
 
@@ -135,25 +134,23 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         /*
          * Tack on a filter to look for issued hazards.
          */
-        HazardEventQueryRequest request = new HazardEventQueryRequest(
-                (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false),
-                HazardConstants.HAZARD_EVENT_STATUS, "in", new Object[] {
-                        HazardStatus.ISSUED, HazardStatus.ENDING,
-                        HazardStatus.ENDED });
-        request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
-        Collection<HazardEvent> hazardEvents = null;
-        try {
-            hazardEvents = hazardEventManager.queryLatest(request).values();
-        } catch (HazardEventServiceException e) {
-            statusHandler.error(
-                    "Error requesting events for Expiration Alerts", e);
-            return;
-        }
-        for (HazardEvent hazardEvent : hazardEvents) {
+        Collection<IHazardEventView> hazardEvents = null;
+        hazardEvents = sessionEventManager.getEvents();
+        for (IHazardEventView hazardEvent : hazardEvents) {
             if (hazardEvent.getStatus() == HazardStatus.ENDED) {
                 continue;
             }
+            if (hazardEvent.getExpirationTime() == null) {
+                continue;
+            }
             generateAlertsForIssuedHazardEvent(hazardEvent);
+        }
+    }
+
+    @Override
+    public void addAlerts(Set<String> eventIDs) {
+        for (String id : eventIDs) {
+            checkForNewAlerts(sessionEventManager.getEventById(id));
         }
     }
 
@@ -172,54 +169,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         switch (hazardNotification.getType()) {
 
         case STORE:
-            IHazardEvent hazardEvent = hazardNotification.getEvent();
-            HazardStatus status = hazardEvent.getStatus();
-            if (HazardStatus.issuedButNotEndedOrElapsed(status)) {
-                if (!alertedEvents.containsKey(hazardEvent.getEventID())) {
-                    generateAlertsForIssuedHazardEvent(hazardEvent);
-                } else {
-                    IHazardEvent alertedEvent = alertedEvents.get(hazardEvent
-                            .getEventID());
-                    Date alertedEventExpirationTime = new Date(
-                            (Long) alertedEvent
-                                    .getHazardAttribute(HazardConstants.EXPIRATION_TIME));
-                    Date eventExpirationTime = new Date(
-                            (Long) hazardEvent
-                                    .getHazardAttribute(HazardConstants.EXPIRATION_TIME));
-                    if (!alertedEventExpirationTime.equals(eventExpirationTime)) {
-                        /**
-                         * Cancel previous alerts and re-raise them as necessary
-                         */
-                        updatesAlertsForDeletedHazard(alertedEvent);
-                        generateAlertsForIssuedHazardEvent(hazardEvent);
-                    }
-
-                }
-            } else if ((status.equals(HazardStatus.ENDED))
-                    || (status.equals(HazardStatus.ELAPSED))) {
-                updatesAlertsForDeletedHazard(hazardNotification.getEvent());
-            }
-
-            else if (status.equals(HazardStatus.PROPOSED)) {
-                /*
-                 * Nothing to do here
-                 */
-            } else if (status.equals(HazardStatus.PENDING)
-                    && hazardEvent.getHazardAttributes().containsKey(
-                            HazardConstants.GFE_INTEROPERABILITY)) {
-                /*
-                 * Nothing to do here - this hazard was created for GFE
-                 * interoperability which can be in the PENDING state if it was
-                 * created in response to the save of a GFE grid.
-                 */
-            } else if (status.equals(HazardStatus.PENDING)) {
-                /*
-                 * Nothing to do here - User saved pending hazard(s).
-                 */
-            } else {
-                throw new IllegalArgumentException("Unexpected state "
-                        + hazardEvent.getStatus());
-            }
+            checkForNewAlerts(hazardNotification.getEvent());
             break;
 
         case DELETE:
@@ -239,15 +189,71 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         }
     }
 
-    private void generateAlertsForIssuedHazardEvent(IHazardEvent hazardEvent) {
+    private void checkForNewAlerts(IReadableHazardEvent hazardEvent) {
+        HazardStatus status = hazardEvent.getStatus();
+        if (HazardStatus.issuedButNotEndedOrElapsed(status)) {
+            if (!alertedEvents.containsKey(hazardEvent.getEventID())) {
+                generateAlertsForIssuedHazardEvent(hazardEvent);
+            } else {
+                IReadableHazardEvent alertedEvent = alertedEvents
+                        .get(hazardEvent.getEventID());
+                Date alertedEventExpirationTime = alertedEvent
+                        .getExpirationTime();
+                Date eventExpirationTime = hazardEvent.getExpirationTime();
+                if (!alertedEventExpirationTime.equals(eventExpirationTime)) {
+                    /*
+                     * Cancel previous alerts and re-raise them as necessary
+                     */
+                    updatesAlertsForDeletedHazard(alertedEvent);
+                    generateAlertsForIssuedHazardEvent(hazardEvent);
+                }
+
+            }
+        } else if ((status.equals(HazardStatus.ENDED))
+                || (status.equals(HazardStatus.ELAPSED))) {
+            updatesAlertsForDeletedHazard(hazardEvent);
+        } else if (status.equals(HazardStatus.PROPOSED)) {
+            /*
+             * Nothing to do here
+             */
+        } else if (status.equals(HazardStatus.PENDING)
+                && hazardEvent.getHazardAttributes()
+                        .containsKey(HazardConstants.GFE_INTEROPERABILITY)) {
+            /*
+             * Nothing to do here - this hazard was created for GFE
+             * interoperability which can be in the PENDING state if it was
+             * created in response to the save of a GFE grid.
+             */
+        } else if (status.equals(HazardStatus.PENDING)) {
+            /*
+             * Nothing to do here - User saved pending hazard(s).
+             */
+        } else {
+            throw new IllegalArgumentException(
+                    "Unexpected state " + hazardEvent.getStatus());
+        }
+    }
+
+    private void generateAlertsForIssuedHazardEvent(
+            IReadableHazardEvent hazardEvent) {
+
+        /*
+         * No alerts needed if no expiration time. Note: This only occurs when
+         * something has gone wrong.
+         */
+        if (hazardEvent.getExpirationTime() == null) {
+            return;
+        }
+
         List<HazardEventExpirationAlertConfigCriterion> alertCriteria = alertConfiguration
                 .getCriteria(new HazardType(hazardEvent.getPhenomenon(),
-                        hazardEvent.getSignificance(), hazardEvent.getSubType()));
+                        hazardEvent.getSignificance(),
+                        hazardEvent.getSubType()));
         List<IHazardEventAlert> alerts = Lists.newArrayList();
         for (HazardEventExpirationAlertConfigCriterion alertCriterion : alertCriteria) {
             alertedEvents.put(hazardEvent.getEventID(), hazardEvent);
-            alerts.addAll(alertFactory
-                    .createAlerts(alertCriterion, hazardEvent));
+            alerts.addAll(
+                    alertFactory.createAlerts(alertCriterion, hazardEvent));
 
         }
         alertFactory.addImmediateAlertsAsNecessary(hazardEvent, alerts);
@@ -261,8 +267,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     private void removeStaleAlerts(List<IHazardEventAlert> alerts) {
         List<IHazardEventAlert> alertsToRemove = Lists.newArrayList();
         for (IHazardEventAlert alert : alerts) {
-            if (alert.getDeactivationTime().before(
-                    sessionTimeManager.getCurrentTime())) {
+            if (alert.getDeactivationTime()
+                    .before(sessionTimeManager.getCurrentTime())) {
                 alertsToRemove.add(alert);
             }
         }
@@ -275,8 +281,9 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
             if (isReadyToActivate(thisAlert)) {
                 for (IHazardEventAlert thatAlert : alerts) {
                     if (!thisAlert.equals(thatAlert)
-                            && thisAlert.getActivationTime().getTime() < thatAlert
-                                    .getActivationTime().getTime()
+                            && thisAlert.getActivationTime()
+                                    .getTime() < thatAlert.getActivationTime()
+                                            .getTime()
                             && thisAlert.getClass() == thatAlert.getClass()
                             && isReadyToActivate(thatAlert)) {
                         alertsToRemove.add(thisAlert);
@@ -292,14 +299,15 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                 .getCurrentTime().getTime();
     }
 
-    private void updatesAlertsForDeletedHazard(IHazardEvent hazardEvent) {
+    private void updatesAlertsForDeletedHazard(
+            IReadableHazardEvent hazardEvent) {
         alertedEvents.remove(hazardEvent.getEventID());
         List<IHazardAlert> currentAlerts = alertsManager.getAlerts();
         for (IHazardAlert hazardAlert : currentAlerts) {
             if (hazardAlert instanceof IHazardEventAlert) {
                 IHazardEventAlert hazardEventAlert = (IHazardEventAlert) hazardAlert;
-                if (hazardEventAlert.getEventID().equals(
-                        hazardEvent.getEventID())) {
+                if (hazardEventAlert.getEventID()
+                        .equals(hazardEvent.getEventID())) {
                     alertsManager.cancelAlert(hazardEventAlert);
 
                 }
@@ -331,8 +339,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
                     IHazardEventAlert activeEventAlert = (IHazardEventAlert) activeAlert;
                     IHazardEventAlert eventAlert = (IHazardEventAlert) alert;
-                    if (activeEventAlert.getEventID().equals(
-                            eventAlert.getEventID())) {
+                    if (activeEventAlert.getEventID()
+                            .equals(eventAlert.getEventID())) {
                         result.add(activeAlert);
                     }
 

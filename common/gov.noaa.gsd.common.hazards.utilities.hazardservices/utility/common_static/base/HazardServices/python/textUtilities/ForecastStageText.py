@@ -1,43 +1,10 @@
 '''
     Description: Creates the forecastStageBullet text. 
     
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Feb 2015       4375    Tracy Hansen      Initial creation
-    Feb 2015       6599    Robert.Blum       Changed to new style class
-    Mar 2015       6963    Robert.Blum       Stage values have precision of 2 and 
-                                             times have minutes formatted to '00'.
-    Apr 2015       7271    Chris.Golden      Changed to use MISSING_VALUE
-                                             constant.
-    Apr 2015       7579    Robert.Blum       Updated variable names.
-    May 19, 2015   6562    Chris.Cody        Implemented "work-around" code. This needs to be changed under a different issue.
-    May 26, 2015   7634    Chris.Cody        Correct improper forcast bullet string generation
-    Jun 25, 2015   ????    Chris.Cody        Correct for missing first and second Rise Fall Time error
-    Jun 25, 2015    8313   Benjamin.Phillippe Fixed issued event loading when time is changed
-    Jul 23, 2015    9643   Robert.Blum       All rounding is now done in one common place so that it can 
-                                             be easily overridden by sites.
-    Sep 09, 2015    10263  Robert Blum       No Forecast bullet if there is no forecast stage.
-    Feb 23, 2016    11901  Robert.Blum       Replacing date/time strings with day of week and time of day wording.
-    Mar 02, 2016    11898  Robert.Blum       Complete rework to correctly convert RiverPro's templates.
-    May 05, 2016    15584  Kevin.Bisanz      Convert flow based values to stage in replaceVariables(..).
-    May 24, 2016    15584  Kevin.Bisanz      Do not convert flow based values
-                                             to stage in replaceVariables(..);
-                                             instead use values which have been
-                                             based on primary PE.
-    Jun 23, 2016    16045  Kevin.Bisanz      Forecast text of "flood stage" or
-                                             "flood flow" based on primary PE
-                                             instead of hard coded.
-    Jul 28, 2016    20385  Ben.Phillippe     When no forecast present, changed wording to "A forecast is not
-                                             available at this time"
-    Aug 16, 2016    15017  Robert.Blum       Updates to variable names.
-    Oct 26, 2016    22580  Mark.Fegan        Match Forecast Text on replaced products to new product.
-
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
 from RiverForecastUtils import RiverForecastUtils
-from datetime import datetime
 from HazardConstants import MISSING_VALUE
 from TextProductCommon import  TextProductCommon
 
@@ -70,6 +37,9 @@ class ForecastStageText(object):
         self.primaryPE = hazardDict.get('primaryPE')
         self.pointID = hazardDict.get('pointID')
         self.replacedBy = hazardDict.get('replacedBy')
+        self.stageFlowName = hazardDict.get("stageFlowName")
+        if self.stageFlowName:
+            self.stageFlowName = 'flood ' + self.stageFlowName
 
 
         # ForecastCrestStage
@@ -92,14 +62,14 @@ class ForecastStageText(object):
         else:
             self.maxForecastStage_str = None
 
-        self.fcstRiseFSTime = hazardDict.get('forecastRiseAboveFloodStageTime_ms', MISSING_VALUE) 
+        self.fcstRiseFSTime = hazardDict.get('forecastRiseAboveFSTime_ms', MISSING_VALUE) 
         if self.isValidTime(self.fcstRiseFSTime):
             self.fcstRiseFSTime_str = self.tpc.getRiverProTimePhrase(self.issueTime,
                                                                                         self.fcstRiseFSTime, self.timeZones[0])
         else:
             self.fcstRiseFSTime_str = None
 
-        self.fcstFallFSTime = hazardDict.get('forecastFallBelowFloodStageTime_ms', MISSING_VALUE)
+        self.fcstFallFSTime = hazardDict.get('forecastFallBelowFSTime_ms', MISSING_VALUE)
         if self.isValidTime(self.fcstFallFSTime):
             self.fcstFallFSTime_str = self.tpc.getRiverProTimePhrase(self.issueTime,
                                                                                         self.fcstFallFSTime, self.timeZones[0])
@@ -120,48 +90,40 @@ class ForecastStageText(object):
 
         self.stageFlowUnits = hazardDict.get('stageFlowUnits', MISSING_VALUE_STRING)
 
-        self.specValue =  hazardDict.get('specValue', MISSING_VALUE_STRING) 
+        self.specValue =  hazardDict.get('specValue', MISSING_VALUE) 
         self.specTime = self.convertTime(hazardDict.get('specTime', MISSING_VALUE)) 
-        if self.specValue and self.specValue != MISSING_VALUE_STRING:
-            self.specValue_str = self.tpc.roundFloat(self.specValue, returnString=True)
+        if self.specValue and self.specValue != MISSING_VALUE:
+            self.specValue = self.tpc.roundFloat(self.specValue, returnString=False)
         else:
-            self.specValue_str = None
+            self.specValue = None
 
-        self.HT0FFXNext = hazardDict.get('HT0FFXNext', MISSING_VALUE_STRING)
+        self.HT0FFXNext = hazardDict.get('HT0FFXNext', MISSING_VALUE)
         self.HT0FFXNextTime = self.convertTime(hazardDict.get('HT0FFXNextTime'))
-        if self.HT0FFXNext and self.HT0FFXNext != MISSING_VALUE_STRING:
-            self.HT0FFXNext = self.tpc.roundFloat(self.HT0FFXNext, returnString=True)
-            self.HT0FFXNext_float = float(self.HT0FFXNext)
+        if self.HT0FFXNext and self.HT0FFXNext != MISSING_VALUE:
+            self.HT0FFXNext = self.tpc.roundFloat(self.HT0FFXNext, returnString=False)
         else:
             self.HT0FFXNext = None
-            self.HT0FFXNext_float = MISSING_VALUE
 
-        self.HP0FFXNext = hazardDict.get('HP0FFXNext', MISSING_VALUE_STRING)
+        self.HP0FFXNext = hazardDict.get('HP0FFXNext', MISSING_VALUE)
         self.HP0FFXNextTime = self.convertTime(hazardDict.get('HP0FFXNextTime'))
-        if self.HP0FFXNext and self.HP0FFXNext != MISSING_VALUE_STRING:
-            self.HP0FFXNext_float = float(self.HP0FFXNext)
-            self.HP0FFXNext = self.tpc.roundFloat(self.HP0FFXNext, returnString=True)
+        if self.HP0FFXNext and self.HP0FFXNext != MISSING_VALUE:
+            self.HP0FFXNext = self.tpc.roundFloat(self.HP0FFXNext, returnString=False)
         else:
             self.HP0FFXNext = None
-            self.HP0FFXNext_float = MISSING_VALUE
 
-        self.HG0FFXNext =  hazardDict.get('HG0FFXNext', MISSING_VALUE_STRING)
+        self.HG0FFXNext =  hazardDict.get('HG0FFXNext', MISSING_VALUE)
         self.HG0FFXNextTime = self.convertTime(hazardDict.get('HG0FFXNextTime'))
-        if self.HG0FFXNext and self.HG0FFXNext != MISSING_VALUE_STRING:
-            self.HG0FFXNext = self.tpc.roundFloat(self.HG0FFXNext, returnString=True)
-            self.HGOFFXNEXT_float = float(self.HG0FFXNext)
+        if self.HG0FFXNext and self.HG0FFXNext != MISSING_VALUE:
+            self.HG0FFXNext = self.tpc.roundFloat(self.HG0FFXNext, returnString=False)
         else:
             self.HG0FFXNext = None
-            self.HGOFFXNEXT_float = MISSING_VALUE
 
-        self.QR0FFXNext = hazardDict.get('QR0FFXNext', MISSING_VALUE_STRING)
+        self.QR0FFXNext = hazardDict.get('QR0FFXNext', MISSING_VALUE)
         self.QR0FFXNextTime = self.convertTime(hazardDict.get('QR0FFXNextTime'))
-        if self.QR0FFXNext and self.QR0FFXNext != MISSING_VALUE_STRING:
-            self.QR0FFXNext = self.tpc.roundFloat(self.QR0FFXNext, returnString=True)
-            self.QR0FFXNext_float = float(self.QR0FFXNext)
+        if self.QR0FFXNext and self.QR0FFXNext != MISSING_VALUE:
+            self.QR0FFXNext = self.tpc.roundFloat(self.QR0FFXNext, returnString=False)
         else:
             self.QR0FFXNext = None
-            self.QR0FFXNext_float = MISSING_VALUE
 
         self.obsRiseFSTime = hazardDict.get('obsRiseAboveFSTime', MISSING_VALUE)
         if self.isValidTime(self.obsRiseFSTime):
@@ -194,11 +156,13 @@ class ForecastStageText(object):
         if not self.replacedBy:
             replaced = False
 
-         # Determine which template method to use
-        bulletText = ''
+        # Determine which template method to use
+        bulletText = ''            
         if self.maxForecastStage == None or self.maxForecastStage == MISSING_VALUE:
             if self.pil == "FLW":
                 bulletText = self.VTEC_FLW_NO_FCST()
+            elif self.sig == "A":
+                bulletText = self.VTEC_FLA_NO_FCST()
             else:
                 bulletText = self.VTEC_FLS_NO_FCST()
 
@@ -228,7 +192,7 @@ class ForecastStageText(object):
                     bulletText = self.VTEC_FLS_NONFFX_FLOW()
 
         elif self.sig == "Y" and not replaced:
-           #bulletText = self.VTEC_FLOOD_ADVISORY()
+            #bulletText = self.VTEC_FLOOD_ADVISORY()
             bulletText = self.VTEC_FLD_ADVISORY()
 
         elif self.sig == "A" and not replaced:
@@ -265,9 +229,8 @@ class ForecastStageText(object):
         '''
             Replaces framed variables in the bullet text with the actual values if they exist.
         '''
-        stageFlowName = 'flood ' + self._riverForecastUtils.getStageFlowName(self.primaryPE)
-        bulletText = bulletText.replace('|* StgFlowName *|', stageFlowName)
-
+        if self.stageFlowName:
+            bulletText = bulletText.replace('|* StgFlowName *|', self.stageFlowName)
         if self.stageFlowUnits:
             bulletText = bulletText.replace('|* StgFlowUnits *|', self.stageFlowUnits)
         if self.maxObsStg24_str:
@@ -284,25 +247,25 @@ class ForecastStageText(object):
             bulletText = bulletText.replace('|* FcstCrestStg *|', self.forecastCrestStage_str)
         if self.forecastCrestTime_str:
             bulletText = bulletText.replace('|* FcstCrestTime *|', self.forecastCrestTime_str)
-        if self.specValue_str:
-            bulletText = bulletText.replace('|* SpecFcstStg *|', self.specValue_str)
+        if self.specValue:
+            bulletText = bulletText.replace('|* SpecFcstStg *|', str(self.specValue))
         if self.specTime:
             bulletText = bulletText.replace('|* SpecFcstStgTime *|', self.specTime)
 
         if self.HT0FFXNext:
-            bulletText = bulletText.replace('|* HT,0,FF,X,NEXT *|', self.HT0FFXNext)
+            bulletText = bulletText.replace('|* HT,0,FF,X,NEXT *|', str(self.HT0FFXNext))
         if self.HT0FFXNextTime:
             bulletText = bulletText.replace('|* HT,0,FF,X,NEXT,TIME *|', self.HT0FFXNextTime)
         if self.HG0FFXNext:
-            bulletText = bulletText.replace('|* HG,0,FF,X,NEXT *|', self.HG0FFXNext)
+            bulletText = bulletText.replace('|* HG,0,FF,X,NEXT *|', str(self.HG0FFXNext))
         if self.HG0FFXNextTime:
             bulletText = bulletText.replace('|* HG,0,FF,X,NEXT,TIME *|', self.HG0FFXNextTime)
         if self.HP0FFXNext:
-            bulletText = bulletText.replace('|* HP,0,FF,X,NEXT *|', self.HP0FFXNext)
+            bulletText = bulletText.replace('|* HP,0,FF,X,NEXT *|', str(self.HP0FFXNext))
         if self.HP0FFXNextTime:
             bulletText = bulletText.replace('|* HP,0,FF,X,NEXT,TIME *|', self.HP0FFXNextTime)
         if self.QR0FFXNext:
-            bulletText = bulletText.replace('|* QR,0,FF,X,NEXT *|', self.QR0FFXNext)
+            bulletText = bulletText.replace('|* QR,0,FF,X,NEXT *|', str(self.QR0FFXNext))
         if self.QR0FFXNextTime:
             bulletText = bulletText.replace('|* QR,0,FF,X,NEXT,TIME *|', self.QR0FFXNextTime)
 
@@ -315,13 +278,8 @@ class ForecastStageText(object):
         return False
 
     def convertTime(self, time):
-        if time != MISSING_VALUE_STRING:
-            # Convert to datetime then to millis
-            date = datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f')
-            epoch = datetime.utcfromtimestamp(0)
-            delta = date - epoch
-            result = delta.total_seconds() * 1000.0
-            result = self.tpc.getRiverProTimePhrase(self.issueTime, result, self.timeZones[0])
+        if time != MISSING_VALUE:
+            result = self.tpc.getRiverProTimePhrase(self.issueTime, time, self.timeZones[0])
             return result
         return None
 
@@ -347,7 +305,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        elif self.observedStage < self.floodStage and self.HGOFFXNEXT_float > self.floodStage \
+        elif self.observedStage < self.floodStage and self.HG0FFXNext > self.floodStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
@@ -358,7 +316,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         elif self.observedStage < self.floodStage and self.maxForecastStage > \
-        self.floodStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        self.floodStage and self.HG0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -367,7 +325,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        elif self.observedStage < self.floodStage and self.HGOFFXNEXT_float > \
+        elif self.observedStage < self.floodStage and self.HG0FFXNext > \
         self.floodStage and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HG,0,FF,X,NEXT,TIME *|.
@@ -378,7 +336,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         elif self.observedStage >= self.floodStage and self.maxForecastStage > \
-        self.observedStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        self.observedStage and self.HG0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -386,7 +344,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage \
+        elif self.observedStage >= self.floodStage and self.HG0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HG,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -395,7 +353,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage and \
+        elif self.observedStage >= self.floodStage and self.HG0FFXNext > self.observedStage and \
         self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
             bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HG,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -460,7 +418,7 @@ class ForecastStageText(object):
         # series has a crest/not falling below flood stage
         #
         elif self.observedStage < self.floodStage and \
-        self.HGOFFXNEXT_float > self.floodStage and self.fcstFallFSTime == MISSING_VALUE:
+        self.HG0FFXNext > self.floodStage and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HG,0,FF,X,NEXT,TIME *|.'''
@@ -470,7 +428,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         elif self.observedStage < self.floodStage and self.maxForecastStage > \
-        self.floodStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        self.floodStage and self.HG0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -479,7 +437,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        elif self.observedStage < self.floodStage and self.HGOFFXNEXT_float > \
+        elif self.observedStage < self.floodStage and self.HG0FFXNext > \
         self.floodStage and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HG,0,FF,X,NEXT,TIME *|.
@@ -490,7 +448,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         elif self.observedStage >= self.floodStage and self.maxForecastStage > \
-        self.observedStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        self.observedStage and self.HG0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -498,7 +456,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage \
+        elif self.observedStage >= self.floodStage and self.HG0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HG,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -507,7 +465,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage and \
+        elif self.observedStage >= self.floodStage and self.HG0FFXNext > self.observedStage and \
         self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HG,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -1032,8 +990,9 @@ class ForecastStageText(object):
         # Forecast information
         #
         if self.maxForecastStage == MISSING_VALUE:
-            bulletstr = '''A forecast is not available at this time. 
-            This warning will remain in effect until the river falls below |* StgFlowName *|.'''
+            bulletstr = '''A forecast is not available at this time.'''
+            if self.action != 'CAN': 
+                bulletstr += ''' This warning will remain in effect until the river falls below |* StgFlowName *|.'''
 
         #
         # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
@@ -1048,8 +1007,9 @@ class ForecastStageText(object):
         # Forecast data is MISSING_VALUE
         #
         if self.maxForecastStage == MISSING_VALUE:
-            bulletstr = '''A forecast is not available at this time.
-            This warning will remain in effect until the river falls below |* StgFlowName *|.'''
+            bulletstr = '''A forecast is not available at this time.'''
+            if self.action != 'CAN': 
+                bulletstr += ''' This warning will remain in effect until the river falls below |* StgFlowName *|.'''
 
         #
         # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
@@ -1057,6 +1017,12 @@ class ForecastStageText(object):
         if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
             bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
         return bulletstr
+    
+    def VTEC_FLA_NO_FCST(self):
+        #
+        # Forecast data is MISSING_VALUE
+        #
+        return 'A forecast is not available at this time.'
 
     def VTEC_FLW_NO_OBS(self):
         bulletstr = ''
@@ -1121,7 +1087,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HP0FFXNext > self.floodStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
@@ -1132,7 +1098,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
-        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HP0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -1141,7 +1107,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HP0FFXNext > self.floodStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HP,0,FF,X,NEXT,TIME *|.
@@ -1152,7 +1118,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
-        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HP0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -1160,7 +1126,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HP0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HP,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -1169,7 +1135,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HP0FFXNext > self.observedStage \
         and self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
             bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HP,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -1234,7 +1200,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage and self.fcstFallFSTime == MISSING_VALUE:
+        if self.observedStage < self.floodStage and self.HP0FFXNext > self.floodStage and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HP,0,FF,X,NEXT,TIME *|.'''
@@ -1244,7 +1210,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
-        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HP0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -1253,7 +1219,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HP0FFXNext > self.floodStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HP,0,FF,X,NEXT,TIME *|.
@@ -1264,7 +1230,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
-        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HP0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -1272,7 +1238,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HP0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HP,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -1281,7 +1247,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HP0FFXNext > self.observedStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HP,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -1368,7 +1334,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HT0FFXNext > self.floodStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
@@ -1379,7 +1345,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
-        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HT0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -1388,7 +1354,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HT0FFXNext > self.floodStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HT,0,FF,X,NEXT,TIME *|.
@@ -1399,7 +1365,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
-        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HT0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -1407,7 +1373,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HT0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HT,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -1416,7 +1382,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HT0FFXNext > self.observedStage \
         and self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
             bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HT,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -1481,7 +1447,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HT0FFXNext > self.floodStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
@@ -1492,7 +1458,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
-        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HT0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -1501,7 +1467,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        if self.observedStage < self.floodStage and self.HT0FFXNext > self.floodStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HT,0,FF,X,NEXT,TIME *|.
@@ -1512,7 +1478,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
-        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.HT0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -1520,7 +1486,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HT0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HT,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -1529,7 +1495,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodStage and self.HT0FFXNext > self.observedStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* HT,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -1862,7 +1828,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow \
+        if self.observedStage < self.floodFlow and self.QR0FFXNext > self.floodFlow \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
@@ -1873,7 +1839,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
-        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.QR0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -1882,7 +1848,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow \
+        if self.observedStage < self.floodFlow and self.QR0FFXNext > self.floodFlow \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by |* QR,0,FF,X,NEXT,TIME *|.
@@ -1893,7 +1859,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
-        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.QR0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -1901,7 +1867,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* QR,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -1910,7 +1876,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # stage
         #
-        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext > self.observedStage \
         and self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
             bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* QR,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
@@ -1975,7 +1941,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/not falling below flood stage
         #
-        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow and self.fcstFallFSTime == MISSING_VALUE:
+        if self.observedStage < self.floodFlow and self.QR0FFXNext > self.floodFlow and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* QR,0,FF,X,NEXT,TIME *|.'''
@@ -1985,7 +1951,7 @@ class ForecastStageText(object):
         # series has no crest
         #
         if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
-        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.QR0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
             Additional rises are possible thereafter.'''
@@ -1994,7 +1960,7 @@ class ForecastStageText(object):
         # Observed below flood stage/forecast above flood stage/forecast time
         # series has a crest/falling below flood stage
         #
-        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow \
+        if self.observedStage < self.floodFlow and self.QR0FFXNext > self.floodFlow \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
             and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by |* QR,0,FF,X,NEXT,TIME *|.
@@ -2005,7 +1971,7 @@ class ForecastStageText(object):
         # crest in forecast time series
         #
         if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
-        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+        and self.QR0FFXNext == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
             |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
 
@@ -2013,7 +1979,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests but stays above flood
         # stage
         #
-        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext > self.observedStage \
         and self.fcstFallFSTime == MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* QR,0,FF,X,NEXT,TIME *| then begin falling.'''
@@ -2022,7 +1988,7 @@ class ForecastStageText(object):
         # Observed above flood stage/forecast crests and falls below flood
         # x stage
         #
-        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext > self.observedStage \
         and self.fcstFallFSTime != MISSING_VALUE:
             bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
             |* QR,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|

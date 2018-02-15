@@ -51,6 +51,7 @@ Prob_Tornado = {
         "proposed",
         #"pending",
         "issued",
+        "elapsing",
         "elapsed",
         "ending",
         "ended"

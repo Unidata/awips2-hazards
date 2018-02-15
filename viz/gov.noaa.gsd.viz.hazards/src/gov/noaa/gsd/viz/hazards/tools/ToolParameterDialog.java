@@ -10,67 +10,21 @@
 package gov.noaa.gsd.viz.hazards.tools;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.util.Pair;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.DialogButtonsSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
 
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 /**
  * Description: Dialog for gathering parameters from the user in preparation for
- * the running of a tool. In addition to the parameters specified by the
- * superclass, the JSON string passed to this dialog may contain the following
- * parameters:
- * 
- * <dt><code>buttons</code></dt>
- * <dd>Optional list of one or more dictionaries, each of the latter defining a
- * button. Each dictionary has the following entries:
- * <dl>
- * <dt><code>identifier</code>
- * <dt>
- * <dd>Unique (for the list of buttons) identifier of the button.</dd>
- * <dt><code>label</code>
- * <dt>
- * <dd>Label of the button.</dd>
- * <dt><code>close</code>
- * <dt>
- * <dd>Optional boolean indicating whether or not the button's identifier is the
- * one provided to as one of the values entries provided once the dialog is
- * dismissed under the key <code>__dismissChoice__</code> if the user chooses
- * the "X" button in the dialog's title bar. Only one of the dictionaries should
- * have this property set to <code>true</code>. If multiple ones do, only the
- * last dictionary with such a value will be considered to be the "close"
- * button. If none have this property set to <code>true</code>, the last
- * dictionary in the list will be considered the "close" button.</dd>
- * <dt><code>cancel</code>
- * <dt>
- * <dd>Optional boolean indicating whether or not the button cancels the running
- * of the recommender. None of the dictionaries need to have this property set
- * to <code>true</code>, as cancellation does not have to be an option. If more
- * than one have this property as <code>true</code>, only the last dictionary
- * with such a value will be considered to be the "close" button.</dd>
- * </dl>
- * <dt><code>default</code>
- * <dt>
- * <dd>Optional boolean indicating whether or not the button is the default for
- * the dialog. Only one of the dictionaries should have this property set to
- * <code>true</code>. If multiple ones do, only the first dictionary with such a
- * value will be considered to be the default button. If none have this property
- * set to <code>true</code>, the first dictionary in the list will be considered
- * the default button.</dd>
- * </dl>
- * </dd>
+ * the running of a tool.
  * 
  * <pre>
  * 
@@ -87,12 +41,19 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
  *                                      future recommenders from running if
  *                                      the user closed a dialog via the X
  *                                      button in the title bar.
+ * May 22, 2018    3782    Chris.Golden Changed to have configuration options
+ *                                      passed in using dedicated objects and
+ *                                      having already been vetted, instead of
+ *                                      passing them in as raw maps. Also
+ *                                      changed to conform somewhat better to
+ *                                      the MVP design guidelines.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ToolParameterDialog extends AbstractToolDialog {
+public class ToolParameterDialog
+        extends AbstractToolDialog<ToolParameterDialogSpecifier> {
 
     // Private Static Constants
 
@@ -102,34 +63,6 @@ public class ToolParameterDialog extends AbstractToolDialog {
     private static final String OK_BUTTON_LABEL = "Run";
 
     // Private Variables
-
-    /**
-     * List of button definitions, each holding the identifier as its first
-     * element and its label as its second. If <code>null</code>, no custom
-     * buttons are defined.
-     */
-    private final List<Pair<String, String>> customButtonIdentifiersAndLabels;
-
-    /**
-     * Index into the {@link #customButtonIdentifierAndLabels} list at which the
-     * button that is equivalent to the "X" button in the title bar is found. If
-     * the former is <code>null</code>, this value is irrelevant.
-     */
-    private final int customButtonCloseIndex;
-
-    /**
-     * Index into the {@link #customButtonIdentifierAndLabels} list at which the
-     * button that is the cancel button is found. If the former is
-     * <code>null</code>, this value is irrelevant.
-     */
-    private final int customButtonCancelIndex;
-
-    /**
-     * Index into the {@link #customButtonIdentifierAndLabels} list at which the
-     * button that is the default button is found. If the former is
-     * <code>null</code>, this value is irrelevant.
-     */
-    private final int customButtonDefaultIndex;
 
     /**
      * Index of the button used to dismiss the dialog, if the dialog has been
@@ -142,145 +75,34 @@ public class ToolParameterDialog extends AbstractToolDialog {
     /**
      * Construct a standard instance.
      * 
-     * @param presenter
-     *            Presenter.
      * @param parent
      *            Parent shell.
-     * @param type
-     *            Type of the tool.
-     * @param jsonParams
-     *            JSON string giving the parameters for this dialog. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param dialogSpecifier
+     *            Specifier of the dialog to be created to gather parameters.
+     * @param toolDialogListener
+     *            Tool dialog listener.
      */
-    public ToolParameterDialog(ToolsPresenter presenter, Shell parent,
-            ToolType type, String jsonParams) {
-        super(presenter, parent, type, jsonParams);
-
-        /*
-         * Find the custom buttons list, if one exists, within the provided
-         * parameter.
-         */
-        Dict dictionary = null;
-        List<Map<String, Object>> buttonDictionaries = null;
-        try {
-            dictionary = Dict.getInstance(jsonParams);
-            buttonDictionaries = dictionary
-                    .getDynamicallyTypedValue(HazardConstants.BUTTONS_KEY);
-            if ((buttonDictionaries != null) && buttonDictionaries.isEmpty()) {
-                throw new IllegalArgumentException("empty custom button list");
-            }
-        } catch (Exception e) {
-            statusHandler.error(
-                    "ToolParameterDialog.<init>: Error: Problem parsing JSON for custom "
-                            + "button dictionaries; ignoring any such dictionaries.",
-                    e);
-        }
-
-        /*
-         * Parse the custom buttons list, compiling information to be used.
-         */
-        if (buttonDictionaries != null) {
-
-            /*
-             * Iterate through the list, ensuring each definition of a custom
-             * button is valid.
-             */
-            int customButtonCloseIndex = -1;
-            int customButtonCancelIndex = -1;
-            int customButtonDefaultIndex = -1;
-            List<Pair<String, String>> customButtonIdentifiersAndLabels = new ArrayList<>(
-                    buttonDictionaries.size());
-            try {
-                Set<String> customButtonIdentifiers = new HashSet<>(
-                        buttonDictionaries.size(), 1.0f);
-                int count = 0;
-                for (Map<String, Object> buttonDictionary : buttonDictionaries) {
-
-                    /*
-                     * Ensure the identifier is a non-empty string, and is
-                     * unique.
-                     */
-                    String identifier = (String) buttonDictionary
-                            .get(HazardConstants.IDENTIFIER);
-                    if ((identifier == null) || identifier.isEmpty()) {
-                        throw new IllegalArgumentException("custom button "
-                                + count + " has null or empty identifier");
-                    } else if (customButtonIdentifiers.contains(identifier)) {
-                        throw new IllegalArgumentException("custom button "
-                                + count + " has duplicate identifier");
-                    }
-                    customButtonIdentifiers.add(identifier);
-
-                    /*
-                     * Ensure the label is a non-empty string.
-                     */
-                    String label = (String) buttonDictionary
-                            .get(HazardConstants.LABEL);
-                    if ((label == null) || label.isEmpty()) {
-                        throw new IllegalArgumentException("custom button "
-                                + count + " has null or empty label");
-                    }
-
-                    /*
-                     * Remember this button.
-                     */
-                    customButtonIdentifiersAndLabels
-                            .add(new Pair<>(identifier, label));
-
-                    /*
-                     * If this button is to be the close, cancel, and/or default
-                     * button, record it as such.
-                     */
-                    if (Boolean.TRUE.equals(
-                            buttonDictionary.get(HazardConstants.CLOSE))) {
-                        customButtonCloseIndex = count;
-                    }
-                    if (Boolean.TRUE.equals(
-                            buttonDictionary.get(HazardConstants.CANCEL))) {
-                        customButtonCancelIndex = count;
-                    }
-                    if ((customButtonDefaultIndex == -1) && Boolean.TRUE.equals(
-                            buttonDictionary.get(HazardConstants.DEFAULT))) {
-                        customButtonDefaultIndex = count;
-                    }
-
-                    count++;
-                }
-                if (customButtonCloseIndex == -1) {
-                    customButtonCloseIndex = count - 1;
-                }
-                if (customButtonDefaultIndex == -1) {
-                    customButtonDefaultIndex = 0;
-                }
-            } catch (IllegalArgumentException e) {
-                statusHandler.error(
-                        "ToolParameterDialog.<init>: Error: Problem parsing JSON for custom "
-                                + "button dictionaries; ignoring any such dictionaries.",
-                        e);
-                customButtonIdentifiersAndLabels = null;
-            }
-            this.customButtonIdentifiersAndLabels = customButtonIdentifiersAndLabels;
-            this.customButtonCloseIndex = customButtonCloseIndex;
-            this.customButtonCancelIndex = customButtonCancelIndex;
-            this.customButtonDefaultIndex = customButtonDefaultIndex;
-        } else {
-            customButtonIdentifiersAndLabels = null;
-            customButtonCloseIndex = customButtonCancelIndex = customButtonDefaultIndex = -1;
-        }
+    public ToolParameterDialog(Shell parent,
+            ToolParameterDialogSpecifier dialogSpecifier,
+            IToolDialogListener toolDialogListener) {
+        super(parent, dialogSpecifier, toolDialogListener);
     }
 
     // Protected Methods
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-        if (customButtonIdentifiersAndLabels != null) {
+        DialogButtonsSpecifier customButtonsSpecifier = getSpecifier()
+                .getCustomButtonsSpecifier();
+        if (customButtonsSpecifier != null) {
             int count = 0;
-            for (Pair<String, String> customButtonIdentifierAndLabel : customButtonIdentifiersAndLabels) {
+            for (String customButtonIdentifier : customButtonsSpecifier
+                    .getButtonIdentifiers()) {
                 createButton(parent, count,
-                        customButtonIdentifierAndLabel.getSecond(),
-                        (count++ == customButtonDefaultIndex));
+                        customButtonsSpecifier.getLabelsForButtonIdentifiers()
+                                .get(customButtonIdentifier),
+                        (count++ == customButtonsSpecifier
+                                .getDefaultButtonIndex()));
             }
         } else {
             createButton(parent, IDialogConstants.OK_ID,
@@ -302,8 +124,10 @@ public class ToolParameterDialog extends AbstractToolDialog {
          * custom buttons are not being used, treat it as a standard button
          * press.
          */
-        if (customButtonIdentifiersAndLabels != null) {
-            if (buttonId == customButtonCancelIndex) {
+        DialogButtonsSpecifier customButtonsSpecifier = getSpecifier()
+                .getCustomButtonsSpecifier();
+        if (customButtonsSpecifier != null) {
+            if (buttonId == customButtonsSpecifier.getCancelButtonIndex()) {
                 cancelPressed();
             } else {
                 dismissingCustomButtonIndex = buttonId;
@@ -322,8 +146,10 @@ public class ToolParameterDialog extends AbstractToolDialog {
          * button is equivalent to the title bar close button. Otherwise, just
          * treat it as a cancel.
          */
-        if (customButtonIdentifiersAndLabels != null) {
-            buttonPressed(customButtonCloseIndex);
+        DialogButtonsSpecifier customButtonsSpecifier = getSpecifier()
+                .getCustomButtonsSpecifier();
+        if (customButtonsSpecifier != null) {
+            buttonPressed(customButtonsSpecifier.getCloseButtonIndex());
         } else {
             cancelPressed();
         }
@@ -331,30 +157,16 @@ public class ToolParameterDialog extends AbstractToolDialog {
     }
 
     @Override
-    protected void okPressed() {
-        super.okPressed();
-
-        /*
-         * Get the state, adding the dismiss choice if custom buttons are in
-         * use.
-         */
-        Map<String, Serializable> state = getState();
-        if (customButtonIdentifiersAndLabels != null) {
+    protected Map<String, Serializable> getState() {
+        Map<String, Serializable> state = Utilities
+                .asMap(getSpecifier().getInitialStatesForMegawidgets());
+        DialogButtonsSpecifier customButtonsSpecifier = getSpecifier()
+                .getCustomButtonsSpecifier();
+        if (customButtonsSpecifier != null) {
             state.put(HazardConstants.DIALOG_DISMISS_CHOICE,
-                    customButtonIdentifiersAndLabels
-                            .get(dismissingCustomButtonIndex).getFirst());
+                    customButtonsSpecifier.getButtonIdentifiers()
+                            .get(dismissingCustomButtonIndex));
         }
-
-        getPresenter().publish(new ToolAction(
-                ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                null, getType(), state, null));
-    }
-
-    @Override
-    protected void cancelPressed() {
-        super.okPressed();
-        getPresenter().publish(new ToolAction(
-                ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                null, getType(), null, null));
+        return state;
     }
 }

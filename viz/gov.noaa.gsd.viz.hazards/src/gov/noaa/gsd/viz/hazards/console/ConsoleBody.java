@@ -79,6 +79,8 @@ import gov.noaa.gsd.viz.widgets.WidgetUtilities;
  * Aug 08, 2017   22583    Chris.Golden Add service backup banner.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
  *                                      (for positioning) toolbar contributions.
+ * Apr 17, 2018   32693    Chris.Golden Added code to disallow console context
+ *                                      menus when a preview is ongoing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -344,6 +346,11 @@ class ConsoleBody implements IConsoleTree {
     public void setTimeResolution(TimeResolution timeResolution,
             Date currentTime) {
         consoleTree.setTimeResolution(timeResolution, currentTime);
+    }
+
+    @Override
+    public void setAllowContextMenus(boolean allowContextMenus) {
+        consoleTree.setAllowContextMenus(allowContextMenus);
     }
 
     @Override
@@ -663,7 +670,7 @@ class ConsoleBody implements IConsoleTree {
                     .getImage(HazardServicesActivator.getDefault().getBundle(),
                             ConsoleView.BUTTON_IDENTIFIERS.get(j)
                                     + PNG_FILE_NAME_SUFFIX,
-                    Display.getCurrent());
+                            Display.getCurrent());
             resources.add(image);
             createCommandButton(buttonsPanel,
                     ConsoleView.BUTTON_IDENTIFIERS.get(j), image,

@@ -39,7 +39,6 @@ import com.raytheon.uf.common.dataplugin.events.IValidator;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.geometryadapters.GeometryAdapter;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter.HazardAttributeSlotConverter;
 import com.raytheon.uf.common.message.WsId;
@@ -82,6 +81,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jul 31, 2015 7458      Robert.Blum   Added new userName and workstation fields.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Oct 29, 2015 11864      Robert.Blum  Added expirationTime field.
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
@@ -110,6 +110,11 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
  * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
  *                                      AdvancedGeometryUtilities.
  * Dec 19, 2016 21504      Robert.Blum  Updates for hazard locking.
+ * Jan 26, 2017 21635      Roger.Ferrel Added issue site id.
+ * Jan 27, 2017 22308      Robert.Blum  Performance change when getting a single
+ *                                      attribute.
+ * Feb 01, 2017 21635      Roger.Ferrel SITE_ID no longer needed in the registry
+ *                                      object.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
  * Feb 13, 2017 28892      Chris.Golden Removed slot converter for visual features
  *                                      list, as visual features should not be
@@ -122,9 +127,14 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
  *                                      added ability to configure instances to
  *                                      indicate they are "latest version" ones,
  *                                      that is, not to be in the history list.
+ * Feb 16, 2017 28708      mduff        Changes in HazardServicesEventIdUtil.
+ * Mar 13, 2017 28708      mduff        Changes to support event id refactor.
  * Mar 30, 2017 15528      Chris.Golden Added modified flag as part of basic
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
+ * Apr 05, 2017 32734      Kevin.Bisanz Remove SlotAttribute annotation from
+ *                                      some fields.
+ * Apr 28, 2017 33430      Robert.Blum  Removed HazardMode.
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
  *                                      mutable session events.
@@ -132,6 +142,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
  * Feb 21, 2018 46736      Chris.Golden Made copy constructor use a shallow
  *                                      copy of the visual features list of the
  *                                      copied object.
+ * Jun 06, 2018  15561     Chris.Golden Added practice flag for hazard event
+ *                                      construction.
  * </pre>
  * 
  * @author mnash
@@ -141,8 +153,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
 @XmlRootElement(name = "hazard")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-@RegistryObject({ HazardConstants.SITE_ID,
-        HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUE_ID })
+@RegistryObject({ HazardConstants.HAZARD_EVENT_IDENTIFIER,
+        HazardConstants.UNIQUE_ID })
 @RegistryObjectVersion(value = 1.0f)
 public class HazardEvent implements IHazardEvent, IValidator {
 
@@ -158,16 +170,23 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.MODIFIED)
     private boolean modified;
 
     /**
-     * The issuing site ID
+     * The site ID for the hazard
      */
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.SITE_ID)
     private String siteID;
+
+    /**
+     * The issuing site ID for the hazard. This may be a backup site making it
+     * different from the siteID.
+     */
+    @DynamicSerializeElement
+    @XmlAttribute
+    private String issueSiteID;
 
     /**
      * The event ID
@@ -247,19 +266,26 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Date creationTime;
 
     /**
-     * The mode of the hazard
+     * The time this hazard was inserted into the repository.
      */
     @DynamicSerializeElement
-    @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARD_MODE)
-    private ProductClass hazardMode;
+    @XmlElement
+    @SlotAttribute(HazardConstants.INSERT_TIME)
+    @SlotAttributeConverter(DateSlotConverter.class)
+    private Date insertTime;
+
+    /**
+     * The expire time of the hazard
+     */
+    @DynamicSerializeElement
+    @XmlElement
+    private Date expirationTime;
 
     /**
      * The source of the hazard
      */
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARD_SOURCE)
     private Source source;
 
     /**
@@ -291,15 +317,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private VisualFeaturesList visualFeatures;
 
     /**
-     * The time this hazard was inserted into the repository.
-     */
-    @DynamicSerializeElement
-    @XmlElement
-    @SlotAttribute(HazardConstants.INSERT_TIME)
-    @SlotAttributeConverter(DateSlotConverter.class)
-    private Date insertTime;
-
-    /**
      * The workstation id of the person who created the hazard or the last
      * person that issue the hazard.
      */
@@ -318,10 +335,19 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Set<HazardAttribute> attributes = new HashSet<HazardAttribute>();
 
     /**
-     * Construct a standard instance.
+     * Construct a standard instance that is not for practice mode.
      */
     public HazardEvent() {
+        this(false);
+    }
 
+    /**
+     * Construct a standard instance with the specified practice flag.
+     * 
+     * @param practice
+     */
+    public HazardEvent(boolean practice) {
+        addHazardAttribute(HazardConstants.PRACTICE, practice);
     }
 
     /**
@@ -331,25 +357,28 @@ public class HazardEvent implements IHazardEvent, IValidator {
      *            Hazard event to be copied.
      */
     public HazardEvent(IReadableHazardEvent event) {
-        this();
+        this(event.getHazardAttribute(HazardConstants.PRACTICE) != null
+                ? (Boolean) event.getHazardAttribute(HazardConstants.PRACTICE)
+                : false);
         setModified(event.isModified());
         setEventID(event.getEventID());
         setSiteID(event.getSiteID());
-        setEndTime(event.getEndTime());
+        setIssueSiteID(event.getIssueSiteID());
         setStartTime(event.getStartTime());
+        setEndTime(event.getEndTime());
         setCreationTime(event.getCreationTime());
         setInsertTime(event.getInsertTime());
+        setExpirationTime(event.getExpirationTime());
         setGeometry(event.getGeometry());
-        if (event.getVisualFeatures() != null) {
-            setVisualFeatures(
-                    new VisualFeaturesList(event.getVisualFeatures()));
+        VisualFeaturesList visualFeatures = event.getVisualFeatures();
+        if (visualFeatures != null) {
+            setVisualFeatures(new VisualFeaturesList(visualFeatures));
         }
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
         setStatus(event.getStatus());
         setIssuanceCount(event.getIssuanceCount());
-        setHazardMode(event.getHazardMode());
         setSource(event.getSource());
         setWsId(event.getWsId());
         if (event.getHazardAttributes() != null) {
@@ -378,6 +407,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     @Override
+    public String getIssueSiteID() {
+        return issueSiteID;
+    }
+
+    @Override
+    public void setIssueSiteID(String issueSite) {
+        this.issueSiteID = issueSite;
+    }
+
+    @Override
     public String getEventID() {
         return eventID;
     }
@@ -389,7 +428,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public String getDisplayEventID() {
-        return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
+        return (HazardServicesEventIdUtil
+                .getInstance(
+                        (boolean) getHazardAttribute(HazardConstants.PRACTICE))
+                .getDisplayId(getEventID(),
+                        HazardEventUtilities.getSiteIdentifier()));
     }
 
     public String getUniqueID() {
@@ -483,7 +526,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public void setStartTime(Date startTime) {
-        this.startTime = new Date(startTime.getTime());
+        this.startTime = (startTime == null ? null
+                : new Date(startTime.getTime()));
     }
 
     @Override
@@ -493,7 +537,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public void setEndTime(Date endTime) {
-        this.endTime = new Date(endTime.getTime());
+        this.endTime = (endTime == null ? null : new Date(endTime.getTime()));
     }
 
     @Override
@@ -509,17 +553,30 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public void setCreationTime(Date creationTime) {
-        this.creationTime = new Date(creationTime.getTime());
+        this.creationTime = (creationTime == null ? null
+                : new Date(creationTime.getTime()));
     }
 
     @Override
-    public ProductClass getHazardMode() {
-        return hazardMode;
+    public Date getInsertTime() {
+        return this.insertTime;
     }
 
     @Override
-    public void setHazardMode(ProductClass hazardMode) {
-        this.hazardMode = hazardMode;
+    public void setInsertTime(Date insertTime) {
+        this.insertTime = (insertTime == null ? null
+                : new Date(insertTime.getTime()));
+    }
+
+    @Override
+    public Date getExpirationTime() {
+        return this.expirationTime;
+    }
+
+    @Override
+    public void setExpirationTime(Date expirationTime) {
+        this.expirationTime = (expirationTime == null ? null
+                : new Date(expirationTime.getTime()));
     }
 
     @Override
@@ -608,7 +665,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
          */
         removeHazardAttribute(key);
         this.attributes.add(new HazardAttribute(eventID, key, value));
-
     }
 
     @Override
@@ -620,7 +676,12 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public Serializable getHazardAttribute(String key) {
-        return getHazardAttributes().get(key);
+        for (HazardAttribute attribute : attributes) {
+            if (attribute.getKey().equals(key)) {
+                return (Serializable) attribute.getValueObject();
+            }
+        }
+        return null;
     }
 
     @Override
@@ -650,6 +711,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         StringBuilder builder = new StringBuilder();
         builder.append("EventId : ").append(eventID).append("\n");
         builder.append("Site : ").append(siteID).append("\n");
+        builder.append("IssueSite : ").append(issueSiteID).append("\n");
         builder.append("Phensig : ").append(phenomenon).append(".")
                 .append(significance).append("\n");
         builder.append("Creation Time : ")
@@ -672,9 +734,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         final int prime = 31;
         int result = 1;
         result = prime * result + (modified ? 1 : 0);
-        result = prime * result
-                + ((creationTime == null) ? 0 : creationTime.hashCode());
-        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
         result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
@@ -682,18 +741,23 @@ public class HazardEvent implements IHazardEvent, IValidator {
                 + ((visualFeatures == null) ? 0 : visualFeatures.hashCode());
         result = prime * result
                 + ((attributes == null) ? 0 : attributes.hashCode());
-        result = prime * result
-                + ((hazardMode == null) ? 0 : hazardMode.hashCode());
         result = prime * result + ((source == null) ? 0 : source.hashCode());
         result = prime * result
+                + ((startTime == null) ? 0 : startTime.hashCode());
+        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
+        result = prime * result
+                + ((creationTime == null) ? 0 : creationTime.hashCode());
+        result = prime * result
                 + ((insertTime == null) ? 0 : insertTime.hashCode());
+        result = prime * result
+                + ((expirationTime == null) ? 0 : expirationTime.hashCode());
         result = prime * result
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
         result = prime * result
                 + ((significance == null) ? 0 : significance.hashCode());
         result = prime * result + ((siteID == null) ? 0 : siteID.hashCode());
         result = prime * result
-                + ((startTime == null) ? 0 : startTime.hashCode());
+                + ((issueSiteID == null) ? 0 : issueSiteID.hashCode());
         result = prime * result + ((status == null) ? 0 : status.hashCode());
         result = prime * result + issuanceCount;
         result = prime * result + ((subType == null) ? 0 : subType.hashCode());
@@ -719,20 +783,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
                 return false;
             }
         } else if (!uniqueID.equals(other.uniqueID)) {
-            return false;
-        }
-        if (creationTime == null) {
-            if (other.creationTime != null) {
-                return false;
-            }
-        } else if (!creationTime.equals(other.creationTime)) {
-            return false;
-        }
-        if (endTime == null) {
-            if (other.endTime != null) {
-                return false;
-            }
-        } else if (!endTime.equals(other.endTime)) {
             return false;
         }
         if (eventID == null) {
@@ -763,10 +813,28 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!attributes.equals(other.attributes)) {
             return false;
         }
-        if (hazardMode != other.hazardMode) {
+        if (source != other.source) {
             return false;
         }
-        if (source != other.source) {
+        if (startTime == null) {
+            if (other.startTime != null) {
+                return false;
+            }
+        } else if (!startTime.equals(other.startTime)) {
+            return false;
+        }
+        if (endTime == null) {
+            if (other.endTime != null) {
+                return false;
+            }
+        } else if (!endTime.equals(other.endTime)) {
+            return false;
+        }
+        if (creationTime == null) {
+            if (other.creationTime != null) {
+                return false;
+            }
+        } else if (!creationTime.equals(other.creationTime)) {
             return false;
         }
         if (insertTime == null) {
@@ -774,6 +842,13 @@ public class HazardEvent implements IHazardEvent, IValidator {
                 return false;
             }
         } else if (!insertTime.equals(other.insertTime)) {
+            return false;
+        }
+        if (expirationTime == null) {
+            if (other.expirationTime != null) {
+                return false;
+            }
+        } else if (!expirationTime.equals(other.expirationTime)) {
             return false;
         }
         if (phenomenon == null) {
@@ -797,11 +872,10 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!siteID.equals(other.siteID)) {
             return false;
         }
-        if (startTime == null) {
-            if (other.startTime != null) {
+        if (issueSiteID == null) {
+            if (other.issueSiteID != null)
                 return false;
-            }
-        } else if (!startTime.equals(other.startTime)) {
+        } else if (!issueSiteID.equals(other.issueSiteID)) {
             return false;
         }
         if (status != other.status) {
@@ -818,17 +892,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
             return false;
         }
         return (modified == other.modified);
-    }
-
-    @Override
-    public void setInsertTime(Date date) {
-        this.insertTime = date;
-
-    }
-
-    @Override
-    public Date getInsertTime() {
-        return this.insertTime;
     }
 
     @Override

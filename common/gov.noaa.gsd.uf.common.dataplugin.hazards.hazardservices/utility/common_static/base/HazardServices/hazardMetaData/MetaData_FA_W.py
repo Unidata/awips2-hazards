@@ -8,70 +8,25 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus in ["elapsed", "ending", "ended"]:
-            # FA.W point hazards do not have the endingSynopsis productPart
-            # Removing the metaData for it so it does not show up in the HID.
-            if hazardEvent.get('geoType', '') == 'area':
-                metaData = [
-                            self.getPreviousEditedText(),
-                            self.getWarningType(),
-                            self.getImmediateCause(),
-                            self.getEndingOption(),
-                            ]
-            else:
-                metaData = []
-        elif self.hazardStatus == 'pending':
+        if self.hazardStatus == "ending":
             metaData = [
-                    self.getPreviousEditedText(),
-                    self.getWarningType(),
-                    self.getImmediateCause(),
-                    self.getHiddenFloodSeverity(),
-                    self.getSource(),
-                    self.getEventType(),
-                    self.getFloodOccurring(),
-                    self.getRainAmt(),
-                    self.getLocationsAffected(),
-                    self.getAdditionalInfo(refreshMetadata=True),
-                    ]
-            if (hazardEvent is not None
-                and hazardEvent.get('additionalInfo') is not None
-                and 'floodMoving' in hazardEvent.get('additionalInfo')):
-                metaData += [
-                        self.getRiver(),
-                        self.getFloodLocation(),
-                        self.getUpstreamLocation(),
-                        self.getDownstreamLocation(),
+                        self.getWarningType(),
+                        self.getImmediateCause(),
+                        self.getEndingOption(),
                         ]
-            metaData += [
-                    self.getCTAs(),  
-                    # Preserving CAP defaults for future reference.                  
-#                     self.getCAP_Fields([
-#                                         ("urgency", "Expected"),
-#                                         ("severity", "Severe"),
-#                                         ("certainty", "Likely"),
-#                                         ("responseType", "None"),
-#                                        ]),
-                    ]
-            if hazardEvent is not None:
-                immediateCause = hazardEvent.get("immediateCause")
-                if immediateCause == self.immediateCauseDM()['identifier']:
-                    damOrLeveeName = hazardEvent.get('damOrLeveeName')
-                    metaData.insert(2, self.getDamOrLevee(damOrLeveeName))
-        else: # 'issued'
+        else: # Issued/Pending
             metaData = [
-                    self.getPreviousEditedText(),
-                    self.getWarningType(),
-                    self.getImmediateCause(),
-                    self.getHiddenFloodSeverity(),
-                    self.getSource(),
-                    self.getEventType(),
-                    self.getFloodOccurring(),
-                    self.getRainAmt(),
-                    self.getLocationsAffected(),
-                    self.getAdditionalInfo(refreshMetadata=True),
-                    ]
-            if (hazardEvent is not None
-                and hazardEvent.get('additionalInfo') is not None
+                        self.getWarningType(),
+                        self.getImmediateCause(),
+                        self.getHiddenFloodSeverity(),
+                        self.getSource(),
+                        self.getEventType(),
+                        self.getFloodOccurring(),
+                        self.getRainAmt(),
+                        self.getLocationsAffected(),
+                        self.getAdditionalInfo(refreshMetadata=True),
+                        ]
+            if (hazardEvent and hazardEvent.get('additionalInfo') is not None
                 and 'floodMoving' in hazardEvent.get('additionalInfo')):
                 metaData += [
                         self.getRiver(),
@@ -81,7 +36,12 @@ class MetaData(CommonMetaData.MetaData):
                         ]
             metaData += [
                     self.getCTAs(),
-                ]
+                    ]
+            if hazardEvent is not None:
+                immediateCause = hazardEvent.get("immediateCause")
+                if immediateCause == self.immediateCauseDM()['identifier']:
+                    damOrLeveeName = hazardEvent.get('damOrLeveeName')
+                    metaData.insert(2, self.getDamOrLevee(damOrLeveeName))
             
         return {
                 METADATA_KEY: metaData
@@ -134,8 +94,8 @@ class MetaData(CommonMetaData.MetaData):
                 self.immediateCauseGO(),
             ]
          
-    def getSource(self):
-        choices = [
+    def getSourceChoices(self):
+        return [
             self.dopplerSource(),
             self.dopplerGaugesSource(),
             self.trainedSpottersSource(),
@@ -146,14 +106,6 @@ class MetaData(CommonMetaData.MetaData):
             self.satelliteGaugesSource(),
             self.gaugesSource(),
                     ]
-        
-        return {
-             "fieldName": "source",
-            "fieldType":"RadioButtons",
-            "label":"Source:",
-            "values": self.defaultValue(choices),
-            "choices": choices,                
-                }  
 
     def getEventType(self):
         return {

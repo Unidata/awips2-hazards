@@ -55,13 +55,37 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["getDialogInfoNeeded"] = False
         return metaDict
 
-    def defineSpatialInfo(self, eventSet):
+    def defineSpatialInfo(self, eventSet, visualFeatures, collecting):
         '''
-        @summary: Determine spatial information needed by the recommender.
+        @summary: Determines spatial information needed by the recommender. Each time
+        this recommender is executed, this method is called prior to the execute().
+        It will be called with None for the visualFeatures parameter and True for the
+        collecting parameter.
+       
+        Because only one round of visual feature modification is allowed for the
+        generated visual features, it will be called one more time after the first
+        time, this time to generate read-only features displayed while the recommender
+        is executing. This time, the visual feature as modified by the user will be
+        provided as a parameter, and collecting will be False.
+        
         @param eventSet: Attributes providing the execution context of the recommender.
-        @return: List of visual features to be used by the user to provide
-        spatial input; may be empty.
+        @param visualFeatures: Visual features returned by the previous call to this
+        method, if any, with any modification made by the user applied.
+        @param collecting: Flag indicating whether or not the visual features to be
+        generated, if any, are for collecting information from the user, or (if the
+        last call to the method for this execution) simply for displaying information
+        to the user.
+        @return: Visual features to be used by the user to provide spatial input;
+        may be empty.
         '''
+        
+        # If this call is intended to generate read-only visual features,
+        # simply take the input visual feature and make it uneditable,
+        # and change its text.
+        if not collecting:
+            visualFeatures[0]["dragCapability"] = "none"
+            visualFeatures[0]["label"] = "Generating recommendations..."
+            return visualFeatures
         
         # If the trigger was a vanilla execution of the recommender, or a
         # hazard-type-first execution, return a visual feature that will
@@ -93,7 +117,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                     }
                                    ])
         return None
-
+        
     def indexOfClosest(self, value, values):
         '''
         @summary: Get the index of the member of list 'values' that is
@@ -610,7 +634,7 @@ class Recommender(RecommenderTemplate.Recommender):
         eventAttributes["track"] = trackCoordinates
 
         # Cache some stuff the logic that composes the returned Java backed
-        # HazardEvent object needs.This is made a temporary member of the
+        # HazardEvent object needs. This is made a temporary member of the
         # attributes, which the parent method execute() will delete. This way,
         # the correctness of this information can be evaluated in unit tests.
         forJavaObj = {}
@@ -631,7 +655,13 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: Event set of created and/or modified hazard events, or None if
         no hazard events were created or modified.
         '''
+        sessionAttributes = eventSet.getAttributes()
         
+        caveMode = sessionAttributes.get('runMode','PRACTICE').upper()
+        self.practice = True
+        if caveMode == 'OPERATIONAL':
+            self.practice = False
+
         # If the recommender was executed manually, handle it one way; otherwise,
         # handle it as a modification of an existing hazard event.
         hazardEvent = None
@@ -710,7 +740,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
             # If there is not an existing hazard event, create one now.
             if not haveEvent:
-                hazardEvent = EventFactory.createEvent()
+                hazardEvent = EventFactory.createEvent(self.practice)
     
                 # String cast accounts for occasional JSON promotion of ASCII strings
                 # to Unicode strings, which makes JEP barf.
@@ -736,7 +766,7 @@ class Recommender(RecommenderTemplate.Recommender):
             assert self.setHazardGeometryFromDictionary(hazardEvent, forJavaObj), "missing event geometry"
     
             # Save the hazard attributes calculated previously.
-            hazardEvent.setHazardAttributes(resultDict)
+            hazardEvent.addHazardAttributes(resultDict)
             
         else:
 
@@ -750,17 +780,18 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.logger.info("Hazard event found for StormTrackTool to modify is not storm tracked.")
                 return None
 
-            # if the trigger was the modification of the event itself, handle it one
+            # If the trigger was the modification of the event itself, handle it one
             # way; otherwise, the trigger is a visual feature modification, which is
             # to be handled another way.
-            if trigger == "hazardEventModification":
+            attributeIdentifiers = eventSet.getAttributes().get("attributeIdentifiers")
+            if trigger == "hazardEventModification" and attributeIdentifiers:
 
                 # If the geometry of the event changed, update the visual features
                 # to match; if the time range of the event changed, update its
                 # underlying data; if its status changed, continue, since the
                 # visual features will need to be recreated; and if anything else
                 # changed, do nothing. 
-                changed = list(eventSet.getAttributes().get("attributeIdentifiers"))[0]
+                changed = list(attributeIdentifiers)[0]
                 if changed == "geometry":
                     
                     # If no visual features are to be displayed, there is nothing to
@@ -775,7 +806,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
                     # If the base geometry visual feature's geometry is already the
                     # same as the new geometry, do nothing.
-                    if geometry.equals(baseFeature["geometry"].values()[0]):
+                    if geometry.asShapely().equals(baseFeature["geometry"].values()[0].asShapely()):
                         return None
                     
                     # Replace the base geometry visual feature's geometry with the
@@ -807,12 +838,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 # that there are no visual features, continue, since the visual
                 # features may need to be created. Otherwise, see which visual
                 # feature changed.
-                attributeIdentifiers = eventSet.getAttributes().get("attributeIdentifiers")
-                if len(attributeIdentifiers) > 0:
+                visualFeatureIdentifiers = eventSet.getAttributes().get("visualFeatureIdentifiers")
+                if len(visualFeatureIdentifiers) > 0:
                 
                     # Get the identifier of the visual feature that changed, and
                     # the visual feature associated with said identifier.
-                    changed = list(attributeIdentifiers)[0]
+                    changed = list(visualFeatureIdentifiers)[0]
                     visualFeatures = hazardEvent.getVisualFeatures()
                     changedFeature = self.getVisualFeature(changed, visualFeatures)
                     
@@ -934,7 +965,7 @@ class Recommender(RecommenderTemplate.Recommender):
         False.
         '''
 
-        return hazardEvent.getStatus() in ["POTENTIAL", "PENDING"]
+        return hazardEvent.getStatus() in ["POTENTIAL", "PENDING", "ISSUED"]
     
     def createVisualFeatures(self, hazardEvent):
         '''
@@ -1070,10 +1101,10 @@ class Recommender(RecommenderTemplate.Recommender):
             labelFeature = {
                             "identifier": "label",
                             "visibilityConstraints": "always",
-                            "borderColor": { "red": 1.0, "green": 0.0, "blue": 0.0, "alpha": 1.0 },
+                            "borderColor": { "red": 0.0, "green": 0.0, "blue": 0.0, "alpha": 0.0 },
                             "textSize": "eventType",
                             "label": "eventType",
-                            "diameter": 5,
+                            "diameter": 1,
                             "textColor": "eventType",
                             "dragCapability": "none",
                             "topmost": True,
@@ -1110,13 +1141,8 @@ class Recommender(RecommenderTemplate.Recommender):
         eventIdentifier = str(eventIdentifier)
 
         # Ensure the event identifier is not one that is currently locked.
-        sessionAttributes = eventSet.getAttributes()
-        caveMode = sessionAttributes.get('runMode','PRACTICE').upper()
-        practice = True
-        if caveMode == 'OPERATIONAL':
-            practice = False
         if self.hazardEventLockUtils is None:
-            self.hazardEventLockUtils = HazardEventLockUtils(practice)
+            self.hazardEventLockUtils = HazardEventLockUtils(self.practice)
         if eventIdentifier in self.hazardEventLockUtils.getLockedEvents():
             return None
 

@@ -13,7 +13,6 @@
 import os, types, sys, collections
 from HydroProductParts import HydroProductParts
 import HydroGenerator
-from KeyInfo import KeyInfo
 
 class Product(HydroGenerator.Product):
     
@@ -90,7 +89,9 @@ class Product(HydroGenerator.Product):
     
     def _addProductParts(self, productSegmentGroup):
         productSegments = productSegmentGroup.productSegments
-        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
+        productPartsDict = self._hydroProductParts.productParts_ESF(productSegments)
+        productParts = self.createProductParts(productPartsDict)
+        productSegmentGroup.setProductParts(productParts)
 
     def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):  
         default = '''
@@ -115,9 +116,9 @@ class Product(HydroGenerator.Product):
          '''  
         productDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
-    def executeFrom(self, dataList, eventSet, keyInfo=None):
-        if keyInfo is not None:
-            dataList = self.correctProduct(dataList, eventSet, keyInfo, False)
+    def executeFrom(self, dataList, eventSet, productParts=None):
+        if isinstance(productParts, list) and len(productParts) > 0:
+            dataList = self.correctProduct(dataList, eventSet, productParts, False)
         else:
             self.updateExpireTimes(dataList)
         return dataList

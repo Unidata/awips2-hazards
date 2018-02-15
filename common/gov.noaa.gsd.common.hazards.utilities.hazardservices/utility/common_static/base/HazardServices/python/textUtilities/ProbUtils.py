@@ -101,7 +101,7 @@ class ProbUtils(object):
         timestamp = datetime.datetime.utcfromtimestamp(timestamp)
         timeStamp = timestamp.replace(second=0)
 
-        mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
+        mode = eventSet.getAttributes().get('runMode', 'PRACTICE').upper()
         practice = True
         if mode == 'OPERATIONAL':
             practice = False

@@ -71,13 +71,19 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Apr 28, 2016 18267      Chris.Golden Added flag indicating whether
  *                                      or not start time is unrestricted.
  * Jun 23, 2016 19537      Chris.Golden Made hatching style an enum.
+ * Sep 16, 2016 20616      Sara.Stewart Added endWhenIssuing+Expired fields.
  * Oct 06, 2016 22894      Chris.Golden Added sessionAttributes list.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * Oct 21, 2016 22489      Robert.Blum  Added accurateCities flag.
  * Nov 17, 2016 26313      Chris.Golden Changed UGC type to be a set of
  *                                      zero or more types.
+ * Mar 20, 2017 28470      Kevin.Bisanz Renamed endWhenIssuing/endWhenExpired
+ *                                      fields to elapseWhenIssued and
+ *                                      elapseWhenExpired.
+ * Apr 12, 2017 30477      Kevin.Bisanz Added inclusionThresholdWarning
  * Dec 20, 2017 20739      Chris.Golden Added regenMetadataUponSelection
  *                                      flag.
+ * Apr 23, 2018 15561      Chris.Golden Added hazardous flag.
  * </pre>
  * 
  * @author bsteffen
@@ -105,6 +111,8 @@ public class HazardTypeEntry {
 
     private boolean requirePointId;
 
+    private boolean hazardous = true;
+
     private int[] expirationTime;
 
     private String[] hazardConflictList;
@@ -129,6 +137,8 @@ public class HazardTypeEntry {
 
     private boolean inclusionAreaTest;
 
+    private boolean inclusionThresholdWarning;
+
     private int hazardPointLimit;
 
     private String[] durationChoiceList;
@@ -138,6 +148,10 @@ public class HazardTypeEntry {
     private long defaultDuration;
 
     private boolean allowUntilFurtherNotice;
+
+    private boolean elapseWhenIssued;
+
+    private boolean elapseWhenExpired;
 
     private boolean accurateCities = false;
 
@@ -245,6 +259,14 @@ public class HazardTypeEntry {
 
     public void setRequirePointId(boolean requirePointId) {
         this.requirePointId = requirePointId;
+    }
+
+    public boolean isHazardous() {
+        return hazardous;
+    }
+
+    public void setHazardous(boolean hazardous) {
+        this.hazardous = hazardous;
     }
 
     public int[] getExpirationTime() {
@@ -451,6 +473,23 @@ public class HazardTypeEntry {
     }
 
     /**
+     * @return Flag indicating if a warning should be displayed when UGCs do not
+     *         meet inclusion thresholds and inclusion will be recalculated
+     *         without thresholds.
+     */
+    public boolean isInclusionThresholdWarning() {
+        return inclusionThresholdWarning;
+    }
+
+    /**
+     * @param inclusionThresholdWarning
+     */
+    public void setInclusionThresholdWarning(
+            boolean inclusionThresholdWarning) {
+        this.inclusionThresholdWarning = inclusionThresholdWarning;
+    }
+
+    /**
      * @return Hatching style.
      */
     public HatchingStyle getHatchingStyle() {
@@ -523,5 +562,21 @@ public class HazardTypeEntry {
      */
     public void setAccurateCities(boolean accurateCities) {
         this.accurateCities = accurateCities;
+    }
+
+    public boolean isElapseWhenIssued() {
+        return elapseWhenIssued;
+    }
+
+    public void setElapseWhenIssued(boolean elapseWhenIssued) {
+        this.elapseWhenIssued = elapseWhenIssued;
+    }
+
+    public boolean isElapseWhenExpired() {
+        return elapseWhenExpired;
+    }
+
+    public void setElapseWhenExpired(boolean elapseWhenExpired) {
+        this.elapseWhenExpired = elapseWhenExpired;
     }
 }

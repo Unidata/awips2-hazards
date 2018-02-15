@@ -3,17 +3,6 @@
     a html file in '/tmp' directory that can be opened to view the
     sample output. The html code is also outputted to the product
     editor.
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Feb 04, 2015    6322    Robert.Blum Initial creation
-    Apr 16, 2015    7579    Robert.Blum Added editableParts dictionary for
-                                        future use.
-    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
-    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
-    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
-    May 13, 2016   16913  Ben.Phillippe Fixed minor error with checking geometries
 '''
 
 import FormatTemplate
@@ -31,31 +20,27 @@ class Format(FormatTemplate.Formatter):
         self._tpc = TextProductCommon()
         self._tpc.setUp(areaDict)
 
-        # Dictionary that will hold the KeyInfo entries of the
-        # product part text strings to be displayed in the Product
-        # Editor. 
+        # List that will hold the ProductPart entries to be 
+        # displayed in the Product Editor.
         # Since this is just a sample format, no editableParts
         # are defined currently.
         if editableEntries:
-            self._useProductTextTable = False
-            self._editableParts = editableEntries
+            self.editableParts = editableEntries
         else:
-            self._useProductTextTable = True
-            self._editableParts = OrderedDict()
+            self.editableParts = []
 
 
-    def execute(self, productDict, editableEntries, overrideProductText):
+    def execute(self, productDict, editableEntries):
         '''
         Returns an html formatted string and a map of editable parts that
         is currently blank for this format.
         @param productDict: dictionary values
         @return: Returns the html string and map of editable parts
         '''
-        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         htmlProduct = self.createHTMLProduct()
-        return [htmlProduct], self._editableParts
+        return [htmlProduct], self.editableParts
 
     def createHTMLProduct(self):
         html = "<!DOCTYPE html>\n"
@@ -71,6 +56,7 @@ class Format(FormatTemplate.Formatter):
         html +=  "<script>\n"
         html +=  "var x=new google.maps.LatLng(41.3, 263.9);"
         
+        idx = 0
         polygonPointLists = self.getPolygonPointLists()
         for polygon in polygonPointLists:
             idx = 0
@@ -156,7 +142,7 @@ class Format(FormatTemplate.Formatter):
                 legacyFormatter = Legacy_ESF_Formatter.Format()
             else:
                 return 'There is no product formatter for this hazard type: ' + productCategory
-            legacyText = legacyFormatter.execute(self.productDict, None, self.overrideProductText)[0][0]
+            legacyText = legacyFormatter.execute(self.productDict, self.editableParts)[0][0]
         except:
             legacyText = 'Error running legacy formatter.'
         return legacyText

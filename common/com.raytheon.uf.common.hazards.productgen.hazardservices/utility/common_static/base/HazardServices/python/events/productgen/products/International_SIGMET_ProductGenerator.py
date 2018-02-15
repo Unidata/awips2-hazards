@@ -105,7 +105,7 @@ class Product(HydroGenerator.Product):
         productDict['productParts'] = parts
         eventDicts = []
         
-        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
         self.practice = (False if caveMode == 'OPERATIONAL' else True) 
                           
         for event in self._inputHazardEvents:

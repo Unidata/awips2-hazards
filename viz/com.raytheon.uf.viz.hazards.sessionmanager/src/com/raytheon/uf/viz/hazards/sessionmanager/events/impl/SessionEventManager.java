@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EVENT_ID_DISPLAY_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FORECAST_POINT;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
@@ -55,8 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import org.apache.commons.lang.time.DateUtils;
 
@@ -72,11 +69,11 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil.IdDisplayType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventView;
@@ -85,6 +82,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent.Source;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.ISessionHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
@@ -101,11 +100,11 @@ import com.raytheon.uf.common.message.WsId;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -151,6 +150,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeReset;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.simulatedtime.SimulatedTimeOperations;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -356,14 +356,15 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      exceptions to be thrown when upgrading certain watches to warnings.
  * Sep 09  2015   10207    Chris.Cody   Switched Polygon Point reduction to use Visvalingam-Whyatt algorithm.
  * Sep 15, 2015    7629    Robert.Blum  Changes for saving pending hazards.
- * Oct 07, 2015    7308    Robert.Blum  WarnGen movement of issued hazards.
- * Oct 14, 2015   12494    Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
- *                                      significance) where appropriate.
  * Sep 28, 2015 10302,8167 hansen       Added calls to "getSettingsValue"
  * Oct 01, 2015    7629    Robert.Blum  Fixing bug from first commit that allowed event to not be assigned an
  *                                      event ID.
+ * Oct 07, 2015    7308    Robert.Blum  WarnGen movement of issued hazards.
+ * Oct 14, 2015   12494    Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
+ *                                      significance) where appropriate.
  * Oct 21, 2015    7308    Robert.Blum  Added buffer when checking if current geometry is covered by the
  *                                      issuedGeometry, when checking if the current geometry is valid.
+ * Oct 27, 2015    6617    Robert.Blum  Changed call to get hazardType.
  * Nov 10, 2015   12762    Chris.Golden Added recommender running in response to hazard event metadata or
  *                                      other attribute changes.
  * Dec 01, 2015   13172    Robert.Blum  Changed to use WarnGenPolygonSimplifier.
@@ -415,6 +416,7 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  * May 06, 2016   18202    Robert.Blum  Changes for operational mode.
  * May 10, 2016   18515    Chris.Golden Changed to optionally deselect a hazard event after the latter is
  *                                      issued, if the current setting specifies this option.
+ * May 12, 2016   16374    mduff        Added filter icon functionality
  * May 13, 2016   15676    Chris.Golden Changed to strip visual features from the copy of a hazard event that
  *                                      is being persisted to the database, so that visual features are not
  *                                      stored (shrinking the size of the hazard events). Also changed to
@@ -454,6 +456,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      Also removed code that was redundant from addEvent() that added
  *                                      a geometry to an existing event, since this is not the job of the
  *                                      session manager and was already being done by the spatial presenter.
+ * Sep 16, 2016   20616    Sara.Stewart Changed to make event elapsed instead of issued if appropriate for
+ *                                      the event type.
  * Sep 26, 2016   21758    Chris.Golden Changed removeEvent() and removeEvents() to include a boolean
  *                                      parameter indicating whether confirmation should be done or not.
  *                                      If the parameter is true, then any proposed-status events to be
@@ -501,6 +505,7 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  * Dec 16, 2016   27006    bkowal       Set the replaced hazard type attribute on events that are
  *                                      replacing other hazard events.
  * Dec 19, 2016   21504    Robert.Blum  Adapted to hazard locking.
+ * Jan 04, 2017   26746    Kevin.Bisanz Add IMessenger as parameter to GeoMapUtilities construction.
  * Jan 05, 2017   21504    Robert.Blum  Changed response to lock break notification if the event
  *                                      has elapsed.
  * Feb 01, 2017   15556    Chris.Golden Added methods to get the history count and visible history
@@ -515,6 +520,9 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      for historical snapshots of events. Fixed bug that did not
  *                                      remove an event from the selection set if its status changed
  *                                      to one that was invisible under the current settings.
+ * Feb 09, 2017   28640    Robert.Blum  Unlock events when they are being removed.
+ * Feb 14, 2017   29006    Robert.Blum  Removing issueTime when saving events.
+ * Feb 16, 2017   28708    mduff        Added setIdDisplayType.
  * Feb 17, 2017   21676    Chris.Golden Moved SessionEventUtilities methods into this class, making
  *                                      them member methods instead of statics, since the former class
  *                                      has no reason to have its methods separate from this class's
@@ -537,6 +545,11 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      and ensured that events saved as a result of the user or a
  *                                      recommender requesting persistence have no issueTime attribute,
  *                                      whereas events being saved because they were just issued do.
+ * Feb 21, 2017   29006    Robert.Blum  Removing issueTime when events are elapsed.
+ * Mar 13, 2017   28708    mduff        Changes to support event id refactor.
+ * Mar 15, 2017   30232    bkowal       Update the user when an event is created in response to altering
+ *                                      the hazard type of an existing event.
+ * Mar 15, 2017   30233    mduff        Changed error message of geometry increasing in size.
  * Mar 15, 2017   29138    Chris.Golden Fixed bug with database query requests that included particular
  *                                      statuses in the query parameters and that returned earlier
  *                                      versions of hazard events with the requested statuses, even
@@ -553,6 +566,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      appropriate, and have their modified flag reset when not.
  *                                      Finally, added tracking of which event attributes should not
  *                                      alter an event's modified flag when their values are changed.
+ * Mar 22, 2017   28470    Kevin.Bisanz Move elapse logic to EDEX.
+ * Mar 24, 2017   28013    Kevin.Bisanz Prevent save/propose if operational mode in simulated time.
  * Mar 30, 2017   15528    Chris.Golden Changed to reset modified flag when asked to do so during the
  *                                      persistence of a hazard event. The modified flag for each
  *                                      hazard event is now part of the state of the event saved to
@@ -560,6 +575,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      setting of workstation and user name to that of new version of
  *                                      event. Also made isEventChecked() only return true if the
  *                                      specified event is visible given the current filtering.
+ * Apr 03, 2017   32574    bkowal       Confirm that the user would like to end every issued hazard
+ *                                      event when all possible issued events have been selected.
  * Apr 13, 2017   33142    Chris.Golden Changed removeEvent() to remove all copies of the hazard
  *                                      event from the database, instead of having to painstakingly
  *                                      go through and try to find all copies to remove. Also added
@@ -573,6 +590,10 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      problems. Also fixed changing of hazard type so that if
  *                                      "until further notice" was on for the old type, it is
  *                                      turned off in the new type.
+ * Apr 28, 2017   33430    Robert.Blum  Removed HazardMode.
+ * May 02, 2017   33739    mduff        Display confirmation dialog for ending all visible hazards
+ *                                      only if ending all visible.
+ * May 15, 2017   34069    mduff        Added handling for HazardStatus.ELAPSING.
  * May 24, 2017   15561    Chris.Golden Removed unneeded validation of significance for new events
  *                                      (as such things should not be hardcoded).
  * May 31, 2017   34684    Chris.Golden Added invocation of recommenders in response to selection
@@ -610,6 +631,7 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      methods to take the new parameter. Also fixed metadata
  *                                      fetching to occur asynchronously when triggered by a status
  *                                      change or by an attribute change.
+ * Oct 27, 2017   36174    Kevin.Bisanz Remove restriction to hydro products for filter icons.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * Dec 13, 2017   40923    Chris.Golden Added handling of returned modified hazard event from
  *                                      metadata fetch by merging it into session hazard event.
@@ -654,8 +676,20 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      hazard events from ENDED to ELAPSED. Also changed to
  *                                      check for geometry validity when merging hazard events
  *                                      from a recommender run's result event set.
+ * Mar 23, 2018   11864    Chris.Golden Changed to work with new first-class field expiration time
+ *                                      field of hazard events.
+ * Apr 23, 2018   15561    Chris.Golden Added isHazardous() method, changed BaseHazardEvent to
+ *                                      SessionHazardEvent, and added client-side expiring and
+ *                                      unexpiring of session copies of hazard events. Such events
+ *                                      can now have their statuses set to ELAPSING or ELAPSED
+ *                                      by the client without persisting such status changes.
  * May 04, 2018   50032    Chris.Golden Added additional filters to settings, allowing filtering
  *                                      on arbitrary hazard attributes on a per-settings basis.
+ * May 14, 2018   33572    Chris.Golden Fixed problem of hazard areas not being updated before
+ *                                      conflicts are checked following a geometry modification.
+ * Jun 06, 2018   15561    Chris.Golden Added handling of temporary event identifiers within the
+ *                                      addEvent() method. Also added practice flag for hazard
+ *                                      event construction.
  * </pre>
  * 
  * @author bsteffen
@@ -666,7 +700,8 @@ public class SessionEventManager implements ISessionEventManager {
     // Private Static Constants
 
     private static final Set<String> ATTRIBUTES_TO_RETAIN_ON_MERGE = ImmutableSet
-            .of(HazardConstants.ISSUED, HazardConstants.ISSUE_TIME);
+            .of(HazardConstants.ISSUED, HazardConstants.ISSUE_TIME,
+                    HazardConstants.PRACTICE, HazardConstants.VISIBLE_GEOMETRY);
 
     private static final String POINT_ID = "id";
 
@@ -709,18 +744,6 @@ public class SessionEventManager implements ISessionEventManager {
     private final BiMap<ObservedHazardEvent, HazardEventView> viewsForHazardEvents = HashBiMap
             .create();
 
-    /*
-     * TODO: Decide whether expiration is to be done in Java code or not. For
-     * now, this code is commented out; not expiration of events will occur.
-     * This is not a permanent solution.
-     */
-    // private Timer eventExpirationTimer = new Timer(true);
-    //
-    // private final Map<String, TimerTask> expirationTasks = new
-    // ConcurrentHashMap<String, TimerTask>();
-
-    private ISimulatedTimeChangeListener timeListener;
-
     private final Set<IHazardEventView> eventViewsUndergoingMetadataFetch = new HashSet<>();
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
@@ -730,6 +753,8 @@ public class SessionEventManager implements ISessionEventManager {
     private final Map<String, Range<Long>> endTimeBoundariesForEventIdentifiers = new HashMap<>();
 
     private final Map<String, TimeResolution> timeResolutionsForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Date> expireTimesForEventIdentifiers = new HashMap<>();
 
     /**
      * Map pairing identifiers of issued events with either the end times they
@@ -823,6 +848,8 @@ public class SessionEventManager implements ISessionEventManager {
     private final GeoMapUtilities geoMapUtilities;
 
     private final RiverForecastManager riverForecastManager;
+
+    private boolean practiceMode;
 
     private boolean addCreatedEventsToSelected;
 
@@ -987,12 +1014,11 @@ public class SessionEventManager implements ISessionEventManager {
         this.notificationSender = notificationSender;
         new SessionHazardNotificationListener(this,
                 sessionManager.getRunnableAsynchronousScheduler());
-        SimulatedTime.getSystemTime()
-                .addSimulatedTimeChangeListener(createTimeListener());
         this.messenger = messenger;
         geometryFactory = new GeometryFactory();
-        this.geoMapUtilities = new GeoMapUtilities(this.configManager);
+        this.geoMapUtilities = sessionManager.getGeoMapUtilities();
         this.riverForecastManager = new RiverForecastManager();
+        this.practiceMode = !CAVEMode.OPERATIONAL.equals(CAVEMode.getMode());
 
         notificationSender.registerIntraNotificationHandler(
                 SessionEventsAdded.class, eventsAddedHandler);
@@ -1012,6 +1038,15 @@ public class SessionEventManager implements ISessionEventManager {
                 Sets.<Class<? extends CurrentTimeChanged>> newHashSet(
                         CurrentTimeReset.class, CurrentTimeMinuteTicked.class),
                 currentTimeChangeHandler);
+
+        timeManager.runAtRegularIntervals(new Runnable() {
+
+            @Override
+            public void run() {
+                expireOrUnexpireHazardEvents();
+            }
+
+        }, 1);
     }
 
     // Public Methods
@@ -1116,10 +1151,34 @@ public class SessionEventManager implements ISessionEventManager {
 
     @Override
     public <T> EventPropertyChangeResult changeEventProperty(
+            String eventIdentifier, EventPropertyChange<T> propertyChange,
+            T parameters) {
+        IHazardEventView event = getEventById(eventIdentifier);
+        if (event == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+        return changeEventProperty(event, propertyChange, parameters,
+                Originator.OTHER);
+    }
+
+    @Override
+    public <T> EventPropertyChangeResult changeEventProperty(
             IHazardEventView event, EventPropertyChange<T> propertyChange,
             T parameters) {
         return changeEventProperty(event, propertyChange, parameters,
                 Originator.OTHER);
+    }
+
+    @Override
+    public <T> EventPropertyChangeResult changeEventProperty(
+            String eventIdentifier, EventPropertyChange<T> propertyChange,
+            T parameters, IOriginator originator) {
+        IHazardEventView event = getEventById(eventIdentifier);
+        if (event == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+        return changeEventProperty(event, propertyChange, parameters,
+                originator);
     }
 
     @SuppressWarnings("unchecked")
@@ -1221,11 +1280,15 @@ public class SessionEventManager implements ISessionEventManager {
         } else if (propertyChange == SET_EVENT_START_TIME) {
             sessionEvent.setStartTime((Date) parameters, originator);
         } else if (propertyChange == SET_EVENT_END_TIME) {
+            removeCachedEventExpireTimeIfEndTimeChanging(sessionEvent,
+                    (Date) parameters);
             sessionEvent.setEndTime((Date) parameters, originator);
+            expireOrUnexpireHazardEvent(sessionEvent);
         } else if (propertyChange == SET_EVENT_TIME_RANGE) {
             Pair<Date, Date> startAndEndTimes = (Pair<Date, Date>) parameters;
             if (setEventTimeRange(sessionEvent, startAndEndTimes.getFirst(),
                     startAndEndTimes.getSecond(), originator) == false) {
+                expireOrUnexpireHazardEvent(sessionEvent);
                 return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
             }
         } else if (propertyChange == SET_EVENT_GEOMETRY) {
@@ -1355,8 +1418,9 @@ public class SessionEventManager implements ISessionEventManager {
         ObservedHazardEvent oldEvent = null;
         if (canEventTypeBeChanged(event) == false) {
             oldEvent = event;
-            IHazardEvent baseEvent = new BaseHazardEvent(event);
+            IHazardEvent baseEvent = new SessionHazardEvent(event);
             baseEvent.setEventID("");
+            baseEvent.setWsId(VizApp.getWsId());
             baseEvent.setStatus(HazardStatus.PENDING);
             baseEvent.addHazardAttribute(HazardConstants.REPLACES,
                     configManager.getHeadline(oldEvent));
@@ -1374,7 +1438,7 @@ public class SessionEventManager implements ISessionEventManager {
             /*
              * New event should not have product information.
              */
-            baseEvent.removeHazardAttribute(EXPIRATION_TIME);
+            baseEvent.setExpirationTime(null);
             baseEvent.removeHazardAttribute(ISSUE_TIME);
             baseEvent.removeHazardAttribute(VTEC_CODES);
             baseEvent.removeHazardAttribute(ETNS);
@@ -1428,7 +1492,7 @@ public class SessionEventManager implements ISessionEventManager {
              * by the original originator.
              */
             if (oldEvent != null) {
-                IHazardEvent tempEvent = new BaseHazardEvent();
+                IHazardEvent tempEvent = new SessionHazardEvent(practiceMode);
                 tempEvent.setPhenomenon(phenomenon);
                 tempEvent.setSignificance(significance);
                 tempEvent.setSubType(subType);
@@ -1527,7 +1591,9 @@ public class SessionEventManager implements ISessionEventManager {
          */
         if ((newStartTime.equals(oldStartTime) == false)
                 || (newEndTime.equals(oldEndTime) == false)) {
+            removeCachedEventExpireTimeIfEndTimeChanging(event, newEndTime);
             event.setTimeRange(newStartTime, newEndTime);
+            expireOrUnexpireHazardEvent(event);
         }
 
         /*
@@ -1722,6 +1788,7 @@ public class SessionEventManager implements ISessionEventManager {
         /*
          * Set the new time range for the event.
          */
+        removeCachedEventExpireTimeIfEndTimeChanging(event, endTime);
         event.setTimeRange(startTime, endTime, originator);
 
         sessionManager.finishBatchedChanges();
@@ -1764,7 +1831,6 @@ public class SessionEventManager implements ISessionEventManager {
             sessionManager.startBatchedChanges();
             makeHighResolutionVisible(event, originator);
             event.setGeometry(geometry, originator);
-            updateHazardAreas(getViewForSessionEvent(event));
             sessionManager.finishBatchedChanges();
             return true;
         }
@@ -1885,8 +1951,12 @@ public class SessionEventManager implements ISessionEventManager {
                  * If a problem occurred, use the default duration to avoid
                  * leaving the hazard event in an invalid state.
                  */
-                event.setTimeRange(new Date(startTime), new Date(
-                        startTime + configManager.getDefaultDuration(event)));
+                Date endTimeDate = new Date(
+                        startTime + configManager.getDefaultDuration(event));
+                removeCachedEventExpireTimeIfEndTimeChanging(event,
+                        endTimeDate);
+                event.setTimeRange(new Date(startTime), endTimeDate);
+                expireOrUnexpireHazardEvent(event);
                 return;
             }
 
@@ -1913,8 +1983,10 @@ public class SessionEventManager implements ISessionEventManager {
              * Set the end time to match the duration choice that yields an end
              * time closest to the original.
              */
-            event.setTimeRange(new Date(startTime),
-                    new Date(startTime + minDifferenceTimeDelta));
+            Date endTimeDate = new Date(startTime + minDifferenceTimeDelta);
+            removeCachedEventExpireTimeIfEndTimeChanging(event, endTimeDate);
+            event.setTimeRange(new Date(startTime), endTimeDate);
+            expireOrUnexpireHazardEvent(event);
         }
     }
 
@@ -1949,9 +2021,8 @@ public class SessionEventManager implements ISessionEventManager {
 
         if ((eventIdDisplayTypeString != null)
                 && (eventIdDisplayTypeString.isEmpty() == false)) {
-            HazardServicesEventIdUtil
-                    .setIdDisplayType(HazardServicesEventIdUtil.IdDisplayType
-                            .valueOf(eventIdDisplayTypeString));
+            setIdDisplayType(HazardServicesEventIdUtil.IdDisplayType
+                    .valueOf(eventIdDisplayTypeString));
         }
     }
 
@@ -2022,7 +2093,8 @@ public class SessionEventManager implements ISessionEventManager {
      */
     private void sessionEventStatusModified(final IHazardEventView eventView,
             final IOriginator originator) {
-        if ((eventView.getStatus() == HazardStatus.ELAPSED)
+        if ((eventView.getStatus() == HazardStatus.ELAPSING)
+                || (eventView.getStatus() == HazardStatus.ELAPSED)
                 || (eventView.getStatus() == HazardStatus.ENDING)
                 || (eventView.getStatus() == HazardStatus.ENDED)) {
             if (eventView.getStatus() == HazardStatus.ENDING) {
@@ -2101,7 +2173,7 @@ public class SessionEventManager implements ISessionEventManager {
                     Set<String> newlyDeselectedEventIdentifiers = new HashSet<>(
                             eventSet.size(), 1.0f);
                     for (IEvent event : eventSet) {
-                        BaseHazardEvent hazardEvent = (BaseHazardEvent) event;
+                        SessionHazardEvent hazardEvent = (SessionHazardEvent) event;
                         IHazardEventView oEventView = getEventById(
                                 hazardEvent.getEventID());
                         ObservedHazardEvent oEvent = getSessionEventForView(
@@ -2251,7 +2323,7 @@ public class SessionEventManager implements ISessionEventManager {
                     .get(event.getEventID());
         } else {
             return configManager
-                    .getMetadataForHazardEvent(new BaseHazardEvent(event))
+                    .getMetadataForHazardEvent(new SessionHazardEvent(event))
                     .getMegawidgetSpecifierManager();
         }
     }
@@ -2408,7 +2480,7 @@ public class SessionEventManager implements ISessionEventManager {
          * in the cache.
          */
         HazardEventMetadata metadata = configManager
-                .getMetadataForHazardEvent(new BaseHazardEvent(eventView));
+                .getMetadataForHazardEvent(new SessionHazardEvent(eventView));
         MegawidgetSpecifierManager manager = metadata
                 .getMegawidgetSpecifierManager();
 
@@ -2458,7 +2530,7 @@ public class SessionEventManager implements ISessionEventManager {
         IHazardEvent modifiedHazardEvent = metadata.getModifiedHazardEvent();
         if (modifiedHazardEvent != null) {
             mergeHazardEvents(modifiedHazardEvent, eventView, false, false,
-                    false, Originator.OTHER);
+                    false, false, Originator.OTHER);
         }
 
         /*
@@ -2823,8 +2895,11 @@ public class SessionEventManager implements ISessionEventManager {
             updateEndTimeBoundariesForSingleEvent(eventView,
                     eventView.getStartTime().getTime(),
                     HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-            event.setEndTime(new Date(
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
+            Date endTime = new Date(
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+            removeCachedEventExpireTimeIfEndTimeChanging(event, endTime);
+            event.setEndTime(endTime);
+            expireOrUnexpireHazardEvent(event);
         } else if ((eventView.getEndTime() != null) && (eventView.getEndTime()
                 .getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
             Long interval = (Long) eventView.getHazardAttribute(
@@ -2837,7 +2912,10 @@ public class SessionEventManager implements ISessionEventManager {
             long startTime = eventView.getStartTime().getTime();
             updateEndTimeBoundariesForSingleEvent(eventView, startTime,
                     startTime + interval);
-            event.setEndTime(new Date(startTime + interval));
+            Date endTime = new Date(startTime + interval);
+            removeCachedEventExpireTimeIfEndTimeChanging(event, endTime);
+            event.setEndTime(endTime);
+            expireOrUnexpireHazardEvent(event);
         }
     }
 
@@ -3040,7 +3118,8 @@ public class SessionEventManager implements ISessionEventManager {
          * settings.
          */
         HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
-                (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false));
+                practiceMode);
+
         /*
          * If the settings file has not been overridden for the site, add the
          * currently configured site to the list of visible sites, and include
@@ -3076,8 +3155,8 @@ public class SessionEventManager implements ISessionEventManager {
          * Instead, those with invisible statuses are weeded out in the
          * iteration through the returned events that follows.
          */
-        queryRequest.and(HazardConstants.SITE_ID, visibleSites)
-                .and(HazardConstants.PHEN_SIG, visibleTypes);
+        queryRequest.and(HazardConstants.SITE_ID, "in", visibleSites)
+                .and(HazardConstants.HAZARD_EVENT_TYPE, "in", visibleTypes);
         Map<String, HazardHistoryList> eventsMap = null;
         try {
             eventsMap = dbManager.queryHistory(queryRequest);
@@ -3216,13 +3295,6 @@ public class SessionEventManager implements ISessionEventManager {
         }
 
         /*
-         * Schedule expiration tasks for the events.
-         */
-        for (ObservedHazardEvent event : allEvents) {
-            scheduleExpirationTask(event);
-        }
-
-        /*
          * Set the new selected events
          */
         sessionManager.getSelectionManager().setSelectedEventIdentifiers(
@@ -3271,25 +3343,43 @@ public class SessionEventManager implements ISessionEventManager {
             throws HazardEventServiceException {
 
         /*
+         * Ensure that operational products do not appear in the session when
+         * CAVE is in practice mode and vice versa.
+         */
+        Boolean practiceEvent = (Boolean) event
+                .getHazardAttribute(HazardConstants.PRACTICE);
+        if ((practiceEvent != null) && (practiceMode != practiceEvent)) {
+            throw new HazardEventServiceException(
+                    "attempted to add an event that has a \""
+                            + HazardConstants.PRACTICE + "\" attribute of "
+                            + practiceEvent
+                            + " when the session has a practice flag of "
+                            + practiceMode);
+        }
+
+        /*
          * Create the new event and ensure that its modify flag does not change
          * its value as a result of any changes made to the event within this
-         * method.
+         * method. Then set its practice mode as appropriate if it has not
+         * already been set.
          */
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
         oevent.setModifiedNotAllowedToChange(true);
         oevent.setInsertTime(null);
+        if (practiceEvent == null) {
+            oevent.addHazardAttribute(HazardConstants.PRACTICE, practiceMode);
+        }
 
         /*
-         * Need to account for the case where the event being added already
-         * exists in the event manager. (This can happen with recommender
-         * callbacks, for example.) If it has an event identifier, see if it
-         * there is already an existing event, and if so, merge it into the
-         * existing one. If it does not have a valid identifier, create one.
-         * Otherwise, set the event identifier; if it cannot be set, an
-         * exception will be thrown by getNewEventID().
+         * If the event already has an identifier, and it is already present in
+         * this session, an error has occurred. Otherwise, if it does not have
+         * an identifier, get one for it.
          */
         String eventID = oevent.getEventID();
-        if ((eventID != null) && (eventID.length() > 0)) {
+        AbstractHazardServicesEventIdUtil eventIdUtil = HazardServicesEventIdUtil
+                .getInstance(practiceMode);
+        if ((eventID != null) && (eventID.length() > 0)
+                && (eventIdUtil.isTemporaryEventID(eventID) == false)) {
             IHazardEventView existingEventView = getEventById(eventID);
             if (existingEventView != null) {
                 throw new IllegalArgumentException(
@@ -3297,7 +3387,10 @@ public class SessionEventManager implements ISessionEventManager {
                                 + "already being managed by session; use mergeHazardEvents() instead");
             }
         } else {
-            oevent.setEventID(HazardServicesEventIdUtil.getNewEventID());
+            oevent.setEventID(eventIdUtil.getNewEventID(
+                    configManager.getSiteID(),
+                    LocalizationManager.getInstance().getCurrentSite()));
+            oevent.setIssueSiteID(oevent.getSiteID());
         }
 
         /*
@@ -3359,46 +3452,20 @@ public class SessionEventManager implements ISessionEventManager {
         }
 
         /*
-         * Set the status to pending if none is found. Make it ended or elapsed
-         * if appropriate.
+         * Set the status to pending if none is found.
          */
         if (oevent.getStatus() == null) {
             oevent.setStatus(HazardStatus.PENDING, false, false, originator);
         }
-        if (isEnded(oevent)) {
-            oevent.setStatus(HazardStatus.ENDED, false, originator);
-        }
-        if (isElapsed(oevent)) {
-            oevent.setStatus(HazardStatus.ELAPSED, false, originator);
-        }
 
         /*
-         * Set the site identifier to the current one if this is locally
-         * generated.
+         * Set the site identifier (and issuing site identifier) to the current
+         * one if this is locally generated.
          */
         if (originator != Originator.DATABASE) {
             oevent.setSiteID(configManager.getSiteID(), false, originator);
+            oevent.setIssueSiteID(oevent.getSiteID(), false, originator);
         }
-
-        /*
-         * Set the hazard mode as appropriate.
-         */
-        ProductClass productClass;
-        switch (CAVEMode.getMode()) {
-        case OPERATIONAL:
-            productClass = ProductClass.OPERATIONAL;
-            break;
-        case PRACTICE:
-
-            /*
-             * TODO, for now do it this way, maybe need to add user changeable.
-             */
-            productClass = ProductClass.OPERATIONAL;
-            break;
-        default:
-            productClass = ProductClass.TEST;
-        }
-        oevent.setHazardMode(productClass, false, originator);
 
         /*
          * Add the event to the set of checked events.
@@ -3414,6 +3481,8 @@ public class SessionEventManager implements ISessionEventManager {
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(eventView,
                 false);
         updateSavedTimesForEventIfIssued(eventView, false);
+
+        expireOrUnexpireHazardEvent(oevent);
 
         /*
          * Add the event to the collection of managed events.
@@ -3469,7 +3538,8 @@ public class SessionEventManager implements ISessionEventManager {
     public EventPropertyChangeResult mergeHazardEvents(
             IReadableHazardEvent newEvent, IHazardEventView oldEvent,
             boolean forceMerge, boolean persistOnStatusChange,
-            boolean useModifiedValue, IOriginator originator) {
+            boolean fromDatabase, boolean useModifiedValue,
+            IOriginator originator) {
 
         ObservedHazardEvent sessionEvent = getSessionEventForView(oldEvent);
         if (sessionEvent == null) {
@@ -3501,6 +3571,8 @@ public class SessionEventManager implements ISessionEventManager {
             sessionEvent.setHazardType(newEvent.getPhenomenon(),
                     newEvent.getSignificance(), newEvent.getSubType(),
                     originator);
+            removeCachedEventExpireTimeIfEndTimeChanging(sessionEvent,
+                    newEvent.getEndTime());
             sessionEvent.setTimeRange(newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
             sessionEvent.setGeometry(newEvent.getGeometry(), originator);
@@ -3514,6 +3586,8 @@ public class SessionEventManager implements ISessionEventManager {
         }
 
         sessionEvent.setCreationTime(newEvent.getCreationTime(), originator);
+        sessionEvent.setExpirationTime(newEvent.getExpirationTime(),
+                originator);
 
         /*
          * If the merge is from the database or the result of a revert, augment
@@ -3542,8 +3616,6 @@ public class SessionEventManager implements ISessionEventManager {
                 ((newVisualFeatures == null) || newVisualFeatures.isEmpty()
                         ? null : newVisualFeatures),
                 originator);
-
-        sessionEvent.setHazardMode(newEvent.getHazardMode(), originator);
 
         /*
          * Get a copy of the old attributes, and the new ones, then transfer any
@@ -3579,21 +3651,25 @@ public class SessionEventManager implements ISessionEventManager {
         sessionEvent.setHazardAttributes(newAttr, originator);
 
         /*
-         * Change the status only if either the event is already ended but the
-         * new status is elapsed, or if the event is not already ended (this
-         * could be relevant if the CAVE clock is set back) and it is not the
-         * same as the previous status. If the status of the old event is
-         * changed, update its saved end time/duration if it is issued.
+         * Change the status if the event is not already ended (this could be
+         * relevant if the CAVE clock is set back) and it is not the same as the
+         * previous status. If the status of the old event is changed, update
+         * its saved end time/duration if it is issued. Note that the
+         * pre-expired status is changed if the new event is from the database,
+         * since in that case the session copy may be different as a result of
+         * it expiring or being expired.
          */
-        if ((isEnded(sessionEvent)
-                && newEvent.getStatus() == HazardStatus.ELAPSED)
-                || ((isEnded(sessionEvent) == false) && (sessionEvent
-                        .getStatus().equals(newEvent.getStatus()) == false))) {
+        if ((isEnded(sessionEvent) == false)
+                && (newEvent.getStatus()
+                        .equals(fromDatabase
+                                ? sessionEvent.getPreExpiredStatus()
+                                : sessionEvent.getStatus()) == false)) {
             sessionEvent.setStatus(newEvent.getStatus(), true,
                     persistOnStatusChange, originator);
             updateSavedTimesForEventIfIssued(oldEvent, false);
         }
         sessionEvent.setIssuanceCount(newEvent.getIssuanceCount(), originator);
+        expireOrUnexpireHazardEvent(sessionEvent);
 
         if (useModifiedValue) {
             sessionEvent.setModified(newEvent.isModified());
@@ -3616,32 +3692,11 @@ public class SessionEventManager implements ISessionEventManager {
         return (event.getStatus() == HazardStatus.ENDED);
     }
 
-    /**
-     * Determine if the specified hazard event has elapsed based on its end time
-     * and the current CAVE clock time.
-     * 
-     * @param event
-     *            Event to be checked.
-     * @return <code>true</code> if the event is set to a status of
-     *         {@link HazardStatus#ELAPSED} or if the current CAVE clock time is
-     *         later than the event's end time, <code>false</code> otherwise.
-     */
-    private boolean isElapsed(IReadableHazardEvent event) {
-        Date currTime = SimulatedTime.getSystemTime().getTime();
-        HazardStatus status = event.getStatus();
-        if ((status == HazardStatus.ELAPSED)
-                || (HazardStatus.issuedButNotEndedOrElapsed(status)
-                        && (event.getEndTime().before(currTime)))) {
-            return true;
-        }
-        return false;
-    }
-
     private boolean isPastExpirationTime(IHazardEventView eventView) {
         long currTimeLong = SimulatedTime.getSystemTime().getMillis();
 
-        Long expirationTimeLong = (Long) eventView
-                .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
+        Long expirationTimeLong = (eventView.getExpirationTime() == null ? null
+                : eventView.getExpirationTime().getTime());
         if ((expirationTimeLong != null)
                 && (expirationTimeLong < currTimeLong)) {
             long expirationTime = expirationTimeLong.longValue();
@@ -3697,7 +3752,7 @@ public class SessionEventManager implements ISessionEventManager {
                             "Interoperability has updated hazard event "
                                     + eventIdentifier
                                     + ". This has broken your hazard lock and any unsaved "
-                                    + "changes may have be lost.");
+                                    + "changes may have been lost.");
                     if (sessionManager.getLockManager()
                             .unlockHazardEvent(eventIdentifier) == false) {
                         statusHandler.warn(
@@ -3705,9 +3760,9 @@ public class SessionEventManager implements ISessionEventManager {
                     }
                 } else if (event.getStatus() == HazardStatus.ELAPSED) {
                     messenger.getWarner().warnUser("Hazard Lock Broken",
-                            "The hazard event " + eventIdentifier
+                            "Hazard event " + eventIdentifier
                                     + " has elapsed. This has broken your hazard lock and "
-                                    + "any unsaved changes may have be lost.");
+                                    + "any unsaved changes may have been lost.");
                     if (sessionManager.getLockManager()
                             .unlockHazardEvent(eventIdentifier) == false) {
                         statusHandler.warn(
@@ -3723,7 +3778,7 @@ public class SessionEventManager implements ISessionEventManager {
                 }
             }
 
-            mergeHazardEvents(event, oldEventView, true, false, true,
+            mergeHazardEvents(event, oldEventView, true, false, true, true,
                     Originator.DATABASE);
             if (event.isLatestVersion() == false) {
                 notificationSender.postNotificationAsync(
@@ -3822,14 +3877,12 @@ public class SessionEventManager implements ISessionEventManager {
     }
 
     /**
-     * Handle the specified hazard event changing its geometry as a result of an
-     * undo or redo.
+     * Handle the specified hazard event changing its geometry.
      * 
      * @param event
      *            Event that has changed its geometry.
      */
-    protected void handleEventGeometryChangeFromUndoOrRedo(
-            ObservedHazardEvent event) {
+    protected void handleEventGeometryChange(ObservedHazardEvent event) {
         updateHazardAreas(getViewForSessionEvent(event));
     }
 
@@ -3956,13 +4009,14 @@ public class SessionEventManager implements ISessionEventManager {
             viewsForHazardEvents.remove(event);
 
             /*
-             * TODO this should never delete operation issued events.
-             */
-            /*
-             * TODO this should not delete the whole list, just any pending or
+             * TODO This should never delete operation issued events.
+             * 
+             * TODO This should not delete the whole list, just any pending or
              * proposed items on the end of the list.
              */
             if (deleteFromDatabase) {
+                sessionManager.getLockManager()
+                        .unlockHazardEvent(eventIdentifier);
                 dbManager.removeAllCopiesOfEvent(eventIdentifier);
             }
             updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(eventView,
@@ -3991,6 +4045,7 @@ public class SessionEventManager implements ISessionEventManager {
         historicalVersionCountsForEventIdentifiers
                 .remove(eventView.getEventID());
         identifiersOfPersistedEvents.remove(eventView.getEventID());
+        expireTimesForEventIdentifiers.remove(eventView.getEventID());
         return result;
     }
 
@@ -4126,7 +4181,7 @@ public class SessionEventManager implements ISessionEventManager {
          * Determine whether or not the event should be persisted, and deselect
          * it if it is ended and, VTEC-wise, canceled.
          */
-        boolean removedFromSelection = false;
+        boolean removeFromSelectionAtEnd = true;
         HazardStatus newStatus = event.getStatus();
         if (persist) {
 
@@ -4139,7 +4194,11 @@ public class SessionEventManager implements ISessionEventManager {
             case PROPOSED:
                 needsPersist = true;
                 break;
+            case ELAPSING:
+                removeFromSelectionAtEnd = false;
+                break;
             case ELAPSED:
+                event.removeHazardAttribute(HazardConstants.ISSUE_TIME);
                 needsPersist = false;
                 break;
             case ENDED:
@@ -4150,7 +4209,7 @@ public class SessionEventManager implements ISessionEventManager {
                  * Only deselect if canceled.
                  */
                 if ((vtecCodes != null) && vtecCodes.contains("CAN")) {
-                    removedFromSelection = true;
+                    removeFromSelectionAtEnd = false;
                     sessionManager.getSelectionManager()
                             .removeEventFromSelectedEvents(event.getEventID(),
                                     Originator.OTHER);
@@ -4183,7 +4242,7 @@ public class SessionEventManager implements ISessionEventManager {
                 .getVisibleStatuses().contains(newStatus.getValue())) {
             sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
                     event.getEventID(), originator);
-        } else if (removedFromSelection == false) {
+        } else if (removeFromSelectionAtEnd) {
             sessionManager.getSelectionManager().removeEventFromSelectedEvents(
                     event.getEventID(), Originator.OTHER);
         }
@@ -4220,7 +4279,6 @@ public class SessionEventManager implements ISessionEventManager {
             eventCopy.addHazardAttribute(HazardEventManager.HISTORICAL, true);
             dbManager.storeEvents(eventCopy);
             identifiersOfPersistedEvents.add(event.getEventID());
-            scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
@@ -4240,101 +4298,6 @@ public class SessionEventManager implements ISessionEventManager {
         Set<String> result = metadataIdentifiersAffectingModifyFlagsForEventIdentifiers
                 .get(eventIdentifier);
         return (result != null ? result : Collections.<String> emptySet());
-    }
-
-    /**
-     * Schedules the tasks on the {@link Timer} to be executed at a later time,
-     * unless they are already past the time necessary at which it will happen
-     * immediately then.
-     * 
-     * @param event
-     */
-    private void scheduleExpirationTask(final ObservedHazardEvent event) {
-
-        /*
-         * TODO: Decide whether expiration is to be done in Java code or not.
-         * For now, this code is commented out; not expiration of events will
-         * occur. This is not a permanent solution.
-         */
-
-        // if (eventExpirationTimer != null) {
-        // if (HazardStatus.issuedButNotEndedOrElapsed(event.getStatus())) {
-        // final String eventId = event.getEventID();
-        // TimerTask existingTask = expirationTasks.get(eventId);
-        // if (existingTask != null) {
-        // existingTask.cancel();
-        // expirationTasks.remove(eventId);
-        // }
-        // TimerTask task = new TimerTask() {
-        // @Override
-        // public void run() {
-        // event.setStatus(HazardStatus.ELAPSED, true, true,
-        // Originator.OTHER);
-        // expirationTasks.remove(eventId);
-        // }
-        // };
-        // Date scheduledTime = event.getEndTime();
-        // /*
-        // * TODO: Need to determine what to do with this, somewhere we
-        // * need to be resetting the expiration time if we manually end
-        // * the hazard?
-        // */
-        // // if (event.getHazardAttribute(HazardConstants.EXPIRATIONTIME)
-        // // != null) {
-        // // scheduledTime = new Date(
-        // // // TODO, change this when we are getting back
-        // // // expiration time as a date
-        // // (Long) event
-        // // .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
-        // // }
-        //
-        // /*
-        // * Round down to the nearest minute, so we see exactly when it
-        // * happens.
-        // */
-        // scheduledTime = DateUtils.truncate(scheduledTime,
-        // Calendar.MINUTE);
-        // long scheduleTimeMillis = Math.max(0, scheduledTime.getTime()
-        // - SimulatedTime.getSystemTime().getTime().getTime());
-        // if (SimulatedTime.getSystemTime().isFrozen() == false
-        // || (SimulatedTime.getSystemTime().isFrozen() && scheduleTimeMillis ==
-        // 0)) {
-        // eventExpirationTimer.schedule(task, scheduleTimeMillis);
-        // expirationTasks.put(eventId, task);
-        // }
-        // }
-        // }
-    }
-
-    /**
-     * Creates a time listener so that we can reschedule the {@link TimerTask}
-     * when necessary (the Simulated Time has changed or is frozen)
-     * 
-     * @return
-     */
-    private ISimulatedTimeChangeListener createTimeListener() {
-        timeListener = new ISimulatedTimeChangeListener() {
-
-            @Override
-            public void timechanged() {
-
-                /*
-                 * TODO: Decide whether expiration is to be done in Java code or
-                 * not. For now, this code is commented out; not expiration of
-                 * events will occur. This is not a permanent solution.
-                 */
-
-                // for (TimerTask task : expirationTasks.values()) {
-                // task.cancel();
-                // expirationTasks.clear();
-                // }
-                //
-                // for (ObservedHazardEvent event : events) {
-                // scheduleExpirationTask(event);
-                // }
-            }
-        };
-        return timeListener;
     }
 
     @Override
@@ -4553,6 +4516,7 @@ public class SessionEventManager implements ISessionEventManager {
             endTimeRange = getEndTimeRangeForIssuedEvent(eventView,
                     newStartTime, newEndTime);
             break;
+        case ELAPSING:
         case ELAPSED:
         case ENDING:
         case ENDED:
@@ -4620,8 +4584,8 @@ public class SessionEventManager implements ISessionEventManager {
          * forward with CAVE clock time, and some allow the start time to be
          * before or after the current CAVE clock time, while some do not. End
          * times can be anything if unissued, but issued ones may be limited by
-         * by the hazard type's contraints Finally, ending and ended hazards
-         * cannot have their times changed.
+         * by the hazard type's constraints. Finally, ending, elapsing, ended,
+         * and elapsed hazards cannot have their times changed.
          */
         Range<Long> startTimeRange = null;
         Range<Long> endTimeRange = null;
@@ -4649,6 +4613,7 @@ public class SessionEventManager implements ISessionEventManager {
             endTimeRange = getEndTimeRangeForIssuedEvent(eventView, startTime,
                     endTime);
             break;
+        case ELAPSING:
         case ELAPSED:
         case ENDING:
         case ENDED:
@@ -4755,8 +4720,10 @@ public class SessionEventManager implements ISessionEventManager {
         /*
          * Set the new start and end times.
          */
-        getSessionEventForView(eventView).setTimeRange(new Date(startTime),
-                new Date(endTime), Originator.OTHER);
+        Date endTimeDate = new Date(endTime);
+        ObservedHazardEvent event = getSessionEventForView(eventView);
+        removeCachedEventExpireTimeIfEndTimeChanging(event, endTimeDate);
+        event.setTimeRange(new Date(startTime), endTimeDate, Originator.OTHER);
 
         /*
          * Make a record of the event's start and its end time/duration at
@@ -4764,6 +4731,8 @@ public class SessionEventManager implements ISessionEventManager {
          * event.
          */
         updateSavedTimesForEventIfIssued(eventView, false);
+
+        expireOrUnexpireHazardEvent(event);
     }
 
     /**
@@ -4942,8 +4911,13 @@ public class SessionEventManager implements ISessionEventManager {
                     if (modifiedNotAllowedToChange == false) {
                         thisEvent.setModifiedNotAllowedToChange(true);
                     }
-                    thisEvent.setTimeRange(new Date(startTime),
-                            new Date(endTime), Originator.OTHER);
+
+                    Date endTimeDate = new Date(endTime);
+                    removeCachedEventExpireTimeIfEndTimeChanging(thisEvent,
+                            endTimeDate);
+                    thisEvent.setTimeRange(new Date(startTime), endTimeDate,
+                            Originator.OTHER);
+                    expireOrUnexpireHazardEvent(thisEvent);
                     if (modifiedNotAllowedToChange == false) {
                         thisEvent.setModifiedNotAllowedToChange(false);
                     }
@@ -5126,8 +5100,7 @@ public class SessionEventManager implements ISessionEventManager {
          * hazard event manager. Ignore "Ended" events.
          */
         List<IReadableHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
-                new HazardEventQueryRequest(CAVEMode.OPERATIONAL
-                        .equals(CAVEMode.getMode()) == false),
+                new HazardEventQueryRequest(practiceMode),
                 EnumSet.allOf(HazardStatus.class));
 
         for (IReadableHazardEvent eventToCheck : eventsToCheck) {
@@ -5185,16 +5158,16 @@ public class SessionEventManager implements ISessionEventManager {
                      * Also, include those from the session state.
                      */
                     HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
-                            (CAVEMode.getMode()
-                                    .equals(CAVEMode.OPERATIONAL) == false),
+                            practiceMode,
                             HazardConstants.HAZARD_EVENT_START_TIME, ">",
                             event.getStartTime())
                                     .and(HazardConstants.HAZARD_EVENT_END_TIME,
                                             "<", event.getEndTime())
-                                    .and(HazardConstants.PHEN_SIG,
+                                    .and(HazardConstants.HAZARD_EVENT_TYPE,
                                             hazardConflictList);
-                    Set<HazardStatus> allowableStatuses = EnumSet
-                            .of(HazardStatus.ISSUED, HazardStatus.ENDING);
+                    Set<HazardStatus> allowableStatuses = EnumSet.of(
+                            HazardStatus.ISSUED, HazardStatus.ENDING,
+                            HazardStatus.ELAPSING);
 
                     List<IReadableHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
                             queryRequest, allowableStatuses);
@@ -5212,47 +5185,43 @@ public class SessionEventManager implements ISessionEventManager {
                          * overlap in time, then there is no need to test for
                          * overlap in area.
                          */
-                        TimeRange eventToCheckTimeRange = new TimeRange(
-                                eventToCheck.getStartTime(),
-                                eventToCheck.getEndTime());
+                        if ((eventToCheck.getEventID()
+                                .equals(event.getEventID()) == false)
+                                && modifiedEventTimeRange
+                                        .overlaps(new TimeRange(
+                                                eventToCheck.getStartTime(),
+                                                eventToCheck.getEndTime()))) {
 
-                        if (modifiedEventTimeRange
-                                .overlaps(eventToCheckTimeRange)) {
-                            if (!eventToCheck.getEventID()
-                                    .equals(event.getEventID())) {
+                            String otherEventPhenSigSubtype = HazardEventUtilities
+                                    .getHazardType(eventToCheck);
 
-                                String otherEventPhenSigSubtype = HazardEventUtilities
-                                        .getHazardType(eventToCheck);
+                            if (hazardConflictList
+                                    .contains(otherEventPhenSigSubtype)) {
 
-                                if (hazardConflictList
-                                        .contains(otherEventPhenSigSubtype)) {
+                                HazardTypeEntry otherHazardTypeEntry = hazardTypes
+                                        .get(otherEventPhenSigSubtype);
+                                String otherUgcLabel = otherHazardTypeEntry
+                                        .getUgcLabel();
 
-                                    HazardTypeEntry otherHazardTypeEntry = hazardTypes
-                                            .get(otherEventPhenSigSubtype);
-                                    String otherUgcLabel = otherHazardTypeEntry
-                                            .getUgcLabel();
+                                if (hazardTypeEntry != null) {
+                                    List<IGeometryData> hatchedAreasEventToCheck = new ArrayList<>(
+                                            geoMapUtilities
+                                                    .buildHazardAreaForEvent(
+                                                            eventToCheck)
+                                                    .values());
 
-                                    if (hazardTypeEntry != null) {
-                                        List<IGeometryData> hatchedAreasEventToCheck = new ArrayList<>(
-                                                geoMapUtilities
-                                                        .buildHazardAreaForEvent(
-                                                                eventToCheck)
-                                                        .values());
-
-                                        conflictingHazardsMap
-                                                .putAll(buildConflictMap(event,
-                                                        eventToCheck,
-                                                        hatchedAreasForEvent,
-                                                        hatchedAreasEventToCheck,
-                                                        ugcLabel,
-                                                        otherUgcLabel));
-                                    } else {
-                                        statusHandler
-                                                .warn("No entry defined in HazardTypes.py for hazard type "
-                                                        + phenSigSubtype);
-                                    }
-
+                                    conflictingHazardsMap
+                                            .putAll(buildConflictMap(event,
+                                                    eventToCheck,
+                                                    hatchedAreasForEvent,
+                                                    hatchedAreasEventToCheck,
+                                                    ugcLabel, otherUgcLabel));
+                                } else {
+                                    statusHandler
+                                            .warn("No entry defined in HazardTypes.py for hazard type "
+                                                    + phenSigSubtype);
                                 }
+
                             }
                         }
                     }
@@ -5360,16 +5329,6 @@ public class SessionEventManager implements ISessionEventManager {
                 .unregisterIntraNotificationHandler(settingsChangeHandler);
         notificationSender
                 .unregisterIntraNotificationHandler(currentTimeChangeHandler);
-
-        /*
-         * TODO: Decide whether expiration is to be done in Java code or not.
-         * For now, this code is commented out; no expiration of events will
-         * occur. This is not a permanent solution.
-         */
-        // eventExpirationTimer.cancel();
-        // eventExpirationTimer = null;
-        SimulatedTime.getSystemTime()
-                .removeSimulatedTimeChangeListener(timeListener);
         messenger = null;
         shutDown = true;
     }
@@ -5416,18 +5375,13 @@ public class SessionEventManager implements ISessionEventManager {
         if (!geoMapUtilities.isWarngenHatching(firstEvent)
                 && !geoMapUtilities.isWarngenHatching(secondEvent)) {
 
-            Set<IGeometryData> commonHatchedAreas = new HashSet<>();
-            commonHatchedAreas.addAll(hatchedAreasFirstEvent);
-            commonHatchedAreas.retainAll(hatchedAreasSecondEvent);
-
-            if (!commonHatchedAreas.isEmpty()) {
-                HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEvent
-                        .getHazardAttribute(HAZARD_AREA);
-                HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEvent
-                        .getHazardAttribute(HAZARD_AREA);
-                forecastZoneSet.addAll(firstHazardAreaMap.keySet());
-                forecastZoneSet.retainAll(secondHazardAreaMap.keySet());
-
+            HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEvent
+                    .getHazardAttribute(HAZARD_AREA);
+            HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEvent
+                    .getHazardAttribute(HAZARD_AREA);
+            forecastZoneSet.addAll(firstHazardAreaMap.keySet());
+            forecastZoneSet.retainAll(secondHazardAreaMap.keySet());
+            if (forecastZoneSet.isEmpty() == false) {
                 conflictingHazardsMap.put(secondEvent, forecastZoneSet);
             }
         } else {
@@ -5514,6 +5468,47 @@ public class SessionEventManager implements ISessionEventManager {
                     originator, event.getEventID());
             return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
         }
+    }
+
+    @Override
+    public boolean initiateSelectedEventsEndingProcess(IOriginator originator) {
+
+        /*
+         * See if all issued events in the session are currently selected.
+         */
+        List<IHazardEventView> issuedEvents = new ArrayList<>(
+                allEventViews.size());
+        Set<String> selectedEventIdentifiers = sessionManager
+                .getSelectionManager().getSelectedEventIdentifiers();
+        boolean allIssuedEventsAreSelected = true;
+        for (IHazardEventView event : allEventViews) {
+            if (selectedEventIdentifiers.contains(event.getEventID())) {
+                issuedEvents.add(event);
+            } else {
+                allIssuedEventsAreSelected = false;
+            }
+        }
+
+        /*
+         * If all issued events are indeed selected and there is more than one
+         * event in the session, ask the user if they really want to initiate
+         * the ending process for all active issued events. If not, do nothing
+         * more.
+         */
+        if ((allEventViews.size() > 1) && allIssuedEventsAreSelected
+                && (messenger.getQuestionAnswerer().getUserAnswerToQuestion(
+                        "You have chosen to end all active issued events on the "
+                                + "console. Are you sure you want to proceed?") == false)) {
+            return false;
+        }
+
+        /*
+         * Initiate the ending process for the selected, issued events.
+         */
+        for (IHazardEventView event : issuedEvents) {
+            initiateEventEndingProcess(event, originator);
+        }
+        return true;
     }
 
     @Override
@@ -5696,9 +5691,58 @@ public class SessionEventManager implements ISessionEventManager {
         }
     }
 
+    /**
+     * Determine if transmission is not allowed, and if it is not allowed, warn
+     * the user of this.
+     * 
+     * @param feature
+     *            Feature that requires transmission; used in the warning
+     *            message shown to the user.
+     * @return <code>true</code> if transmission is not allowed,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isTransmissionNotAllowed(String feature) {
+        if (SimulatedTimeOperations.isTransmitAllowed() == false) {
+            messenger.getWarner().warnUserOfSimulatedTimeProblem(feature);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Determine if transmission is not allowed, and if it is not allowed, warn
+     * the user of this.
+     * 
+     * @param feature
+     *            Feature that requires transmission; used in the warning
+     *            message shown to the user.
+     * @param events
+     *            Events for which the feature is to be attempted.
+     * @return If transmission is not allowed, a map pairing event identifiers
+     *         from <code>events</code> to {link
+     *         {@link EventPropertyChangeResult#FAILURE_DUE_TO_TRANSMISSION_NOT_ALLOWED}
+     *         , otherwise <code>null</code>.
+     */
+    private Map<String, EventPropertyChangeResult> determineTransmissionNotAllowed(
+            String feature, Collection<? extends IReadableHazardEvent> events) {
+        if (isTransmissionNotAllowed(feature)) {
+            Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = new HashMap<>(
+                    events.size(), 1.0f);
+            for (IReadableHazardEvent event : events) {
+                resultsForEventIdentifiers.put(event.getEventID(),
+                        EventPropertyChangeResult.FAILURE_DUE_TO_TRANSMISSION_NOT_ALLOWED);
+            }
+            return resultsForEventIdentifiers;
+        }
+        return null;
+    }
+
     @Override
     public EventPropertyChangeResult proposeEvent(IHazardEventView event,
             IOriginator originator) {
+        if (isTransmissionNotAllowed("Product Propose")) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_TRANSMISSION_NOT_ALLOWED;
+        }
         EventPropertyChangeResult result = doProposeEvent(event, originator);
         if (result == EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS) {
             showWarningMessageAboutLockedEvents("Cannot Propose", "proposed",
@@ -5713,11 +5757,19 @@ public class SessionEventManager implements ISessionEventManager {
             IOriginator originator) {
 
         /*
+         * If transmission is disallowed, notify the user and do nothing more.
+         */
+        Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = determineTransmissionNotAllowed(
+                "Product Propose", events);
+        if (resultsForEventIdentifiers != null) {
+            return resultsForEventIdentifiers;
+        }
+
+        /*
          * Attempt to propose each event, recording the result of each attempt.
          */
         sessionManager.startBatchedChanges();
-        Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = new HashMap<>(
-                events.size(), 1.0f);
+        resultsForEventIdentifiers = new HashMap<>(events.size(), 1.0f);
         for (IHazardEventView eventView : events) {
             resultsForEventIdentifiers.put(eventView.getEventID(),
                     doProposeEvent(eventView, originator));
@@ -5736,6 +5788,15 @@ public class SessionEventManager implements ISessionEventManager {
         return ((HazardStatus.hasEverBeenIssued(event.getStatus()) == false)
                 && HazardEventUtilities.isHazardTypeValid(event)
                 && isEventNotLockedByOther(event));
+    }
+
+    @Override
+    public boolean isHazardous(IReadableHazardEvent event) {
+        String type = event.getHazardType();
+        if ((type == null) || type.trim().isEmpty()) {
+            return false;
+        }
+        return configManager.getHazardTypes().get(type).isHazardous();
     }
 
     @Override
@@ -6117,7 +6178,7 @@ public class SessionEventManager implements ISessionEventManager {
         }
         if (HazardStatus.endingEndedOrElapsed(hazardEventView.getStatus())) {
             messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
-                    "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
+                    "Cannot add or remove UGCs for an ending, ended, elapsing, or elapsed hazard.");
             return;
         }
 
@@ -6439,6 +6500,15 @@ public class SessionEventManager implements ISessionEventManager {
             IOriginator originator) {
 
         /*
+         * If transmission is disallowed, notify the user and do nothing more.
+         */
+        Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = determineTransmissionNotAllowed(
+                "Product Save", events);
+        if (resultsForEventIdentifiers != null) {
+            return resultsForEventIdentifiers;
+        }
+
+        /*
          * TODO: Remove this when "persistenceBehavior" is removed from startup
          * config, once testing and debugging yield the correct solution to
          * handling persistence.
@@ -6462,8 +6532,7 @@ public class SessionEventManager implements ISessionEventManager {
         Map<HazardEvent, IHazardEventView> viewsForDbEvents = new IdentityHashMap<>(
                 events.size());
         Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
-        Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = new HashMap<>(
-                events.size(), 1.0f);
+        resultsForEventIdentifiers = new HashMap<>(events.size(), 1.0f);
         for (IHazardEventView eventView : events) {
 
             /*
@@ -6635,7 +6704,7 @@ public class SessionEventManager implements ISessionEventManager {
              * features, with pending status, and with the current client's user
              * name and workstation.
              */
-            BaseHazardEvent newEvent = new BaseHazardEvent(eventView);
+            SessionHazardEvent newEvent = new SessionHazardEvent(eventView);
             newEvent.setEventID(null);
             newEvent.setStatus(HazardStatus.PENDING);
             newEvent.setPhenomenon(null);
@@ -6655,7 +6724,7 @@ public class SessionEventManager implements ISessionEventManager {
             /*
              * New event should not have product information.
              */
-            newEvent.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
+            newEvent.setExpirationTime(null);
             newEvent.removeHazardAttribute(HazardConstants.ISSUE_TIME);
             newEvent.removeHazardAttribute(HazardConstants.VTEC_CODES);
             newEvent.removeHazardAttribute(HazardConstants.ETNS);
@@ -6708,7 +6777,7 @@ public class SessionEventManager implements ISessionEventManager {
         if (getHistoricalVersionCountForEvent(identifier) > 0) {
             List<IHazardEventView> list = getEventHistoryById(identifier);
             mergeHazardEvents(list.get(list.size() - 1), event, false, false,
-                    true, (originator.isDirectResultOfUserInput()
+                    true, true, (originator.isDirectResultOfUserInput()
                             ? RevertOriginator.USER : RevertOriginator.OTHER));
             if (sessionManager.getLockManager()
                     .unlockHazardEvent(identifier) == false) {
@@ -6731,6 +6800,127 @@ public class SessionEventManager implements ISessionEventManager {
     }
 
     /**
+     * Expire or unexpire all managed hazard events as appropriate.
+     */
+    private void expireOrUnexpireHazardEvents() {
+        Date currentTime = SessionEventManager.this.timeManager
+                .getCurrentTime();
+        for (ObservedHazardEvent event : allEvents) {
+            expireOrUnexpireHazardEvent(event, currentTime);
+        }
+    }
+
+    /**
+     * Mark the specified hazard event as {@link HazardStatus#ELAPSING} or
+     * {@link HazardStatus#ELAPSED}, or undo the previous elapsing of a hazard
+     * event, as appropriate.
+     * 
+     * @param event
+     *            Hazard event that may need to be expired.
+     */
+    private void expireOrUnexpireHazardEvent(ObservedHazardEvent event) {
+        expireOrUnexpireHazardEvent(event, timeManager.getCurrentTime());
+    }
+
+    /**
+     * Mark the specified hazard event as {@link HazardStatus#ELAPSING} or
+     * {@link HazardStatus#ELAPSED}, or undo the previous elapsing of a hazard
+     * event, as appropriate.
+     * 
+     * @param event
+     *            Hazard event that may need to be expired.
+     * @param currentTime
+     *            Current time.
+     */
+    private void expireOrUnexpireHazardEvent(ObservedHazardEvent event,
+            Date currentTime) {
+
+        /*
+         * If the event is meant to be immediately elapsed when issued, ensure
+         * that this is the case.
+         */
+        HazardStatus status = event.getStatus();
+        if ((event.getHazardType() != null) && configManager.getHazardTypes()
+                .get(event.getHazardType()).isElapseWhenIssued()) {
+            if (status == HazardStatus.ISSUED) {
+                event.setStatus(HazardStatus.ELAPSED, false, Originator.OTHER);
+            }
+            return;
+        }
+
+        /*
+         * If the event is issued and it should be expired, make it so;
+         * otherwise, if the event has previously been expired by this session,
+         * but the current time dictates that it should no longer be so,
+         * unexpire it; otherwise, if it is elapsing but should now be elapsed,
+         * or vice versa, change it appropriately.
+         */
+        long currentTimeMillis = currentTime.getTime();
+        long endTimeMillis = event.getEndTime().getTime();
+        long expireTimeMillis = getExpireTimeForEvent(event).getTime();
+        if ((status == HazardStatus.ISSUED)
+                && (currentTimeMillis >= endTimeMillis)) {
+            event.setStatus(
+                    (currentTimeMillis >= expireTimeMillis
+                            ? HazardStatus.ELAPSED : HazardStatus.ELAPSING),
+                    false, Originator.OTHER);
+        } else if ((event.getPreExpiredStatus() != null)
+                && ((status == HazardStatus.ELAPSING)
+                        || (status == HazardStatus.ELAPSED))
+                && (currentTimeMillis < endTimeMillis)) {
+            event.setStatus(event.getPreExpiredStatus(), false,
+                    Originator.OTHER);
+        } else if ((status == HazardStatus.ELAPSING)
+                && (currentTimeMillis >= expireTimeMillis)) {
+            event.setStatus(HazardStatus.ELAPSED, false, Originator.OTHER);
+        } else if ((status == HazardStatus.ELAPSED)
+                && (currentTimeMillis < expireTimeMillis)) {
+            event.setStatus(HazardStatus.ELAPSING, false, Originator.OTHER);
+        }
+    }
+
+    /**
+     * Get the expiration time for the specified hazard event.
+     * 
+     * @param event
+     *            Event for which to get the expiration time. Note that the
+     *            event must be non-<code>null</code> and have a valid hazard
+     *            type.
+     * @return Expiration time.
+     */
+    private Date getExpireTimeForEvent(IReadableHazardEvent event) {
+
+        /*
+         * Get the time from the cache if it is found there, calculating it
+         * afresh and placing the result in the cache if it is not.
+         */
+        Date expireTime = expireTimesForEventIdentifiers
+                .get(event.getEventID());
+        if (expireTime == null) {
+            expireTime = HazardEventUtilities.getElapseTime(event,
+                    configManager.getHazardTypes().get(event.getHazardType()));
+            expireTimesForEventIdentifiers.put(event.getEventID(), expireTime);
+        }
+        return expireTime;
+    }
+
+    /**
+     * Remove the cached expiration time for the specified event if the
+     * specified new end time is different from the event's existing end time.
+     * 
+     * @param event
+     *            Event to check.
+     * @param endTime
+     *            New end time for the event.
+     */
+    private void removeCachedEventExpireTimeIfEndTimeChanging(
+            IReadableHazardEvent event, Date endTime) {
+        if (event.getEndTime().equals(endTime) == false) {
+            expireTimesForEventIdentifiers.remove(event.getEventID());
+        }
+    }
+
+    /**
      * Create a persistence-friendly copy of the specified event.
      * 
      * @param event
@@ -6743,9 +6933,18 @@ public class SessionEventManager implements ISessionEventManager {
      *            the event was just issued.
      * @return Persistence-friendly copy of the event.
      */
-    private HazardEvent createEventCopyToBePersisted(IReadableHazardEvent event,
+    private HazardEvent createEventCopyToBePersisted(ISessionHazardEvent event,
             boolean addToHistory, boolean justIssued) {
         HazardEvent dbEvent = dbManager.createEvent(event);
+
+        /*
+         * If the event is expiring or expired in this session, replace its
+         * ELAPSING or ELAPSED status with the pre-expiration status, since
+         * client expirations of events should never be persisted.
+         */
+        if (event.getPreExpiredStatus() != null) {
+            dbEvent.setStatus(event.getPreExpiredStatus());
+        }
 
         /*
          * Strip out attributes as per this hazard type's configuration.
@@ -6776,6 +6975,7 @@ public class SessionEventManager implements ISessionEventManager {
         if (justIssued == false) {
             dbEvent.removeHazardAttribute(HazardConstants.ISSUED);
         }
+        dbEvent.removeHazardAttribute(ISSUE_TIME);
         dbEvent.removeHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
 
         /*
@@ -6823,6 +7023,25 @@ public class SessionEventManager implements ISessionEventManager {
     @Override
     public void clearCwaGeometry() {
         geoMapUtilities.clearCWAGeometry();
+    }
+
+    @Override
+    public void setIdDisplayType(IdDisplayType displayType) {
+        HazardServicesEventIdUtil.getInstance(practiceMode)
+                .setIdDisplayType(displayType);
+    }
+
+    @Override
+    public Set<IHazardEventView> getFilteredEvents() {
+        Set<IHazardEventView> allEvents = new HashSet<>(allEventViews);
+
+        Collection<IHazardEventView> filteredEvents = new ArrayList<>(
+                allEvents);
+        filterEventsForConfig(filteredEvents);
+
+        // Result is only those that have been filtered out.
+        allEvents.removeAll(filteredEvents);
+        return allEvents;
     }
 
     /*

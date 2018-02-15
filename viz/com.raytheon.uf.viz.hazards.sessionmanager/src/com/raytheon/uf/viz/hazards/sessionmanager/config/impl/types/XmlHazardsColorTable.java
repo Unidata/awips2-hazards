@@ -73,7 +73,8 @@ public class XmlHazardsColorTable implements IHazardsColorTable {
         }
         for (XmlHazardColorEntry h : hazards) {
             if (h.getLabel().equals(key)) {
-                return SessionConfigurationManager.getColor(h.getColor());
+                return SessionConfigurationManager
+                        .getColorFromString(h.getColor());
             }
         }
         return null;

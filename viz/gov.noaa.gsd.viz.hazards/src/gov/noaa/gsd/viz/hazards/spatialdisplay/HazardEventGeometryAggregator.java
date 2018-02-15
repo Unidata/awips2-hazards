@@ -1,5 +1,35 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.measure.converter.UnitConverter;
+
+import org.geotools.geometry.jts.JTS;
+import org.opengis.geometry.MismatchedDimensionException;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.crs.ProjectedCRS;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.TransformException;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
+import com.raytheon.uf.common.geospatial.MapUtil;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.points.PointsDataManager;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Polygon;
+
 /**
  * This software was developed and / or modified by Raytheon Company,
  * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
@@ -22,36 +52,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import javax.measure.converter.UnitConverter;
-
-import org.geotools.geometry.jts.JTS;
-import org.opengis.geometry.MismatchedDimensionException;
-import org.opengis.referencing.FactoryException;
-import org.opengis.referencing.crs.ProjectedCRS;
-import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.TransformException;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
-import com.raytheon.uf.common.geospatial.MapUtil;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.viz.points.PointsDataManager;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
-
 /**
  * Combine any Hazard Geometries that touch into aggregate events The new
  * composite geometry can be then displayed rather than individual basins.
@@ -69,6 +69,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Aug 15, 2016   19219    Kevin.Bisanz Combine hazards within X miles.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
  *                                      geometries.
+ * May 08, 2018   15561    Chris.Golden Changed BaseHazardEvent to
+ *                                      SessionHazardEvent.
  * </pre>
  * 
  * @author dhladky
@@ -119,14 +121,15 @@ public class HazardEventGeometryAggregator {
      * @return events Aggregated events
      */
     public Collection<HazardEvent> aggregateEvents(
-            Collection<BaseHazardEvent> events, double combineHazardDistance) {
+            Collection<SessionHazardEvent> events,
+            double combineHazardDistance) {
         // Convert miles into meters.
         combineHazardDistance = convertMileToMeter(combineHazardDistance);
 
         List<HazardEvent> list = new ArrayList<>(1);
         combinedGeometries = new ConcurrentHashMap<>();
         // Add all events to the original map, convert to observed hazard
-        for (BaseHazardEvent baseEvent : events) {
+        for (SessionHazardEvent baseEvent : events) {
 
             if (baseEvent.getGeometry() instanceof GeometryCollection) {
 
@@ -137,7 +140,8 @@ public class HazardEventGeometryAggregator {
                     if (geoCollection.getGeometryN(i) instanceof Polygon) {
                         Polygon poly = (Polygon) geoCollection.getGeometryN(i);
                         combinedGeometries.put(poly.getCentroid(), poly);
-                    } else if (geoCollection.getGeometryN(i) instanceof MultiPolygon) {
+                    } else if (geoCollection
+                            .getGeometryN(i) instanceof MultiPolygon) {
                         MultiPolygon mpoly = (MultiPolygon) geoCollection
                                 .getGeometryN(i);
                         for (int j = 0; j < mpoly.getNumGeometries(); j++) {
@@ -155,9 +159,9 @@ public class HazardEventGeometryAggregator {
                     try {
                         evaluateGeometries();
                     } catch (Exception e) {
-                        statusHandler
-                                .error("Geometry intersection evaluation and aggregation failed!.",
-                                        e);
+                        statusHandler.error(
+                                "Geometry intersection evaluation and aggregation failed!.",
+                                e);
                     }
                     intersectionCount++;
                 }
@@ -173,9 +177,9 @@ public class HazardEventGeometryAggregator {
                         try {
                             evaluateDistance(combineHazardDistance);
                         } catch (Exception e) {
-                            statusHandler
-                                    .error("Geometry distance evaluation and aggregation failed!.",
-                                            e);
+                            statusHandler.error(
+                                    "Geometry distance evaluation and aggregation failed!.",
+                                    e);
                         }
                         distanceCount++;
                     }
@@ -207,8 +211,8 @@ public class HazardEventGeometryAggregator {
         }
 
         if (!list.isEmpty()) {
-            statusHandler.info("Returning " + list.size()
-                    + " Observed HazardEvents.");
+            statusHandler.info(
+                    "Returning " + list.size() + " Observed HazardEvents.");
         }
 
         return list;
@@ -311,8 +315,8 @@ public class HazardEventGeometryAggregator {
         Geometry[] hucGeometries = new Geometry[2];
         hucGeometries[0] = geo1;
         hucGeometries[1] = geo2;
-        Geometry combinedGeom = geometryFactory.createGeometryCollection(
-                hucGeometries).buffer(0);
+        Geometry combinedGeom = geometryFactory
+                .createGeometryCollection(hucGeometries).buffer(0);
 
         return combinedGeom;
     }
@@ -368,11 +372,11 @@ public class HazardEventGeometryAggregator {
             Geometry[] hucGeometries = new Geometry[numInteriorRings + 1];
             hucGeometries[0] = polygon;
             for (int i = 0; i < numInteriorRings; i++) {
-                hucGeometries[i + 1] = polygon.getInteriorRingN(i).buffer(
-                        BUFFER_LEVEL);
+                hucGeometries[i + 1] = polygon.getInteriorRingN(i)
+                        .buffer(BUFFER_LEVEL);
             }
-            polygon = (Polygon) geometryFactory.createGeometryCollection(
-                    hucGeometries).buffer(0);
+            polygon = (Polygon) geometryFactory
+                    .createGeometryCollection(hucGeometries).buffer(0);
             numInteriorRings = polygon.getNumInteriorRing();
         }
         return polygon;
@@ -387,7 +391,8 @@ public class HazardEventGeometryAggregator {
      * @param distance
      * @return
      */
-    private boolean withInDistance(Geometry geo1, Geometry geo2, double distance) {
+    private boolean withInDistance(Geometry geo1, Geometry geo2,
+            double distance) {
         // Determine if two geometries are within the required distance from
         // each other to be combined
         boolean withInDistance = false;

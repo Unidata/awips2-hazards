@@ -40,9 +40,6 @@ import org.eclipse.ui.services.IServiceLocator;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventHandler;
 
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 
@@ -72,9 +69,6 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
  */
 public class HazardServicesPerspectiveListener
         implements IPageListener, EventHandler {
-
-    private final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardServicesPerspectiveListener.class);
 
     private static Map<IWorkbenchPage, HazardServicesPerspectiveListener> listeners = new HashMap<>(
             4);

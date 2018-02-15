@@ -9,23 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.hazardtypefirst;
 
-import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter.Command;
-import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
-import gov.noaa.gsd.viz.megawidgets.ComboBoxMegawidget;
-import gov.noaa.gsd.viz.megawidgets.ComboBoxSpecifier;
-import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
-import gov.noaa.gsd.viz.megawidgets.IControl;
-import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
-import gov.noaa.gsd.viz.megawidgets.ISpecifier;
-import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
-import gov.noaa.gsd.viz.megawidgets.IStateful;
-import gov.noaa.gsd.viz.megawidgets.LabelMegawidget;
-import gov.noaa.gsd.viz.megawidgets.LabelSpecifier;
-import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +28,23 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
+import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter.Command;
+import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
+import gov.noaa.gsd.viz.megawidgets.ComboBoxMegawidget;
+import gov.noaa.gsd.viz.megawidgets.ComboBoxSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
+import gov.noaa.gsd.viz.megawidgets.IControl;
+import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
+import gov.noaa.gsd.viz.megawidgets.IStateful;
+import gov.noaa.gsd.viz.megawidgets.LabelMegawidget;
+import gov.noaa.gsd.viz.megawidgets.LabelSpecifier;
+import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+
 /**
  * Description: Hazard type first dialog, allowing the user to choose a hazard
  * type for which to create an event.
@@ -62,8 +62,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardTypeFirstDialog extends BasicDialog implements
-        IHazardTypeFirstView {
+public class HazardTypeFirstDialog extends BasicDialog
+        implements IHazardTypeFirstView {
 
     // Private Static Constants
 
@@ -434,10 +434,12 @@ public class HazardTypeFirstDialog extends BasicDialog implements
         try {
             descriptionMegawidget = new LabelSpecifier(
                     DESCRIPTION_SPECIFIER_PARAMETERS).createMegawidget(top,
-                    LabelMegawidget.class, megawidgetCreationTimeParams);
+                            LabelMegawidget.class,
+                            megawidgetCreationTimeParams);
             categoryMegawidget = new ComboBoxSpecifier(
                     CATEGORY_SPECIFIER_PARAMETERS).createMegawidget(top,
-                    ComboBoxMegawidget.class, megawidgetCreationTimeParams);
+                            ComboBoxMegawidget.class,
+                            megawidgetCreationTimeParams);
             megawidgetsToAlign.add(categoryMegawidget);
             typeMegawidget = new ComboBoxSpecifier(TYPE_SPECIFIER_PARAMETERS)
                     .createMegawidget(top, ComboBoxMegawidget.class,
@@ -469,8 +471,8 @@ public class HazardTypeFirstDialog extends BasicDialog implements
         super.buttonPressed(buttonId);
         if (buttonInvocationHandler != null) {
             buttonInvocationHandler
-                    .commandInvoked(buttonId == IDialogConstants.OK_ID ? Command.OK
-                            : Command.CANCEL);
+                    .commandInvoked(buttonId == IDialogConstants.OK_ID
+                            ? Command.OK : Command.CANCEL);
         }
     }
 
@@ -601,7 +603,8 @@ public class HazardTypeFirstDialog extends BasicDialog implements
      *            List of categories to be used.
      */
     private void setCategories(List<String> categories) {
-        setComboBoxChoices(categoryMegawidget, categories, null, "category");
+        setComboBoxChoices(categoryMegawidget, categories, null,
+                CATEGORY_IDENTIFIER);
     }
 
     /**
@@ -635,14 +638,17 @@ public class HazardTypeFirstDialog extends BasicDialog implements
      *            Identifier of the state the combo box holds.
      */
     private void setComboBoxChoices(ComboBoxMegawidget comboBox,
-            List<String> choices, List<String> descriptions, String identifier) {
+            List<String> choices, List<String> descriptions,
+            String identifier) {
         if (isAlive() && (comboBox != null) && (choices != null)) {
             List<?> choicesList;
             if (descriptions != null) {
-                List<Map<String, Object>> list = new ArrayList<>(choices.size());
+                List<Map<String, Object>> list = new ArrayList<>(
+                        choices.size());
                 for (int j = 0; j < choices.size(); j++) {
                     Map<String, Object> map = new HashMap<>(2);
-                    map.put(ComboBoxSpecifier.CHOICE_IDENTIFIER, choices.get(j));
+                    map.put(ComboBoxSpecifier.CHOICE_IDENTIFIER,
+                            choices.get(j));
                     map.put(ComboBoxSpecifier.CHOICE_NAME, descriptions.get(j));
                     list.add(map);
                 }

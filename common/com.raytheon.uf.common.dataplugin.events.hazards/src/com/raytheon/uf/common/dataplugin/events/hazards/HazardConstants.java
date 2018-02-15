@@ -25,9 +25,11 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 
 import gov.noaa.gsd.common.utilities.TimeResolution;
 
@@ -84,6 +86,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
  * Aug 18, 2015 9650      Chris.Golden  Added "deleteEventIdentifiers" constant for recommenders.
  * Sep 28, 2015 10302,8167 hansen       Added backupSites, eventIdDisplayType, mapCenter
+ * Oct 07, 2015 6895     Ben.Phillippe  RiverPro Interoperability
  * Nov 10, 2015 12762     Chris.Golden  Added constants and enums related to running tools.
  * Nov 17, 2015 3473      Robert.Blum   Moved localization constants to HazardsConfigurationConstants.
  * Jan 14, 2016 12935     Robert.Blum   Removed unused FALL_BELOW_UNTIL_FURTHER_NOTICE constant.
@@ -122,11 +125,14 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
  * Dec 16, 2016 27006     bkowal        Added {@link #REPLACED_HAZARD_TYPE}.
  * Dec 19, 2016 21504     Robert.Blum   Added constants for hazard locking.
+ * Jan 26, 2017 21635     Roger.Ferrel  Added ISSUE_SITE_ID.
+ * Jan 27, 2017 22308     Robert.Blum   Added Hydro Pils constants.
  * Feb 01, 2017 15556     Chris.Golden  Removed obsolete elements, and added constants for the
  *                                      console refactor.
  * Feb 16, 2017 29138     Chris.Golden  Removed unneeded visibility-in-history-list constant and
  *                                      added new recommender result event set attribute name
  *                                      for saving to the history list.
+ * Mar 15, 2017 30224     Robert.Blum   Added hazard attribute for group name.
  * Mar 16, 2017 15528     Chris.Golden  Removed hazard event checked attribute, and added
  *                                      metadata megawidget property to indicate that a
  *                                      particular metadata value being changed does not affect
@@ -134,16 +140,20 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Mar 30, 2017 15528     Chris.Golden  Added recommender result event set property to indicate
  *                                      whether or not to treat saved events as issuances or
  *                                      not.
+ * Mar 31, 2017 30536     Kevin.Bisanz  Added RequestServiceId enum.
  * Apr 04, 2017 32732     Chris.Golden  Added constant for indicating whether or not the origin
  *                                      (user name and workstation identifier) should be updated
  *                                      when a recommender returns modified event(s).
  * Apr 05, 2017 32733     Robert.Blum   Added REQUEST.
+ * Apr 10, 2017 32735     Robert.Blum   Added LEGACY_TEXT_WRAP_LIMIT.
+ * May 15, 2017 34069     mduff         Added HazardStatus.ELAPSING
  * May 24, 2017 15561     Chris.Golden  Removed unneeded Significance enumerated type and
  *                                      associated methods.
  * May 31, 2017 34684     Chris.Golden  Added selection as a recommender execution trigger type,
  *                                      and as a first-class field (of sorts).
  * Jun 01, 2017 23056     Chris.Golden  Added constant for metadata megawidgets that always use
  *                                      their default value instead of any existing old value.
+ * Jun 27, 2017 14789     Robert.Blum   Added SELECT_BY_AREA_COLOR.
  * Jun 30, 2017 19223     Chris.Golden  Added PRODUCT_DATA_PARAM.
  * Aug 15, 2017 22757     Chris.Golden  Added new constants related to recommender result
  *                                      display, and removed obsolete recommender-related
@@ -173,6 +183,13 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Mar 29, 2018 48027     Chris.Golden  Removed "hazard event visual feature changed" recommender
  *                                      trigger, as it has been folded into "hazard event
  *                                      modified".
+ * May 22, 2018  3782     Chris.Golden  Changed recommender parameter gathering to be much more
+ *                                      flexible, allowing the user to change dialog parameters
+ *                                      together with visual features, and allowing visual
+ *                                      feature changes to be made multiple times before the
+ *                                      execution proceeds.
+ * May 30, 2018 14791     Chris.Golden  Added SESSION_OBJECTS.
+ *
  * </pre>
  * 
  * @author mnash
@@ -258,15 +275,21 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_METADATA_GET_DIALOG_INFO_NEEDED = "getDialogInfoNeeded";
 
+    public static final String RECOMMENDER_METADATA_HANDLE_DIALOG_PARAMETER_CHANGES = "handleDialogParameterChangeNeeded";
+
     public static final String RECOMMENDER_METADATA_GET_SPATIAL_INFO_NEEDED = "getSpatialInfoNeeded";
 
     // Recommender method names
 
-    public static final String RECOMMENDER_GET_DIALOG_INFO_METHOD = "getDialogInfo";
-
     public static final String RECOMMENDER_GET_METADATA_METHOD = "getScriptMetadata";
 
+    public static final String RECOMMENDER_GET_DIALOG_INFO_METHOD = "getDialogInfo";
+
+    public static final String RECOMMENDER_HANDLE_DIALOG_PARAMETER_CHANGE_METHOD = "handleDialogParameterChange";
+
     public static final String RECOMMENDER_GET_SPATIAL_INFO_METHOD = "getSpatialInfo";
+
+    public static final String RECOMMENDER_CHECK_SPATIAL_INFO_METHOD = "isSpatialInfoComplete";
 
     // Recommender result attribute names
 
@@ -428,7 +451,7 @@ public final class HazardConstants {
     // part of the hazard lifecycle that the user will see
     public enum HazardStatus {
         PENDING("pending"), POTENTIAL("potential"), PROPOSED(
-                "proposed"), ISSUED("issued"), ELAPSED(
+                "proposed"), ISSUED("issued"), ELAPSING("elapsing"), ELAPSED(
                         "elapsed"), ENDING("ending"), ENDED("ended");
         private final String value;
 
@@ -446,11 +469,12 @@ public final class HazardConstants {
         }
 
         public static boolean issuedButNotEndedOrElapsed(HazardStatus status) {
-            return status == ISSUED || status == ENDING;
+            return status == ISSUED || status == ENDING || status == ELAPSING;
         }
 
         public static boolean endingEndedOrElapsed(HazardStatus status) {
-            return status == ENDING || status == ENDED || status == ELAPSED;
+            return status == ENDING || status == ENDED || status == ELAPSING
+                    || status == ELAPSED;
         }
     }
 
@@ -549,6 +573,9 @@ public final class HazardConstants {
     }
 
     public static final String PRODUCT_DATA_PARAM = "productData";
+
+    public static final Set<String> HYDRO_PILS = Sets.newHashSet("ESF", "FFA",
+            "FFW", "FFS", "FLW", "FLS");
 
     /**
      * Minimum interval in milliseconds allowed between adjacent thumbs in time
@@ -722,6 +749,10 @@ public final class HazardConstants {
 
     public static final String SITE_ID = "siteID";
 
+    public static final String SITE_ID_4 = "siteID4";
+
+    public static final String ISSUE_SITE_ID = "issueSiteID";
+
     /**
      * Site identifier that the current localization uses. This may be different
      * from the {@link #SITE_ID}, which may change during a Hazard Services
@@ -759,8 +790,6 @@ public final class HazardConstants {
 
     public static final String EXPIRATION_TIME = "expirationTime";
 
-    public static final String HAZARD_MODE = "hazardMode";
-
     public static final String HAZARD_SOURCE = "source";
 
     public static final String RISE_ABOVE = "riseAbove";
@@ -771,9 +800,13 @@ public final class HazardConstants {
 
     public static final String STREAM_NAME = "streamName";
 
+    public static final String GROUP_NAME = "groupName";
+
     public static final String UNTIL_FURTHER_NOTICE_SUFFIX = "UntilFurtherNotice";
 
     public static final String BEFORE_UNTIL_FURTHER_NOTICE_PREFIX = "__beforeUntilFurtherNotice__";
+
+    public static final String WARNING_RECORD_ID = "WarningRecordId";
 
     public static final String HAZARD_SOURCE_APP = "hazardSourceApp";
 
@@ -816,11 +849,6 @@ public final class HazardConstants {
      * Full type key for hazard
      */
     public static final String HAZARD_EVENT_FULL_TYPE = "fullType";
-
-    /**
-     * VTEC mode key for hazard
-     */
-    public static final String HAZARD_EVENT_VTEC_MODE = "VTECmode";
 
     /**
      * EventSet attribute key for vtecMode
@@ -984,6 +1012,8 @@ public final class HazardConstants {
 
     public static final String CWA_GEOMETRY = "cwaGeometry";
 
+    public static final String SESSION_OBJECTS = "sessionObjects";
+
     public static final String PRACTICE = "practice";
 
     /*
@@ -1095,6 +1125,11 @@ public final class HazardConstants {
      * Key for custom buttons list within the recommender dialog.
      */
     public static final String BUTTONS_KEY = "buttons";
+
+    /**
+     * Key for visual features list within the recommender dialog.
+     */
+    public static final String VISUAL_FEATURES_KEY = "visualFeatures";
 
     /**
      * Key for title text.
@@ -1402,10 +1437,7 @@ public final class HazardConstants {
 
     public static final String SETTINGS_DATA = "settings";
 
-    /**
-     * Drag drop dot identifier.
-     */
-    public static final String DRAG_DROP_DOT = "DragDropDot";
+    public static final String SELECT_BY_AREA_COLOR = "SelectByAreaColor";
 
     /**
      * Persistent shape key.
@@ -1482,4 +1514,28 @@ public final class HazardConstants {
     public static final String INGEST = "Ingest";
 
     public static final String REQUEST = "Request";
+
+    public static int LEGACY_TEXT_WRAP_LIMIT = 69;
+
+    public static enum RequestServiceId {
+        /**
+         * Use the default request service.
+         */
+        DEFAULT(""),
+
+        /**
+         * Use this service specifically for ingest.
+         */
+        INGEST("hazardservices.request.server");
+
+        private final String value;
+
+        private RequestServiceId(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
 }

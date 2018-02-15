@@ -100,6 +100,9 @@ import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
  *                                      workstations and users listed who have
  *                                      them locked, when they are not actually
  *                                      locked.
+ * May 01, 2018   15561    Chris.Golden Fixed until-further-notice to be allowed
+ *                                      only if not ending, ended, elapsing, or
+ *                                      elapsed.
  * May 04, 2018   50032    Chris.Golden Fixed bug that caused replacing of tabular
  *                                      entities for an event that is not found
  *                                      to have previously had a tabular entity
@@ -1515,7 +1518,9 @@ class TabularEntityManager {
                         .get(eventIdentifier),
                 ((historyIndex == null)
                         && eventManager.getEventIdsAllowingUntilFurtherNotice()
-                                .contains(eventIdentifier)),
+                                .contains(eventIdentifier)
+                        && (HazardStatus.endingEndedOrElapsed(
+                                event.getStatus()) == false)),
                 selectionManager.getSelectedEventVersionIdentifiers()
                         .contains(new Pair<String, Integer>(event.getEventID(),
                                 historyIndex)),

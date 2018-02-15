@@ -55,7 +55,7 @@ public class ToolAction {
      * Recommender actions
      */
     public enum RecommenderActionEnum {
-        RUN_RECOMMENDER_WITH_PARAMETERS, RUN_RECOMMENDER, RECOMMENDATIONS, RECOMMENDER_RESULTS_DISPLAY_COMPLETE, ENABLE_EVENT_DRIVEN_TOOLS
+        RUN_RECOMMENDER, RECOMMENDATIONS, ENABLE_EVENT_DRIVEN_TOOLS
     };
 
     // Private Variables
@@ -92,25 +92,6 @@ public class ToolAction {
     private String productGeneratorName;
 
     // Public Constructors
-    /**
-     * Construct a standard instance.
-     * 
-     * 
-     * @param recommenderActionType
-     *            Type of the recommender action that is occurring.
-     * @param tool
-     * @param eventType
-     * 
-     */
-    public ToolAction(RecommenderActionEnum recommenderActionType,
-            String toolIdentifier, ToolType toolType,
-            RecommenderExecutionContext context) {
-        this.recommenderActionType = recommenderActionType;
-        this.toolIdentifier = toolIdentifier;
-        this.toolType = toolType;
-        this.context = context;
-        this.enable = false;
-    }
 
     /**
      * 

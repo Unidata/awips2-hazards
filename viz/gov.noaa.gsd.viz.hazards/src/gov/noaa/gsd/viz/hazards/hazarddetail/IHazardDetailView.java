@@ -58,6 +58,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Apr 09, 2015    7382    Chris.Golden Added "show start-end time sliders" flag.
  * Apr 15, 2015    3508    Chris.Golden Added "hazard detail to be wide" flag.
  * Oct 19, 2016   21873    Chris.Golden Added time resolution tracking tied to events.
+ * May 15, 2017   30227    Roger.Ferrel Allow event tabs to be closed with
+ *                                      confirmation.
  * Feb 13, 2018   44514    Chris.Golden Removed event-modifying script code, as such
  *                                      scripts are not to be used.
  * </pre>
@@ -120,6 +122,14 @@ public interface IHazardDetailView {
      * @return Selected event state changer.
      */
     public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> getVisibleEventChanger();
+
+    /**
+     * Get the deselect event invoker. The identifier is that of the hazard
+     * event version.
+     * 
+     * @return Deselect event invoker.
+     */
+    public ICommandInvoker<Pair<String, Integer>> getDeselectEventInvoker();
 
     /**
      * Get the category state changer. The identifier is that of the hazard

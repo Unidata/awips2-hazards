@@ -29,22 +29,12 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def initialize(self):
         super(Format, self).initialize()
-        self.initProductPartMethodMapping()
 
         self._productGeneratorName = 'AIRMET_ProductGenerator'
 
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'easMessage': self._easMessage,
-            'productHeader': self._productHeader,
-            'narrativeForecastInformation': self._narrativeForecastInformation
-                                }
-
-    def execute(self, productDict, editableEntries=None, overrideProductText=None):
+    def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
-        self._editableParts = OrderedDict()
+        self._editableParts = []
         parts = self.productDict.get('productParts')
         eventDicts = self.productDict.get('eventDicts')
         self.updateNumberDict = self.productDict.get('updateNumberDict')

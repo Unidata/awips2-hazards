@@ -53,6 +53,11 @@ import jep.JepException;
  * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial
  *                                      info collection.
+ * May 22, 2018  3782     Chris.Golden  Changed recommender parameter gathering to be
+ *                                      much more flexible, allowing the user to change
+ *                                      dialog parameters together with visual features,
+ *                                      and allowing visual feature changes to be made
+ *                                      multiple times before the execution proceeds.
  * </pre>
  * 
  * @author mnash
@@ -98,7 +103,7 @@ public class CAVERecommenderScriptManager
                         eventSet);
                 showDialog(dialogValues);
                 VisualFeaturesList visualFeatures = getVisualFeatures(recName,
-                        eventSet);
+                        eventSet, null, true);
                 return executeRecommender(recommenderName, eventSet,
                         dialogValues, visualFeatures);
             } catch (JepException e) {

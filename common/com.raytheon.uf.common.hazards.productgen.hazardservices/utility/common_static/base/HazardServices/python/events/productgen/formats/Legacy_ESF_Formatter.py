@@ -1,17 +1,5 @@
 '''
     Description: Legacy formatter for hydro ESF products
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
-    May 07, 2015    6979    EditableEntries are passed in for reuse.
-    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
-                                        empty string.
-    Jun 03, 2015    8530    Robert.Blum Added method for new initials productPart
-                                        and removed duplicate $$.
-    Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
-    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
 '''
 import FormatTemplate
 
@@ -22,28 +10,14 @@ import Legacy_Hydro_Formatter
 
 class Format(Legacy_Hydro_Formatter.Format):
 
-    def initialize(self, editableEntries) :
+    def initialize(self, editableEntries):
         super(Format, self).initialize(editableEntries)
-        self.initProductPartMethodMapping()
-        
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'easMessage': self._easMessage,
-            'productHeader': self._productHeader,
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'narrativeForecastInformation': self._narrativeForecastInformation,
-            'initials': self._initials,
-        }
 
-    def execute(self, productDict, editableEntries, overrideProductText):
-        self.overrideProductText = overrideProductText
+    def execute(self, productDict, editableEntries):
         self.productDict = productDict
         self.initialize(editableEntries)
         legacyText = self._createTextProduct()
-        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
+        return [ProductUtils.wrapLegacy(legacyText)], self.editableParts
 
     ######################################################
     #  Product Part Methods 
@@ -54,12 +28,25 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Segment Level
 
     ################# Section Level    
-    def _narrativeForecastInformation(self, sectionDict):
-        # Get saved value from productText table if available
-        narrative = self._getVal('narrativeForecastInformation', sectionDict)
-        if narrative is None:
-            # ESF sections will only contain one hazard
-            hazard = sectionDict.get('hazardEvents')[0]
-            narrative = self._tpc.getValueOrFramedText('narrativeForecastInformation', hazard, 'Enter Narrative Forecast Information')
-        self._setVal('narrativeForecastInformation', narrative, sectionDict, 'Narrative Forecast Information')
-        return self._getFormattedText(narrative, endText='\n\n')
+    def narrativeForecastInformation(self, sectionDict, productPart):
+        narrative = '''|*
+ Headline defining the type of flooding being addressed 
+      (e.g., flash flooding, main stem
+      river flooding, snow melt flooding)
+
+ Area covered
+ 
+ Possible timing of the event
+ 
+ Relevant factors 
+         (e.g., synoptic conditions, 
+         quantitative precipitation forecasts (QPF), or
+         soil conditions)
+         
+ Definition of an outlook (tailored to the specific situation)
+ 
+ A closing statement indicating when additional information will be provided.
+ *|'''
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(narrative)
+        return self.getFormattedText(productPart, endText='\n\n')

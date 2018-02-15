@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea;
 
+import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.maps.rsc.AbstractDbMapResourceData;
@@ -21,7 +22,8 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
  * SOFTWARE HISTORY
  * Date         Ticket#     Engineer        Description
  * ------------ ---------- ---------------- --------------------------
- * Nov 2011                 Bryon.Lawrence  Initial creation.
+ * Nov 2011                Bryon.Lawrence   Initial creation.
+ * Jun 27, 2017 14789      Robert.Blum      Select by Area now has a configurable color.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -29,11 +31,28 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
  */
 public class SelectByAreaDbMapResourceData extends AbstractDbMapResourceData {
 
+    // Private Variables
+
+    /**
+     * Color to be used for select by area editing operations.
+     */
+    private Color editColor;
+
     // Public Methods
+
+    /**
+     * Set the color to be used for select by area editing operations.
+     * 
+     * @param editColor
+     *            Color to be used.
+     */
+    public void setEditColor(Color editColor) {
+        this.editColor = editColor;
+    }
 
     @Override
     public SelectByAreaDbMapResource construct(LoadProperties loadProperties,
             IDescriptor descriptor) throws VizException {
-        return new SelectByAreaDbMapResource(this, loadProperties);
+        return new SelectByAreaDbMapResource(this, loadProperties, editColor);
     }
 }

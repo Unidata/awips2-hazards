@@ -1,37 +1,6 @@
 """
     Description: Constants used throughout Hazard Services Python code.
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    April 5, 2013            Tracy.L.Hansen      Initial creation
-    April 19, 2013           blawrenc            Added constants for 
-                                                 Bridge
-    April 09, 2014 2925     Chris.Golden         Added constants for
-                                                 class-based metadata.
-    June 17, 2014  3982     Chris.Golden         Changed megawidget
-                                                 "side effects" to
-                                                 "interdependencies".
-    August 15, 2014  4243   Chris.Golden         Changed metadata-
-                                                 fetching constants.
-    Oct 29, 2014     5070   mpduff               Added SITE_CFG_ROOT for move of SiteCFG.py
-    Apr 07, 2015     7271   Chris.Golden         Added reference to new missing value
-                                                 constant.
-    Nov 09, 2015     7532   Robert.Blum          Changed CALLS_TO_ACTION constant.
-    Feb 22, 2016    15017   Robert.Blum          Add CREST_STAGE constant.
-    Mar 31, 2016     8837   Robert.Blum          Added SITE constant.
-    Sep 02, 2016    15934   Chris.Golden         Added linear unit constants.
-    Oct 12, 2016    22069   Benjamin.Phillippe   Removed HIRES_RIVERINUNDATION_TABLE constant
-    Nov 03, 2016    22965   Robert.Blum          Added MISSING_VALUE_STR.
-    Aug 17, 2017    22757   Chris.Golden         Added recommender related constants.
-    Sep 05, 2017    22965   Chris.Golden         Fixed SITE_CFG_ROOT path.
-    Dec 13, 2017    40923   Chris.Golden         Added constants for returning modified
-                                                 hazard event from metadata fetch.
-    Feb 06, 2018    46258   Chris.Golden         Added key for recommender results not being
-                                                 treated as modifications when applied to the
-                                                 associated events.
-    Feb 13, 2018    44514   Chris.Golden         Removed event-modifying script code, as such
-                                                 scripts are not to be used.
+
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -46,7 +15,6 @@ SITE_ID = 'siteID'
 BACKUP_SITE_ID = 'backupSiteID'
 
 GEOMETRY = 'geometry'
-HAZARD_MODE = "hazardMode"
 
 # State and Values
 STATE = "status"
@@ -97,16 +65,10 @@ MISSING_VALUE = -9999
 MISSING_VALUE_STR = str(MISSING_VALUE)
 
 FORECAST_POINT = "forecastPoint"
-ID = "id"
 NAME = "name"
 POINT = "point"
 LINE = "line"
 POLYGON = "polygon"
-
-PREVIEW_STATE = "previewState"
-PREVIEW_ENDED = "previewEnded"
-REPLACES = "replaces"
-REPLACED_BY = "replacedBy"
 
 # Spatial Display and Geometries
 #   These may change as we begin to use Shapely
@@ -176,6 +138,7 @@ INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
 METADICT_KEY = "metaDict"
 FILENAME_KEY = "fileName"
 
+SESSION_OBJECT_KEY = "sessionObjects"
 SAVE_TO_HISTORY_KEY = "saveToHistory"
 SAVE_TO_DATABASE_KEY = "saveToDatabase"
 KEEP_SAVED_TO_DATABASE_LOCKED_KEY = "lockEvents"
@@ -238,6 +201,17 @@ SHAPELY_POINT = "Point"
 SHAPELY_LINE = "LineString"
 SHAPELY_POLYGON = "Polygon"
 SHAPELY_MULTIPOLYGON = "MultiPolygon"
+
+
+#################################
+# Previous Text Checkbox constants
+PREVIOUS_CTA_TEXT_CHECKBOX = "prevCTATextCheckBox"
+PREVIOUS_BASIS_TEXT_CHECKBOX = "prevBasisTextCheckBox"
+PREVIOUS_LOCATIONS_AFFECTED_TEXT_CHECKBOX = "prevLocationsAffectedTextCheckBox"
+PREVIOUS_ADDITIONAL_INFO_TEXT_CHECKBOX = "prevAdditionalInfoTextCheckBox"
+PREVIOUS_ENDING_OPTION_TEXT_CHECKBOX = "prevEndingOptionTextCheckBox"
+PREVIOUS_CRESTS_TEXT_CHECKBOX= "prevCrestsTextCheckBox"
+PREVIOUS_IMPACTS_TEXT_CHECKBOX = "prevImpactsTextCheckBox"
 
 
 #################################

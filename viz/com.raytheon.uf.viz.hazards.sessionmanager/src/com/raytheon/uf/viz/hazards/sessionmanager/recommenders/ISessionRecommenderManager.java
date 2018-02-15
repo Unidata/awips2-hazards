@@ -10,10 +10,12 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.recommenders.EventRecommender;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
 
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -43,6 +45,11 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      added interfaces to be used to provide callback
  *                                      objects for dialog and spatial input, and for
  *                                      the displaying of results.
+ * May 22, 2018    3782    Chris.Golden Changed recommender parameter gathering to be
+ *                                      much more flexible, allowing the user to change
+ *                                      dialog parameters together with visual features,
+ *                                      and allowing visual feature changes to be made
+ *                                      multiple times before the execution proceeds.
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,27 +58,6 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 public interface ISessionRecommenderManager {
 
     // Public Interfaces
-
-    /**
-     * Interface specifying the methods that must be implemented in order to
-     * function as a dialog parameters receiver. The latter is a class that
-     * responds to the user inputting recommender parameters into a dialog prior
-     * to the recommender's execution.
-     */
-    public interface IDialogParametersReceiver {
-
-        /**
-         * Receive the specified dialog parameters, or cancel the running of the
-         * recommender that originally asked for dialog parameters.
-         * 
-         * @param parameters
-         *            Map pairing parameter names with the values specified by
-         *            the user via a dialog, or <code>null</code> if the user
-         *            canceled the running of the recommender that originally
-         *            asked for dialog parameters.
-         */
-        void receiveDialogParameters(Map<String, Serializable> parameters);
-    }
 
     /**
      * Interface specifying the methods that must be implemented in order to
@@ -160,6 +146,73 @@ public interface ISessionRecommenderManager {
      */
     public void eventCommandInvoked(String eventIdentifier,
             String commandIdentifier);
+
+    /**
+     * Receive notification that tool dialog parameters have changed in some
+     * way.
+     * 
+     * @param identifier
+     *            Identifier of the tool execution for which the dialog was
+     *            instantiated.
+     * @param parameterIdentifiers
+     *            Identifiers of the dialog parameters that triggered this
+     *            invocation. If <code>null</code>, nothing has changed; the
+     *            dialog is merely providing its mutable properties to the
+     *            manager at initialization time.
+     * @param mutableProperties
+     *            Mutable properties of the dialog.
+     */
+    public void parameterDialogChanged(ToolExecutionIdentifier identifier,
+            Collection<String> parameterIdentifiers,
+            Map<String, Map<String, Object>> mutableProperties);
+
+    /**
+     * Receive notification that tool dialog-based parameter gathering is
+     * complete.
+     * 
+     * @param identifier
+     *            Identifier of the tool execution for which the dialog was
+     *            instantiated.
+     * @param valuesForParameters
+     *            Map pairing parameter identifiers with their values.
+     */
+    public void parameterDialogComplete(ToolExecutionIdentifier identifier,
+            Map<String, Serializable> valuesForParameters);
+
+    /**
+     * Receive notification that tool dialog-based parameter gathering has been
+     * cancelled.
+     * 
+     * @param identifier
+     *            Identifier of the tool execution for which the dialog was
+     *            instantiated.
+     */
+    public void parameterDialogCancelled(ToolExecutionIdentifier identifier);
+
+    /**
+     * Receive notification that tool spatial parameters have changed in some
+     * way.
+     * 
+     * @param identifier
+     *            Identifier of the tool execution for which the spatial
+     *            parameters have changed.
+     * @param parameterIdentifiers
+     *            Identifiers of the parameters that have changed.
+     * @param parameters
+     *            Tool spatial parameters.
+     */
+    public void spatialParametersChanged(ToolExecutionIdentifier identifier,
+            Collection<String> parameterIdentifiers,
+            VisualFeaturesList parameters);
+
+    /**
+     * Receive notification that tool dialog showing results has been closed.
+     * 
+     * @param identifier
+     *            Identifier of the tool execution for which the dialog was
+     *            instantiated.
+     */
+    public void resultDialogClosed(ToolExecutionIdentifier identifier);
 
     /**
      * Shut the manager down.

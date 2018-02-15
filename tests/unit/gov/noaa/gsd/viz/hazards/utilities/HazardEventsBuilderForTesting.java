@@ -17,13 +17,9 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SUB_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_VTEC_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RISE_ABOVE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.hazardStatusFromString;
-import gov.noaa.gsd.common.utilities.DateTimes;
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -32,7 +28,6 @@ import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -41,6 +36,10 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
+
+import gov.noaa.gsd.common.utilities.DateTimes;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 /**
  * Description: Utility method for building {@link HazardEvent}s from a JSON
@@ -71,7 +70,7 @@ public class HazardEventsBuilderForTesting {
         Dict dict = Dict.getInstance(eventsAsJson);
         for (String eventId : dict.keySet()) {
 
-            IHazardEvent event = new HazardEventManager(true).createEvent();
+            IHazardEvent event = new HazardEventManager(true).createEvent(true);
             Dict eventDict = dict.getDynamicallyTypedValue(eventId);
             Map<String, Serializable> attributes = Maps.newHashMap();
             for (String key : eventDict.keySet()) {
@@ -98,14 +97,6 @@ public class HazardEventsBuilderForTesting {
                 } else if (key.equals(SITE_ID)) {
                     String site = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(site);
-                } else if (key.equals(HAZARD_EVENT_VTEC_MODE)) {
-                    String mode = eventDict.getDynamicallyTypedValue(key);
-                    if (mode.equals("operational")) {
-                        event.setHazardMode(ProductClass.OPERATIONAL);
-                    } else {
-                        throw new UnsupportedOperationException(
-                                "Do not support mode " + mode);
-                    }
                 } else if (key.equals(HAZARD_EVENT_PHEN)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setPhenomenon(value);

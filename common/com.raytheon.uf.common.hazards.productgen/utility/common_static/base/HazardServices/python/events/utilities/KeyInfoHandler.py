@@ -19,14 +19,8 @@
 # #
 
 #
-# Handler for Hazard Events to Java and back.
+# Handler for KeyInfo objects to Java and back.
 #  
-#    
-#     SOFTWARE HISTORY
-#    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    04/07/14        2917          jsanchez         Initial Creation.
 
 from com.raytheon.uf.common.hazards.productgen import KeyInfo
 from com.raytheon.uf.common.python import PyJavaUtil
@@ -36,7 +30,7 @@ from KeyInfo import KeyInfo as PythonKeyInfo
 
 def pyKeyInfoToJavaKeyInfo(val):
     if isinstance(val, PythonKeyInfo) == False:
-            return False, val
+        return False, val
     return True, val.toJavaObj()
 
 def javaKeyInfoToPyKeyInfo(obj, customConverter=None):
@@ -44,15 +38,11 @@ def javaKeyInfoToPyKeyInfo(obj, customConverter=None):
         return False, obj
     name = obj.getName()
     productCategory = obj.getProductCategory()
-    productID = obj.getProductID()
+    mode = obj.getMode()
     eventIDs = JUtil.javaObjToPyVal(obj.getEventIDs())
     segment = obj.getSegment()
-    editable = obj.isEditable()
-    displayable = obj.isDisplayable()
-    label = obj.getLabel()
-    required = obj.isRequired()
     index = obj.getIndex()
-    keyInfo = PythonKeyInfo(name, productCategory, productID, eventIDs, segment, editable, displayable, label, required, index)
+    keyInfo = PythonKeyInfo(name, productCategory, mode, eventIDs, segment, index)
     return True, keyInfo
 
 def _isJavaConvertible(obj):

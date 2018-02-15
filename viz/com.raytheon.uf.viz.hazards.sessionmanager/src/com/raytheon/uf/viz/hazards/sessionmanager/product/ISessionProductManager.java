@@ -53,6 +53,9 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Jul 30, 2015 9681       Robert.Blum  Changes for viewOnly products.
  * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
  * Nov 23, 2016 26423      Robert.Blum  Removed dead code.
+ * Jan 27, 2017 22308      Robert.Blum  Removed parameter that is no longer needed.
+ * Mar 21, 2017 29996      Robert.Blum  Added method to get staging dialog metadata.
+ * Apr 14, 2017 32733      Robert.Blum  Code clean up.
  * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
  * </pre>
  * 
@@ -104,27 +107,16 @@ public interface ISessionProductManager {
      * @param productData
      *            Hibernate representation for the storage of product data to
      *            retrieve for review.
-     * @param correctable
-     *            Flag indicating whether or not the products are being
-     *            generated for a product correction.
-     * @param viewOnly
-     *            Flag indicating whether or not the products are being
-     *            generated to be displayed as viewOnly in the product viewer.
      */
-    public void generateProductFromProductData(List<ProductData> productData,
-            boolean correctable, boolean viewOnly);
+    public void generateProductsForCorrection(List<ProductData> productData);
 
     /**
-     * Generate products from Hazard Event
+     * Generate updated products from pre-existing products.
      * 
-     * @param issue
-     *            Flag indicating whether or not the generation is the result of
-     *            an issue command; if false, it is the result of a preview
-     *            command.
      * @param generatedProductsList
      *            List of generated products to be created.
      */
-    public void createProductsFromHazardEventSets(boolean issue,
+    public void setupForRunningFinalProductGen(
             List<GeneratedProductList> generatedProductsList);
 
     /**
@@ -205,32 +197,19 @@ public interface ISessionProductManager {
     public void generateNonHazardProducts(String productGeneratorName);
 
     /**
-     * Generate products from generatedProductsList.
-     * 
-     * @param issue
-     *            Flag indicating whether or not the generation is the result of
-     *            an issue command; if false, it is the result of a preview
-     *            command.
-     * @param generatedProductsList
-     *            List of generated products.
+     * Show the product viewer selection.
      */
-    public void createProductsFromGeneratedProductList(boolean issue,
-            List<GeneratedProductList> generatedProductsList);
+    public void showUserProductViewerSelection();
 
     /**
-     * Show the product viewer selection for the specified events, or for all
-     * events if no events are specified.
+     * Get the result of the execution of the product level metadata script.
      * 
-     * @param correction
-     *            Flag indicating whether or not the selection is to be shown
-     *            for correction instead of viewing.
-     * @param eventIdentifiers
-     *            Identifiers of events for which to show the product viewer
-     *            selection; if <code>null</code>, show the selection for all
-     *            events. Note that this parameter is ignored if
-     *            <code>correction</code> is <code>true</code>, as in that case
-     *            all correctable events are shown.
+     * @param info
+     * @param issue
+     * @param map
+     * @return
      */
-    public void showUserProductViewerSelection(boolean correction,
-            Collection<String> eventIdentifiers);
+    public List<Map<String, Object>> getStagingDialogMetadata(
+            ProductGeneratorInformation info, boolean issue,
+            Map<String, Serializable> map);
 }

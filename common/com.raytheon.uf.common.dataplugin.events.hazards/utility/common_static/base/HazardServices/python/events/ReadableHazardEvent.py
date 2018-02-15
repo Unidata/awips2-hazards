@@ -14,19 +14,13 @@
 # properties of a hazard event. Subclasses may provide the ability to change
 # said properties.
 #  
-#    
-#     SOFTWARE HISTORY
-#    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    12/14/17        20739         Chris.Golden   Initial creation.
-#    01/26/18        33428         Chris.Golden   Added issuance count.
 
 import JUtil, datetime
 
 from Event import Event
 
 import AdvancedGeometry
+import TimeUtils
 
 from AdvancedGeometryHandler import pyAdvancedGeometryToJavaAdvancedGeometry, javaAdvancedGeometryToPyAdvancedGeometry
 JUtil.registerPythonToJava(pyAdvancedGeometryToJavaAdvancedGeometry)
@@ -95,23 +89,30 @@ class ReadableHazardEvent(Event, JUtil.JavaWrapperClass):
     def getPhensig(self):
         return self.jobj.getPhensig()
     
-    def getInsertTime(self):
-        timestamp = self.jobj.getInsertTime()
-        if timestamp is None:
-            return None
-        return datetime.datetime.utcfromtimestamp(timestamp.getTime() / 1000.0)
-        
-    def getCreationTime(self):
-        return datetime.datetime.utcfromtimestamp(self.jobj.getCreationTime().getTime() / 1000.0)
-    
     def getStartTime(self):
-        return datetime.datetime.utcfromtimestamp(self.jobj.getStartTime().getTime() / 1000.0)
+        if self.jobj.getStartTime() is not None:
+            return TimeUtils.epochTimeMillisToDatetime(self.jobj.getStartTime().getTime())
+        return None
       
     def getEndTime(self):
-        if self.jobj.getEndTime() is not None :
-            return datetime.datetime.utcfromtimestamp(self.jobj.getEndTime().getTime() / 1000.0)
-        else :
-            return None
+        if self.jobj.getEndTime() is not None:
+            return TimeUtils.epochTimeMillisToDatetime(self.jobj.getEndTime().getTime())
+        return None
+    
+    def getInsertTime(self):
+        if self.jobj.getInsertTime() is not None:
+            return TimeUtils.epochTimeMillisToDatetime(self.jobj.getInsertTime().getTime())
+        return None
+        
+    def getCreationTime(self):
+        if self.jobj.getCreationTime() is not None:
+            return TimeUtils.epochTimeMillisToDatetime(self.jobj.getCreationTime().getTime())
+        return None
+        
+    def getExpirationTime(self):
+        if self.jobj.getExpirationTime() is not None:
+            return TimeUtils.epochTimeMillisToDatetime(self.jobj.getExpirationTime().getTime())
+        return None
 
     def getUserName(self):
         return self.jobj.getWsId().getUserName()
@@ -141,12 +142,6 @@ class ReadableHazardEvent(Event, JUtil.JavaWrapperClass):
         if visualFeatures is None:
             return VisualFeatures([])
         return VisualFeatures(visualFeatures)
-
-    def getHazardMode(self):
-        if self.jobj.getHazardMode() is not None :
-            return self.jobj.getHazardMode().name()
-        else :
-            return None
         
     def getHazardAttributes(self):
         return JUtil.javaObjToPyVal(self.jobj.getHazardAttributes())
@@ -186,20 +181,20 @@ class ReadableHazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getSubType()
         elif lowerKey == 'phensig':
             return self.getPhensig()
-        elif lowerKey == 'creationtime':
-            return self.getCreationTime()
-        elif lowerKey == 'inserttime':
-            return self.getInsertTime()
         elif lowerKey == 'starttime': 
             return self.getStartTime()
         elif lowerKey == 'endtime':
             return self.getEndTime()
+        elif lowerKey == 'creationtime':
+            return self.getCreationTime()
+        elif lowerKey == 'inserttime':
+            return self.getInsertTime()
+        elif lowerKey == 'expirationtime':
+            return self.getExpirationTime()
         elif lowerKey == 'geometry' or lowerKey == 'geom':
             return self.getGeometry()
         elif lowerKey == 'flattenedgeometry':
             return self.getFlattenedGeometry()
-        elif lowerKey == 'mode' or lowerKey == 'hazardmode':
-            return self.getHazardMode()
         elif lowerKey == 'eventid':
             return self.getEventID()
         elif lowerKey == 'username':

@@ -28,9 +28,10 @@ import javax.persistence.Embeddable;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
+import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 
 /**
  * Basic information about the keys set in the python dictionary.
@@ -47,6 +48,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 28, 2015  9687     Robert.Blum  Added displayLabel field.
  * Aug 03, 2015  8836     Chris.Cody   Changes for a configurable Event Id
  * Aug 31, 2015  9617     Chris.Golden Decoupled from the megawidget framework.
+ * Feb 23, 2017  29170    Robert.Blum  Product Editor refactor.
+ * Mar 30, 2017  32569    Robert.Blum  Added segmentDivider field.
+ * Jun 05, 2017  29996    Robert.Blum  Removed all Product Editor configurable fields, this
+ *                                     is strictly used for storing to ProductText table.
+ * Jun 12, 2017  35022    Kevin.Bisanz Remove productID, add mode.
+ * 
  * </pre>
  * 
  * @author jsanchez
@@ -54,7 +61,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Embeddable
 @DynamicSerialize
-public class KeyInfo implements ISerializableObject, Serializable {
+public class KeyInfo implements IParameterInfo, Serializable {
+
     @DynamicSerializeElement
     private String name;
 
@@ -62,7 +70,7 @@ public class KeyInfo implements ISerializableObject, Serializable {
     private String productCategory;
 
     @DynamicSerializeElement
-    private String productID;
+    private String mode;
 
     @DynamicSerializeElement
     private List<String> eventIDs;
@@ -70,25 +78,19 @@ public class KeyInfo implements ISerializableObject, Serializable {
     @DynamicSerializeElement
     private String segment;
 
-    @DynamicSerializeElement
-    private boolean editable;
-
-    @DynamicSerializeElement
-    private boolean displayable;
-
-    @DynamicSerializeElement
-    private String label;
-
-    @DynamicSerializeElement
-    private boolean required;
-
-    @DynamicSerializeElement
-    private boolean displayLabel;
-
     private int index;
 
     public KeyInfo() {
 
+    }
+
+    public KeyInfo(KeyInfo keyInfo) {
+        this.name = keyInfo.getName();
+        this.productCategory = keyInfo.getProductCategory();
+        this.mode = keyInfo.getMode();
+        this.eventIDs = keyInfo.getEventIDs();
+        this.segment = keyInfo.getSegment();
+        this.index = keyInfo.getIndex();
     }
 
     public String getName() {
@@ -107,12 +109,12 @@ public class KeyInfo implements ISerializableObject, Serializable {
         this.productCategory = productCategory;
     }
 
-    public String getProductID() {
-        return productID;
+    public String getMode() {
+        return mode;
     }
 
-    public void setProductID(String productID) {
-        this.productID = productID;
+    public void setMode(String mode) {
+        this.mode = mode;
     }
 
     public List<String> getEventIDs() {
@@ -131,48 +133,14 @@ public class KeyInfo implements ISerializableObject, Serializable {
         this.segment = segment;
     }
 
-    public boolean isEditable() {
-        return editable;
-    }
-
-    public void setEditable(boolean editable) {
-        this.editable = editable;
-    }
-
-    public boolean isDisplayable() {
-        return displayable;
-    }
-
-    public void setDisplayable(boolean displayable) {
-        this.displayable = displayable;
-    }
-
+    @Override
     public String getKey() {
         return toString();
     }
 
+    @Override
     public String getLabel() {
-        return label;
-    }
-
-    public void setLabel(String label) {
-        this.label = label;
-    }
-
-    public boolean isRequired() {
-        return required;
-    }
-
-    public void setRequired(boolean required) {
-        this.required = required;
-    }
-
-    public boolean isDisplayLabel() {
-        return displayLabel;
-    }
-
-    public void setDisplayLabel(boolean displayLabel) {
-        this.displayLabel = displayLabel;
+        return name;
     }
 
     @Override
@@ -189,8 +157,7 @@ public class KeyInfo implements ISerializableObject, Serializable {
         result = prime * result + ((name == null) ? 0 : name.hashCode());
         result = prime * result
                 + ((productCategory == null) ? 0 : productCategory.hashCode());
-        result = prime * result
-                + ((productID == null) ? 0 : productID.hashCode());
+        result = prime * result + ((mode == null) ? 0 : mode.hashCode());
         result = prime * result + ((segment == null) ? 0 : segment.hashCode());
         return result;
     }
@@ -203,7 +170,7 @@ public class KeyInfo implements ISerializableObject, Serializable {
         if (obj == null) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
+        if (obj instanceof KeyInfo == false) {
             return false;
         }
         KeyInfo other = (KeyInfo) obj;
@@ -231,11 +198,10 @@ public class KeyInfo implements ISerializableObject, Serializable {
         } else if (!productCategory.equals(other.productCategory)) {
             return false;
         }
-        if (productID == null) {
-            if (other.productID != null) {
+        if (mode == null) {
+            if (other.mode != null)
                 return false;
-            }
-        } else if (!productID.equals(other.productID)) {
+        } else if (!mode.equals(other.mode)) {
             return false;
         }
         if (segment == null) {
@@ -272,5 +238,4 @@ public class KeyInfo implements ISerializableObject, Serializable {
     public void setIndex(int index) {
         this.index = index;
     }
-
 }

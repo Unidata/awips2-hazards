@@ -28,12 +28,14 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 05, 2017   15556    Chris.Golden Initial creation.
+ * Apr 20, 2018   30227    Chris.Golden Made class public, as it should have
+ *                                      been.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class CustomizableTabFolderEvent extends TypedEvent {
+public class CustomizableTabFolderEvent extends TypedEvent {
     /**
      * The tab item for the operation.
      */
@@ -100,8 +102,7 @@ class CustomizableTabFolderEvent extends TypedEvent {
     public String toString() {
         String string = super.toString();
         return string.substring(0, string.length() - 1) // remove trailing '}'
-                + " item=" + item + " doit=" + doit + " x=" + x + " y="
-                + y
+                + " item=" + item + " doit=" + doit + " x=" + x + " y=" + y
                 + " width=" + width + " height=" + height + "}";
     }
 }

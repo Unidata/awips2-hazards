@@ -78,6 +78,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionPreviewOrIssueOngoingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -203,6 +204,8 @@ import net.engio.mbassy.listener.Handler;
  *                                           toolbar contribution code.
  * Feb 06, 2018   46258    Chris.Golden      Fixed null pointer exception bug when
  *                                           checking for hazard conflicts.
+ * Apr 17, 2018   32693    Chris.Golden      Added code to disallow console context
+ *                                           menus when a preview is ongoing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -525,7 +528,7 @@ public class ConsolePresenter
                                 hazardCategoriesAndTypes.toArray(
                                         new HazardCategoryAndTypes[hazardCategoriesAndTypes
                                                 .size()]),
-                        UIOriginator.CONSOLE);
+                                UIOriginator.CONSOLE);
             } else if (identifier
                     .equals(HazardConstants.SETTING_HAZARD_STATES)) {
                 currentSettings.setVisibleStatuses(
@@ -925,6 +928,22 @@ public class ConsolePresenter
                 .setActiveCountdownTimers(getCountdownTimersFromActiveAlerts());
         tabularEntityManager
                 .setActiveCountdownTimers(getCountdownTimersFromActiveAlerts());
+    }
+
+    /**
+     * Respond to session preview or issue ongoing modifications.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionPreviewOrIssueOngoingModified(
+            SessionPreviewOrIssueOngoingModified change) {
+
+        /*
+         * Context-sensitive menus are not allowed if a preview is ongoing.
+         */
+        getView().setAllowContextMenus(getModel().isPreviewOngoing() == false);
     }
 
     /**

@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,6 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IDefineDialog;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
-import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.productgen.executors.GenerateProductExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.GenerateProductFromExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
@@ -70,10 +68,15 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                      running the entire generator again.
  * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices localization
  *                                      dir.
+ * Dec 16, 2015 14019      Robert.Blum  Updates for new PythonJobCoordinator API.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
  *                                      sessions in the same CAVE session, since stopping and
  *                                      starting the Jep instances when the latter use numpy is
  *                                      dangerous.
+ * Feb 23, 2017 29170      Robert.Blum  Product Editor refactor.
+ * Mar 21, 2017 29996      Robert.Blum  Moved getScriptFile() to SessionConfigurationManager.
+ * Apr 19, 2017 32734      Kevin.Bisanz Increase NUM_GENERATION_THREADS from 1 to 4.
+ * Jun 05, 2017 29996      Robert.Blum  Changed generateFrom() to accept product parts.
  * </pre>
  * 
  * @author jsanchez
@@ -83,14 +86,12 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
     // Private Static Constants
 
-    private static final String PYTHON_FILENAME_SUFFIX = ".py";
-
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductGeneration.class);
 
     private static final String GENERATION_THREAD_POOL_NAME = "ProductGenerators";
 
-    private static final int NUM_GENERATION_THREADS = 1;
+    private static final int NUM_GENERATION_THREADS = 4;
 
     /**
      * Instance of this class to be used for all Hazard Services sessions. A
@@ -219,16 +220,17 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * product generator.
      * 
      * @param productGeneratorName
-     * @param updatedDataList
+     * @param generatedProducts
+     * @param productParts
      * @param productFormats
      * @param listener
      */
     public void generateFrom(String productGeneratorName,
-            GeneratedProductList generatedProducts, KeyInfo keyInfo,
-            String[] productFormats,
+            GeneratedProductList generatedProducts,
+            List<ProductPart> productParts, String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new GenerateProductFromExecutor(
-                productGeneratorName, generatedProducts, keyInfo,
+                productGeneratorName, generatedProducts, productParts,
                 productFormats);
 
         try {
@@ -292,20 +294,6 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         }
 
         return retVal;
-    }
-
-    /**
-     * Get the file holding the script for the specified product.
-     * 
-     * @param product
-     *            Product for which to find the script file.
-     * @return Script file.
-     */
-    public File getScriptFile(String product) {
-        return pathManager.getStaticLocalizationFile(
-                HazardsConfigurationConstants.PRODUCT_GENERATOR_RELATIVE_PATH
-                        + product + PYTHON_FILENAME_SUFFIX)
-                .getFile();
     }
 
     @Override

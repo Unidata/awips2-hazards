@@ -22,6 +22,8 @@ package gov.noaa.gsd.viz.hazards.display;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.hazards.configuration.IServerConfigLookupWrapper;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
@@ -37,6 +39,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 2, 2016  26624      bkowal      Initial creation
+ * Mar 31, 2017 30536      kbisanz     Implement getServiceId()
+ * Jun 19, 2017 35153      mduff       Get the active site id
  *
  * </pre>
  *
@@ -70,7 +74,12 @@ public class VizServerConfigLookupWrapper
 
     @Override
     public String getSite() {
-        return LocalizationManager.getInstance().getCurrentSite();
+        String site = HazardEventUtilities.getSiteIdentifier();
+        if (site == null) {
+            site = LocalizationManager.getInstance().getCurrentSite();
+        }
+
+        return site;
     }
 
     @Override
@@ -81,5 +90,10 @@ public class VizServerConfigLookupWrapper
     @Override
     public String getPort() {
         return extractCurrentHostPort(PORT_GROUP);
+    }
+
+    @Override
+    public String getServiceId() {
+        return HazardConstants.RequestServiceId.DEFAULT.getValue();
     }
 }

@@ -10,6 +10,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl;
 
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -25,6 +26,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsMan
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * May 05, 2017  33738     Robert.Blum Added addAlerts().
  * 
  * </pre>
  * 
@@ -38,6 +40,11 @@ public interface IHazardAlertStrategy {
      * starts.
      */
     void initializeAlerts();
+
+    /**
+     * Used to add to the initial alerts created at startup.
+     */
+    void addAlerts(Set<String> events);
 
     /**
      * Update existing alerts due to an external event such as the issuance of

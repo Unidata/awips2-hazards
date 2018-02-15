@@ -33,6 +33,7 @@ import org.eclipse.ui.IPerspectiveDescriptor;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -49,10 +50,12 @@ import com.raytheon.uf.viz.core.maps.rsc.DbMapResource;
 import com.raytheon.uf.viz.core.maps.rsc.DbMapResourceData;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.IDisposeListener;
+import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
+import com.raytheon.uf.viz.core.rsc.capabilities.EditableCapability;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -71,11 +74,11 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdenti
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
-import gov.noaa.gsd.viz.hazards.toolbar.ActionChooserAction;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
-import gov.noaa.gsd.viz.hazards.toolbar.ImageComboChooserAction;
-import gov.noaa.gsd.viz.hazards.toolbar.ImageComboMainButtonAction;
+import gov.noaa.gsd.viz.hazards.toolbar.ImageComboAction;
+import gov.noaa.gsd.viz.hazards.toolbar.ImageComboHelperAction;
 import gov.noaa.gsd.viz.hazards.toolbar.MostRecentlyUsedAction;
+import gov.noaa.gsd.viz.hazards.toolbar.MostRecentlyUsedHelperAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
@@ -159,6 +162,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           event in some cases.
  * Jun 22, 2017 15561      Chris.Golden      Spatial display is an abstract viz resource,
  *                                           so it is already aware of its descriptor.
+ * Jun 27, 2017 14789      Robert.Blum       Added passing of select by area color to view.
  * Jun 30, 2017 21638      Chris.Golden      Only allow gage action menu item to be enabled
  *                                           if there is a recommender configured as the
  *                                           gage-point-first recommender.
@@ -168,6 +172,17 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Jan 22, 2018 25765      Chris.Golden      Added ability for the settings to specify
  *                                           which drag-and-drop manipulation points are to
  *                                           be prioritized.
+ * Mar 22, 2018 15561      Chris.Golden      Added code to ensure that the spatial
+ *                                           display's editability is factored into the
+ *                                           editability (and visual cues thereof) of
+ *                                           spatial entities, into the enabled state of
+ *                                           toolbar buttons, and into whether context
+ *                                           menu items are provided.
+ * Apr 20, 2018 30227      Chris.Golden      Fixed bug that could show a null pointer
+ *                                           exception when shutting down H.S.
+ * Apr 30, 2018 15561      Chris.Golden      Fixed bug that caused National as a site
+ *                                           to cause a failure for select-by-area to
+ *                                           work.
  * </pre>
  * 
  * @author Chris.Golden
@@ -241,14 +256,17 @@ public class SpatialView implements
      * Geometry edit modes.
      */
     enum GeometryEditMode {
-        NEW_EVENT("New", "New event", "newGeometry.png"), REPLACE_GEOMETRY(
-                "Replace", "Replace geometry",
-                "replaceGeometry.png"), UNION_GEOMETRY("Add", "Add to geometry",
-                        "unionGeometry.png"), INTERSECT_GEOMETRY("Intersect",
-                                "Intersect with geometry",
-                                "intersectGeometry.png"), SUBTRACT_GEOMETRY(
-                                        "Subtract", "Subtract from geometry",
-                                        "subtractGeometry.png");
+        NEW_GEOMETRY("New", "New geometry",
+                "newGeometry.png"), REPLACE_GEOMETRY("Replace",
+                        "Replace geometry",
+                        "replaceGeometry.png"), UNION_GEOMETRY("Add",
+                                "Add to geometry",
+                                "unionGeometry.png"), INTERSECT_GEOMETRY(
+                                        "Intersect", "Intersect with geometry",
+                                        "intersectGeometry.png"), SUBTRACT_GEOMETRY(
+                                                "Subtract",
+                                                "Subtract from geometry",
+                                                "subtractGeometry.png");
 
         // Private Variables
 
@@ -483,7 +501,7 @@ public class SpatialView implements
                         || (action
                                 .getGeometryEditMode() == GeometryEditMode.SUBTRACT_GEOMETRY)) {
                     action = actionsForGeometryEditModes
-                            .get(GeometryEditMode.NEW_EVENT);
+                            .get(GeometryEditMode.NEW_GEOMETRY);
                     inputAndGeometryEditModesBeingManipulated = true;
                     currentGeometryEditChoiceAction.setPrincipal(action);
                     action.run();
@@ -591,7 +609,7 @@ public class SpatialView implements
              * already changing), set the drawing mode to something compatible
              * with the new geometry edit mode choice.
              */
-            if ((currentGeometryEditMode != GeometryEditMode.NEW_EVENT)
+            if ((currentGeometryEditMode != GeometryEditMode.NEW_GEOMETRY)
                     && (currentGeometryEditMode != GeometryEditMode.REPLACE_GEOMETRY)
                     && (inputAndGeometryEditModesBeingManipulated == false)) {
                 InputModeAction action = mostRecentlyUsedDrawingAction
@@ -753,8 +771,10 @@ public class SpatialView implements
                              * the localized site or an alternate (backup) site.
                              */
                             if ((localizedSiteIdentifier != null)
-                                    && (localizedSiteIdentifier.equals(
-                                            currentSiteIdentifier) == false)) {
+                                    && (localizedSiteIdentifier
+                                            .equals(currentSiteIdentifier) == false)
+                                    && (currentSiteIdentifier.equals(
+                                            HazardConstants.NATIONAL) == false)) {
                                 mapName = "County Boundaries "
                                         + currentSiteIdentifier;
                             }
@@ -846,7 +866,8 @@ public class SpatialView implements
              * Enable or disable this action based upon whether any maps were
              * found that may be used in select by area operations.
              */
-            setEnabled(enable);
+            setEnabled(enable && (spatialDisplay != null)
+                    && spatialDisplay.isEditable());
         }
     }
 
@@ -894,6 +915,99 @@ public class SpatialView implements
             });
         }
     };
+
+    /**
+     * Resource list change listener, for detecting changes in the spatial
+     * display.
+     */
+    private final IResourceDataChanged changeListener = new IResourceDataChanged() {
+
+        @Override
+        public void resourceChanged(ChangeType type, Object object) {
+            if ((type == ChangeType.CAPABILITY)
+                    && (object instanceof EditableCapability)) {
+
+                /*
+                 * Reset the input mode in case a drawing edit of some sort is
+                 * being made.
+                 */
+                boolean editable = ((EditableCapability) object).isEditable();
+                if (editable == false) {
+                    handleUserResetOfInputMode();
+                }
+
+                if (moveAndSelectChoiceAction != null) {
+                    moveAndSelectChoiceAction.setEnabled(editable);
+                }
+                if (mostRecentlyUsedDrawingAction != null) {
+                    mostRecentlyUsedDrawingAction.setEnabled(editable);
+                }
+                if (currentGeometryEditChoiceAction != null) {
+                    currentGeometryEditChoiceAction.setEnabled(editable);
+                }
+                if (selectByAreaMapsPulldownAction != null) {
+                    selectByAreaMapsPulldownAction.setEnabled(editable);
+                }
+
+                if (editabilityChangeHandler != null) {
+                    editabilityChangeHandler.stateChanged(null, editable);
+                }
+            }
+        }
+    };
+
+    /**
+     * Spatial display editability state change handler.
+     */
+    private IStateChangeHandler<Object, Boolean> editabilityChangeHandler;
+
+    /**
+     * Spatial display editability state changer. The identifier is ignored.
+     */
+    private final IStateChanger<Object, Boolean> editabilityChanger = new IStateChanger<Object, Boolean>() {
+
+        @Override
+        public void setEnabled(Object identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of spatial display editability");
+        }
+
+        @Override
+        public void setEditable(Object identifier, boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editable state of spatial display editability");
+        }
+
+        @Override
+        public Boolean getState(Object identifier) {
+            return spatialDisplay.isEditable();
+        }
+
+        @Override
+        public void setState(Object identifier, Boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change state of spatial display editability");
+        }
+
+        @Override
+        public void setStates(Map<Object, Boolean> valuesForIdentifiers) {
+            throw new UnsupportedOperationException(
+                    "cannot change multiple states of spatial display editability");
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IStateChangeHandler<Object, Boolean> handler) {
+            editabilityChangeHandler = handler;
+        }
+    };
+
+    /**
+     * Spatial display editability state changer delegate.
+     */
+    private final IStateChanger<Object, Boolean> editabilityChangerDelegate = new StateChangerDelegate<>(
+            new BasicWidgetDelegateHelper<>(editabilityChanger),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Selected spatial entity identifiers state change handler.
@@ -1228,6 +1342,11 @@ public class SpatialView implements
     private SpatialPresenter presenter;
 
     /**
+     * Color to be used for select-by-area operations.
+     */
+    private Color selectByAreaColor;
+
+    /**
      * Undo command action.
      */
     private Action undoCommandAction;
@@ -1249,19 +1368,24 @@ public class SpatialView implements
             InputMode.class);
 
     /**
+     * Move and select choice action.
+     */
+    private InputModeAction moveAndSelectChoiceAction;
+
+    /**
      * Most recently used drawing choice action.
      */
     private MostRecentlyUsedAction<InputModeAction> mostRecentlyUsedDrawingAction;
 
     /**
+     * Current geometry edit choice action.
+     */
+    private ImageComboAction<GeometryEditModeAction> currentGeometryEditChoiceAction;
+
+    /**
      * Maps for select by area pulldown action.
      */
     private SelectByAreaMapsPulldownAction selectByAreaMapsPulldownAction;
-
-    /**
-     * Current geometry edit choice action.
-     */
-    private ImageComboMainButtonAction<GeometryEditModeAction> currentGeometryEditChoiceAction;
 
     /**
      * Previously selected geometry edit choice action; this will be other than
@@ -1281,7 +1405,7 @@ public class SpatialView implements
     /**
      * Currently selected geometry edit mode.
      */
-    private GeometryEditMode currentGeometryEditMode = GeometryEditMode.NEW_EVENT;
+    private GeometryEditMode currentGeometryEditMode = GeometryEditMode.NEW_GEOMETRY;
 
     /**
      * Flag indicating whether or not input and geometry edit modes are
@@ -1331,6 +1455,7 @@ public class SpatialView implements
     public SpatialView(SpatialDisplay spatialDisplay) {
         this.spatialDisplay = spatialDisplay;
         spatialDisplay.setSpatialView(this);
+        spatialDisplay.getResourceData().addChangeListener(changeListener);
         spatialEntitiesChangerDelegate = new ListStateChangerDelegate<>(
                 new BasicWidgetDelegateHelper<>(
                         spatialDisplay.getSpatialEntitiesChanger()),
@@ -1343,11 +1468,13 @@ public class SpatialView implements
     public final void initialize(SpatialPresenter presenter,
             String localizedSite, String currentSite,
             Set<IEntityIdentifier> selectedSpatialEntityIdentifiers,
-            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits,
+            Color selectByAreaColor) {
         this.presenter = presenter;
         this.localizedSiteIdentifier = localizedSite;
         this.currentSiteIdentifier = currentSite;
         this.selectedSpatialEntityIdentifiers = selectedSpatialEntityIdentifiers;
+        this.selectByAreaColor = selectByAreaColor;
 
         /*
          * Ensure any previously loaded select-by-area viz resources are
@@ -1379,6 +1506,11 @@ public class SpatialView implements
          */
         spatialDisplay.setPriorityForDragAndDropGeometryEdits(
                 priorityForDragAndDropGeometryEdits);
+    }
+
+    @Override
+    public IStateChanger<Object, Boolean> getEditabilityChanger() {
+        return editabilityChangerDelegate;
     }
 
     @Override
@@ -1447,6 +1579,7 @@ public class SpatialView implements
             return;
         }
 
+        spatialDisplay.getResourceData().removeChangeListener(changeListener);
         if (spatialDisplay.getDescriptor() != null) {
             spatialDisplay.getDescriptor().getResourceList()
                     .removeRsc(spatialDisplay);
@@ -1663,17 +1796,17 @@ public class SpatialView implements
             actionsForInputModes.put(InputMode.DRAW_POINT,
                     drawPointChoiceAction);
             drawingActions.add(drawPointChoiceAction);
+            MostRecentlyUsedHelperAction<InputModeAction> drawingChoices = new MostRecentlyUsedHelperAction<>(
+                    drawingActions);
             mostRecentlyUsedDrawingAction = new MostRecentlyUsedAction<>(
-                    drawingActions.get(0));
-            ActionChooserAction<InputModeAction> drawingChoices = new ActionChooserAction<>(
-                    drawingActions, mostRecentlyUsedDrawingAction);
+                    drawingActions.get(0), drawingChoices);
             map.put(DRAWING_CHOICE_IDENTIFIER, ImmutableList
                     .of(mostRecentlyUsedDrawingAction, drawingChoices));
 
             List<GeometryEditModeAction> geometryEditActions = new ArrayList<>();
             GeometryEditModeAction newEventAction = new GeometryEditModeAction(
-                    GeometryEditMode.NEW_EVENT);
-            actionsForGeometryEditModes.put(GeometryEditMode.NEW_EVENT,
+                    GeometryEditMode.NEW_GEOMETRY);
+            actionsForGeometryEditModes.put(GeometryEditMode.NEW_GEOMETRY,
                     newEventAction);
             geometryEditActions.add(newEventAction);
             GeometryEditModeAction replaceGeometryAction = new GeometryEditModeAction(
@@ -1696,14 +1829,14 @@ public class SpatialView implements
             actionsForGeometryEditModes.put(GeometryEditMode.SUBTRACT_GEOMETRY,
                     subtractGeometryAction);
             geometryEditActions.add(subtractGeometryAction);
-            currentGeometryEditChoiceAction = new ImageComboMainButtonAction<>(
-                    geometryEditActions.get(0));
-            ImageComboChooserAction<GeometryEditModeAction> geometryEditChoices = new ImageComboChooserAction<>(
-                    geometryEditActions, currentGeometryEditChoiceAction);
+            ImageComboHelperAction<GeometryEditModeAction> geometryEditChoices = new ImageComboHelperAction<>(
+                    geometryEditActions);
+            currentGeometryEditChoiceAction = new ImageComboAction<>(
+                    geometryEditActions.get(0), geometryEditChoices);
             map.put(GEOMETRY_EDIT_MODE_CHOICE_IDENTIFIER, ImmutableList
                     .of(currentGeometryEditChoiceAction, geometryEditChoices));
 
-            InputModeAction moveAndSelectChoiceAction = new InputModeAction(
+            moveAndSelectChoiceAction = new InputModeAction(
                     InputMode.SELECT_OR_MODIFY);
             moveAndSelectChoiceAction.setChecked(true);
             actionsForInputModes.put(InputMode.SELECT_OR_MODIFY,
@@ -1735,10 +1868,11 @@ public class SpatialView implements
             public void run() {
 
                 /*
-                 * Enable or disable all the actions that are not "new event".
+                 * Enable or disable all the actions that are not "new geometry"
+                 * .
                  */
-                for (GeometryEditMode mode : EnumSet
-                        .complementOf(EnumSet.of(GeometryEditMode.NEW_EVENT))) {
+                for (GeometryEditMode mode : EnumSet.complementOf(
+                        EnumSet.of(GeometryEditMode.NEW_GEOMETRY))) {
                     GeometryEditModeAction action = actionsForGeometryEditModes
                             .get(mode);
                     if (action != null) {
@@ -1748,7 +1882,7 @@ public class SpatialView implements
 
                 /*
                  * If disabling, remember the previously selected edit choice if
-                 * appropriate, and ensure that "new event" is selected. If
+                 * appropriate, and ensure that "new geometry" is selected. If
                  * enabling and there is a record of a previously selected edit
                  * choice, ensure that choice is selected.
                  */
@@ -1756,12 +1890,12 @@ public class SpatialView implements
                     if (rememberSelectedAction
                             && (currentGeometryEditChoiceAction
                                     .getPrincipal() != actionsForGeometryEditModes
-                                            .get(GeometryEditMode.NEW_EVENT))) {
+                                            .get(GeometryEditMode.NEW_GEOMETRY))) {
                         previousGeometryEditChoiceAction = currentGeometryEditChoiceAction
                                 .getPrincipal();
                     }
                     GeometryEditModeAction action = actionsForGeometryEditModes
-                            .get(GeometryEditMode.NEW_EVENT);
+                            .get(GeometryEditMode.NEW_GEOMETRY);
                     inputAndGeometryEditModesBeingManipulated = true;
                     currentGeometryEditChoiceAction.setPrincipal(action);
                     action.run();
@@ -2187,10 +2321,8 @@ public class SpatialView implements
         if (selectByAreaActive) {
             selectByAreaActive = false;
         } else {
-            InputModeAction action = actionsForInputModes
-                    .get(InputMode.SELECT_OR_MODIFY);
-            action.setChecked(true);
-            action.run();
+            moveAndSelectChoiceAction.setChecked(true);
+            moveAndSelectChoiceAction.run();
         }
 
         /*
@@ -2286,6 +2418,7 @@ public class SpatialView implements
         resourceData.setTable(databaseTableName);
         resourceData.setMapName(legend);
         resourceData.setGeomField("the_geom");
+        resourceData.setEditColor(selectByAreaColor);
 
         /*
          * Filter by the CWA.
@@ -2293,8 +2426,10 @@ public class SpatialView implements
          * TODO: This should be fetched dynamically, as some overlays do not
          * have a CWA field.
          */
-        resourceData.setConstraints(
-                new String[] { "cwa = '" + currentSiteIdentifier + "'" });
+        resourceData.setConstraints(new String[] { "cwa = '"
+                + (currentSiteIdentifier.equals(HazardConstants.NATIONAL)
+                        ? localizedSiteIdentifier : currentSiteIdentifier)
+                + "'" });
 
         /*
          * Create the viz resource to display in CAVE.

@@ -44,6 +44,7 @@ import jep.JepException;
  * May 13, 2015    8161    mduff        Change for Jep upgrade.
  * Nov 17, 2015    3473    Robert.Blum  Moved all python files under HazardServices
  *                                      localization dir.
+ * Dec 16, 2015   14019    Robert.Blum  Updates for new PythonJobCoordinator API.
  * Mar 01, 2016   15676    Chris.Golden Added visual feature handler functionality to
  *                                      to the include path.
  * Sep 20, 2016   21609    Kevin.Bisanz Add geoSpatial to the include path.

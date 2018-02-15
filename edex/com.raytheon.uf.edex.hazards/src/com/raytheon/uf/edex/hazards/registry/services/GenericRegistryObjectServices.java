@@ -11,8 +11,6 @@ package com.raytheon.uf.edex.hazards.registry.services;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -106,7 +104,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "store")
     public GenericRegistryObjectResponse store(
             @WebParam(name = "genericObjects") GenericRegistryObject... genericObjects)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         return storeList(Arrays.asList(genericObjects));
     }
 
@@ -114,7 +112,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "storeList")
     public GenericRegistryObjectResponse storeList(
             @WebParam(name = "genericObjects") List<GenericRegistryObject> genericObjects)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         statusHandler.info("Creating " + genericObjects.size()
                 + " GenericRegistryObjects: ");
         String userName = webServiceContext.getUserPrincipal().getName();
@@ -139,7 +137,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "update")
     public GenericRegistryObjectResponse update(
             @WebParam(name = "genericObjects") GenericRegistryObject... genericObjects)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         return updateList(Arrays.asList(genericObjects));
     }
 
@@ -147,7 +145,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "updateList")
     public GenericRegistryObjectResponse updateList(
             @WebParam(name = "genericObjects") List<GenericRegistryObject> genericObjects)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         statusHandler.info("Updating " + genericObjects.size()
                 + " GenericRegistryObjects: ");
         String userName = webServiceContext.getUserPrincipal().getName();
@@ -172,7 +170,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "delete")
     public GenericRegistryObjectResponse delete(
             @WebParam(name = "genericObjects") GenericRegistryObject... genericObjects)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         return deleteList(Arrays.asList(genericObjects));
     }
 
@@ -180,7 +178,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "deleteList")
     public GenericRegistryObjectResponse deleteList(
             @WebParam(name = "genericObjects") List<GenericRegistryObject> genericObjects)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         statusHandler.info("Deleting " + genericObjects.size()
                 + " GenericRegistryObjects.");
         String userName = webServiceContext.getUserPrincipal().getName();
@@ -219,7 +217,7 @@ public class GenericRegistryObjectServices
                                     .removeObjects(userName,
                                             new ArrayList<>(retrieveResponse
                                                     .getGenericObjects()))
-                            .getErrors());
+                                    .getErrors());
                 }
             } else {
                 deleteAllResponse.merge(retrieveResponse);
@@ -236,7 +234,7 @@ public class GenericRegistryObjectServices
     @WebMethod(operationName = "retrieve")
     public GenericRegistryObjectResponse retrieve(
             @WebParam(name = "request") GenericRegistryObjectQueryRequest request)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         statusHandler.info(
                 "Executing query for GenericRegistryObjects:\n " + request);
         GenericRegistryObjectResponse response = new GenericRegistryObjectResponse();
@@ -245,12 +243,8 @@ public class GenericRegistryObjectServices
                     practice, GenericRegistryObject.class,
                     request.getQueryParams(),
                     request.getQueryParameterKeyGenerator());
-            // Workaround to ensure unique results are returned
-            List<Object> objects = dao.executeHQLQuery(query);
-            Collection<RegistryObjectType> registryObjectTypes = new LinkedHashSet<>();
-            for (Object object : objects) {
-                registryObjectTypes.add((RegistryObjectType) object);
-            }
+            List<RegistryObjectType> registryObjectTypes = dao
+                    .executeHQLQuery(query);
             response.setGenericObjects(
                     HazardEventServicesUtil.getContentObjects(
                             registryObjectTypes, GenericRegistryObject.class));

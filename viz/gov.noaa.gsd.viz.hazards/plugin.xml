@@ -170,12 +170,48 @@
       </path>
       <path
             application="Hazard Services"
+            extensionFilter=".py,.json,.xml,.txt"
+            localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
+            name="Validation"
+            recursive="true"
+            value="HazardServices/validation">
+      </path>
+      <path
+            application="Hazard Services"
             extensionFilter=".py"
             localizationType="COMMON_STATIC"
             localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Text Utilities"
             recursive="true"
             value="HazardServices/python/textUtilities">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
+            name="Python Bridge"
+            recursive="true"
+            value="HazardServices/python/bridge">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
+            name="General Utilities"
+            recursive="true"
+            value="HazardServices/python/generalUtilities">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
+            name="Python Events"
+            recursive="false"
+            value="HazardServices/python/events">
       </path>
    </extension>
    <extension point="org.eclipse.ui.views">

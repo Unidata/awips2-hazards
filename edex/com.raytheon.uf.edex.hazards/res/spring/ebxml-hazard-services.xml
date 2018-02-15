@@ -1,7 +1,7 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd   
-  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans.xsd">
 
 	<bean id="HazardNotifier"
 		class="com.raytheon.uf.edex.hazards.notification.HazardNotifier" />
@@ -29,24 +29,24 @@
 		<property name="interopDao" ref="HazardInteropDao" />
 	</bean>
 
-	<bean id="remoteGridRequestHandler"
-		class="com.raytheon.uf.edex.hazards.interop.gfe.GridRequestHandler">
-		<constructor-arg value="remote.request.server" />
-	</bean>
+    <bean id="remoteGridRequestHandler"
+        class="com.raytheon.uf.edex.hazards.interop.gfe.GridRequestHandler">
+        <constructor-arg value="remote.request.server" />
+    </bean>
 
-	<bean id="HazardEventInteropServicesImpl"
-		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
-		<property name="practice" value="false" />
-		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
-		<property name="interopObjectManager" ref="InteropObjectManager" />
-	</bean>
+    <bean id="HazardEventInteropServicesImpl"
+        class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
+        <property name="practice" value="false" />
+        <property name="gridRequestHandler" ref="remoteGridRequestHandler" />
+        <property name="interopObjectManager" ref="InteropObjectManager" />
+    </bean>
 
-	<bean id="PracticeHazardEventInteropServicesImpl"
-		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
-		<property name="practice" value="true" />
-		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
-		<property name="interopObjectManager" ref="InteropObjectManager" />
-	</bean>
+    <bean id="PracticeHazardEventInteropServicesImpl"
+        class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
+        <property name="practice" value="true" />
+        <property name="gridRequestHandler" ref="remoteGridRequestHandler" />
+        <property name="interopObjectManager" ref="InteropObjectManager" />
+    </bean>
 
 	<bean id="HazardEventServicesImpl"
 		class="com.raytheon.uf.edex.hazards.registry.services.HazardEventServices">

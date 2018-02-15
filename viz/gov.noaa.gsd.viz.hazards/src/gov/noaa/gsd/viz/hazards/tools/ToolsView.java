@@ -32,6 +32,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 
 import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -40,6 +42,10 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 
 /**
  * Tools view, an implementation of IToolsView that provides an SWT-based view.
+ * <p>
+ * TODO: Convert to use H.S. MVP style loose coupling between view and presenter
+ * (state changers and invokers), which will make this safer for multithreading.
+ * </p>
  * 
  * <pre>
  * 
@@ -73,6 +79,13 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
  *                                           manager.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * May 22, 2018    3782    Chris.Golden      Changed to have configuration options passed
+ *                                           in using dedicated objects and having already
+ *                                           been vetted, instead of passing them in as
+ *                                           raw maps. Also changed to conform somewhat
+ *                                           better to the MVP design guidelines. Also added
+ *                                           ability to set the dialog's mutable properties
+ *                                           while it is showing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -248,7 +261,7 @@ public class ToolsView
     /**
      * Tool dialog.
      */
-    private AbstractToolDialog toolDialog = null;
+    private AbstractToolDialog<?> toolDialog = null;
 
     /**
      * Dialog dispose listener.
@@ -315,8 +328,9 @@ public class ToolsView
     }
 
     @Override
-    public final void showToolParameterGatherer(ToolType type,
-            String jsonParams) {
+    public final void showToolParameterGatherer(
+            ToolParameterDialogSpecifier dialogSpecifier,
+            IToolDialogListener listener) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -328,15 +342,22 @@ public class ToolsView
             toolDialog.open();
             return;
         }
-        toolDialog = new ToolParameterDialog(presenter,
+        toolDialog = new ToolParameterDialog(
                 PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                type, jsonParams);
+                dialogSpecifier, listener);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
     }
 
     @Override
-    public void showToolResults(ToolType type, String jsonParams) {
+    public void updateToolParameterGatherer(
+            final Map<String, Map<String, Object>> changedMutableProperties) {
+        toolDialog.updateMutableProperties(changedMutableProperties);
+    }
+
+    @Override
+    public void showToolResults(ToolResultDialogSpecifier dialogSpecifier,
+            IToolDialogListener listener) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -348,9 +369,9 @@ public class ToolsView
             toolDialog.open();
             return;
         }
-        toolDialog = new ToolResultDialog(presenter,
+        toolDialog = new ToolResultDialog(
                 PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                type, jsonParams);
+                dialogSpecifier, listener);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
     }

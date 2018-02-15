@@ -60,11 +60,9 @@ import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
@@ -97,16 +95,17 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.FilterIcons;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategories;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenToolEntry;
@@ -213,18 +212,20 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      can be used to replace a particular hazard event.
  * Mar 25, 2015  7102      Chris.Golden Fixed bug that caused null pointer exceptions when
  *                                      attempting to compile the duration choices lists.
+ * Aug 31, 2015 9757       Robert.Blum  Added Observers to config files so overrides are
+ *                                      picked up.
+ * Sep 28, 2015 10302,8167 hansen       Added "getSettingsValue"
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Nov 02, 2015 11864      Robert.Blum  Added getExpirationWindow().
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
  * Nov 17, 2015 11776      Roger.Ferrel Added {@link #containsUserLevelSettings()}.
- * Aug 31, 2015 9757       Robert.Blum  Added Observers to config files so overrides are
- *                                      picked up.
- * Sep 28, 2015 10302,8167 hansen       Added "getSettingsValue"
  * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices
  *                                      localization dir.
+ * Dec 16, 2015 14019      Robert.Blum  Updates for new PythonJobCoordinator API.
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
@@ -251,6 +252,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      not later than the last data time that triggered
  *                                      the same tool.
  * May 06, 2016 18202      Robert.Blum  Changes for operational mode.
+ * May 12, 2016 16374      mduff        Added Filter Icon functionality.
  * Jul 08, 2016 13788      Chris.Golden Added validation of hazard events.
  * Jul 27, 2016 19924      Chris.Golden Removed obsolete code related to data layer
  *                                      changes triggering event-driven tools; the
@@ -287,6 +289,11 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      to be pretty printed. Eliminated a few more warnings.
  * Feb 01, 2017 15556      Chris.Golden Changed to include originator when setting
  *                                      the site identifier.
+ * Feb 08, 2017 28913      bkowal       When a user changes the site, ensure that the
+ *                                      selected site is present in the visible sites.
+ * Feb 16, 2017 28708      Chris.Golden Removed setup event identifier.
+ * Mar 13, 2017 28708      mduff        Changes to support event id refactor.
+ * Mar 21, 2017 29996      Robert.Blum  Added methods so Staging dialog can refreshMetadata.
  * Mar 27, 2017 15528      Chris.Golden Added gathering of set of metadata megawidget
  *                                      identifiers for which modification of their
  *                                      underlying values does not affect their
@@ -301,9 +308,15 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      all found within the hazard types definition
  *                                      file, and to complain with an error message
  *                                      if they are not.
+ * Apr 17, 2017 33082      Robert.Blum  Validating multiple events at once.
+ * May 05, 2017 33738      Robert.Blum  Removed unused parameter.
+ * May 17, 2017 34152      Robert.Blum  Fix Product Generation case that results in
+ *                                      invalid products.
  * Jun 01, 2017 23056      Chris.Golden Added code to find metadata megawidgets that
  *                                      always use their default values instead of
  *                                      any existing old values.
+ * Jun 23, 2017 3782       Robert.Blum  Added methods to retrieve the color of
+ *                                      persistent shapes based on IDs.
  * Sep 27, 2017 38072      Chris.Golden Changed to use HazardConstants constant instead
  *                                      of one defined elsewhere. Also changed the
  *                                      metadata fetching process to ensure that a
@@ -340,6 +353,11 @@ public class SessionConfigurationManager
      * Metadata group megawidget type.
      */
     private static final String METADATA_GROUP_TYPE = "Group";
+
+    /**
+     * Suffix for Python script file names.
+     */
+    private static final String PYTHON_FILENAME_SUFFIX = ".py";
 
     /**
      * Metadata group megawidget label.
@@ -430,6 +448,8 @@ public class SessionConfigurationManager
     private ConfigLoader<HazardAlertsConfig> alertsConfig;
 
     private ConfigLoader<SettingsConfig[]> settingsConfig;
+
+    private ConfigLoader<FilterIcons> filterIconConfig;
 
     private ConfigLoader<EventDrivenTools> eventDrivenTools;
 
@@ -677,6 +697,15 @@ public class SessionConfigurationManager
                 new HashMap<>(configLoaderParams));
         loaderPool.schedule(settingsConfig);
 
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.FILTER_ICONS_PY);
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
+        filterIconConfig = new ConfigLoader<>(file, FilterIcons.class, null,
+                PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
+        loaderPool.schedule(filterIconConfig);
+
         loadBackupSites();
     }
 
@@ -798,22 +827,24 @@ public class SessionConfigurationManager
             if (s.getSettingsID().equals(settingsId)) {
                 if (settings == null) {
                     settings = new ObservedSettings(this, s);
+                    ensureCurrentSiteVisibleInSettings(settings, false);
                     settingsChanged(new SettingsLoaded(this, originator));
                 } else {
                     settings.apply(s, originator);
+                    ensureCurrentSiteVisibleInSettings(settings, true);
                 }
                 break;
             }
         }
     }
 
-    @Override
     /**
      * Retrieve a clone of the current settings instance. Note: Settings must be
      * changed (saved) before modifications persist.
      * 
      * @return A clone copy of the currently set Settings instance
      */
+    @Override
     public ObservedSettings getSettings() {
         if (settings != null) {
             return settings;
@@ -927,15 +958,38 @@ public class SessionConfigurationManager
     public void setSiteID(String siteIdentifier, IOriginator originator) {
         if (Utils.equal(siteIdentifier, this.siteIdentifier) == false) {
             this.siteIdentifier = siteIdentifier;
-            try {
-                sessionManager.setupEventIdDisplay();
-            } catch (HazardEventServiceException e) {
-                statusHandler.error(
-                        "Unable to setup event identifier to use new site ID.",
-                        e);
+
+            HazardEventUtilities.setSiteIdentifier(siteIdentifier);
+
+            if (settings != null) {
+                ensureCurrentSiteVisibleInSettings(settings, true);
             }
+
             notificationSender.postNotificationAsync(
                     new SiteChanged(siteIdentifier, originator));
+        }
+    }
+
+    /**
+     * Ensure the specified settings has the current site as visible.
+     * 
+     * @param settings
+     *            Settings to be changed to include the current site.
+     * @param notify
+     *            Flag indicating whether or not a notification should be sent
+     *            out as a result of any change made by this method.
+     */
+    private void ensureCurrentSiteVisibleInSettings(ObservedSettings settings,
+            boolean notify) {
+        Set<String> visibleSites = getSettingsValue(SETTING_HAZARD_SITES,
+                settings);
+        if (visibleSites == null) {
+            visibleSites = Collections.emptySet();
+        }
+        if (visibleSites.contains(siteIdentifier) == false) {
+            visibleSites = new HashSet<>(visibleSites);
+            visibleSites.add(siteIdentifier);
+            settings.setVisibleSites(visibleSites, notify, Originator.OTHER);
         }
     }
 
@@ -1128,19 +1182,8 @@ public class SessionConfigurationManager
         return identifiers;
     }
 
-    /**
-     * Get the set of megawidget identifiers from the specified list, which may
-     * contain raw specifiers and their descendants, of any megawidget
-     * specifiers that include the specified parameter name.
-     * 
-     * @param list
-     *            List to be checked.
-     * @param parameterName
-     *            Parameter name for which to search.
-     * @return Set of megawidget identifiers that contain the specified
-     *         parameter.
-     */
-    private Set<String> getMegawidgetIdentifiersWithParameter(List<?> list,
+    @Override
+    public Set<String> getMegawidgetIdentifiersWithParameter(List<?> list,
             String parameterName) {
         Map<String, Boolean> valuesForTriggerIdentifiers = new HashMap<>();
         addMegawidgetIdentifiersIncludingParameterToMap(list, parameterName,
@@ -1482,6 +1525,36 @@ public class SessionConfigurationManager
     }
 
     @Override
+    public Set<String> getIncludeAllHazards(IReadableHazardEvent event) {
+        String eventType = event.getHazardType();
+        for (Entry<String, ProductGeneratorEntry> entry : getProductGeneratorTable()
+                .entrySet()) {
+            Set<String> generatorEventTypes = new HashSet<>();
+            /*
+             * Determine which generator applies to the specified event, and
+             * create a set of all the allowed hazard types for that generator.
+             */
+            for (String[] pair : entry.getValue().getAllowedHazards()) {
+                generatorEventTypes.add(pair[0]);
+            }
+            if (generatorEventTypes.contains(eventType)) {
+                HazardTypes hazardTypes = getHazardTypes();
+                /*
+                 * Determine which ones are includeAll.
+                 */
+                Set<String> includeAllTypes = new HashSet<>();
+                for (String generatorEventType : generatorEventTypes) {
+                    if (hazardTypes.get(generatorEventType).isIncludeAll()) {
+                        includeAllTypes.add(generatorEventType);
+                    }
+                }
+                return includeAllTypes;
+            }
+        }
+        return Collections.emptySet();
+    }
+
+    @Override
     public ProductGeneratorTable getProductGeneratorTable() {
         return pgenTable.getConfig();
     }
@@ -1542,12 +1615,33 @@ public class SessionConfigurationManager
 
     @Override
     public Color getColor(IReadableHazardEvent event) {
+        return this.getColor(HazardEventUtilities.getHazardType(event));
+    }
 
+    /**
+     * Builds the Style Rule matching criteria for retrieving hazard colors.
+     * 
+     * @param id
+     *            The eventId or shapeId for which to retrieve color
+     *            information.
+     * 
+     * @return The criteria to use in searching the Hazard Services Style Rules.
+     */
+    private MatchCriteria getMatchCriteria(String id) {
+        ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
+        List<String> paramList = Lists.newArrayList(id);
+        match.setParameterName(paramList);
+        return match;
+    }
+
+    @Override
+    public Color getColor(String identifier) {
         StyleRule styleRule = null;
 
         try {
             styleRule = StyleManager.getInstance().getStyleRule(
-                    StyleManager.StyleType.GEOMETRY, getMatchCriteria(event));
+                    StyleManager.StyleType.GEOMETRY,
+                    getMatchCriteria(identifier));
         } catch (StyleException e) {
             statusHandler.error("Error retrieving hazard style rules: ", e);
         }
@@ -1557,24 +1651,7 @@ public class SessionConfigurationManager
             Color hazardColor = hazardStyle.getColor();
             return hazardColor;
         }
-
         return WHITE;
-    }
-
-    /**
-     * Builds the Style Rule matching criteria for retrieving hazard colors.
-     * 
-     * @param event
-     *            The event for which to retrieve color information.
-     * 
-     * @return The criteria to use in searching the Hazard Services Style Rules.
-     */
-    private MatchCriteria getMatchCriteria(IReadableHazardEvent event) {
-        ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
-        List<String> paramList = Lists
-                .newArrayList(HazardEventUtilities.getHazardType(event));
-        match.setParameterName(paramList);
-        return match;
     }
 
     @Override
@@ -1929,7 +2006,7 @@ public class SessionConfigurationManager
         return type.getHeadline();
     }
 
-    public static Color getColor(String str) {
+    public static Color getColorFromString(String str) {
         int r = Integer.valueOf(str.substring(1, 3), 16);
         int g = Integer.valueOf(str.substring(3, 5), 16);
         int b = Integer.valueOf(str.substring(5, 7), 16);
@@ -2081,8 +2158,7 @@ public class SessionConfigurationManager
                     new HazardEventExpirationAlertStrategy(
                             sessionManager.getAlertsManager(), timeManager,
                             SessionConfigurationManager.this,
-                            new HazardEventManager(practice),
-                            new AllHazardsFilterStrategy()));
+                            sessionManager.getEventManager()));
         }
 
     }
@@ -2155,20 +2231,61 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public String validateHazardEvent(IReadableHazardEvent event) {
-        if (event != null) {
+    public String validateHazardEvents(
+            List<? extends IReadableHazardEvent> hazardEvents) {
+
+        /*
+         * Only validate hazard events with hazard types.
+         */
+        List<IReadableHazardEvent> validEvents = new ArrayList<>(
+                hazardEvents.size());
+        for (IReadableHazardEvent event : hazardEvents) {
+            if (event.getHazardType() != null) {
+                validEvents.add(event);
+            }
+        }
+
+        /*
+         * Validate the typed hazard events.
+         */
+        if (validEvents.isEmpty() == false) {
             IPythonExecutor<ContextSwitchingPythonEval, String> executor = new ValidateScriptExecutor(
-                    event);
+                    validEvents);
             try {
                 return PYTHON_JOB_COORDINATOR.submitJob(executor).get();
             } catch (Exception e) {
+                List<String> eventIdentifiers = new ArrayList<>(
+                        validEvents.size());
+                for (IReadableHazardEvent hazardEvent : validEvents) {
+                    eventIdentifiers.add(hazardEvent.getEventID());
+                }
                 statusHandler
-                        .error("Error executing validate job for hazard event: "
-                                + event.getEventID(), e);
+                        .error("Error executing validate job for hazard event(s): "
+                                + Joiner.on(", ").join(eventIdentifiers), e);
                 return null;
             }
         }
         return null;
+    }
+
+    @Override
+    public int[] getExpirationWindow(IReadableHazardEvent event) {
+        String type = event.getHazardType();
+        return (type != null
+                ? hazardTypes.getConfig().get(type).getExpirationTime() : null);
+    }
+
+    @Override
+    public FilterIcons getFilterIcons() {
+        return this.filterIconConfig.getConfig();
+    }
+
+    @Override
+    public File getScriptFile(String product) {
+        return pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.PRODUCT_GENERATOR_RELATIVE_PATH
+                        + product + PYTHON_FILENAME_SUFFIX)
+                .getFile();
     }
 
     @Override

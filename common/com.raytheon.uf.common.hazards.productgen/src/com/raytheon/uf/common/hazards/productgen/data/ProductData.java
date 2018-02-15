@@ -32,7 +32,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
-import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -59,6 +59,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                      classes with serialization.
  * Nov 04, 2016   22119    Kevin.Bisanz Changes to export product data by officeID
  * Feb 01, 2017   15556    Chris.Golden Added copy constructor.
+ * Jun 05, 2017   29996    Robert.Blum  EditableEntries are now product parts.
+ * Jun 06, 2018   15561    Chris.Golden Made typecasting to floats safer (in case the
+ *                                      object is a Number but not a Float).
  * </pre>
  * 
  * @author jsanchez
@@ -103,7 +106,7 @@ public class ProductData extends PersistableDataObject<CustomDataId>
      */
     @Column
     @DynamicSerializeElement
-    private ArrayList<EditableEntryMap> editableEntries;
+    private ArrayList<ProductPart> editableEntries;
 
     public ProductData() {
 
@@ -123,7 +126,7 @@ public class ProductData extends PersistableDataObject<CustomDataId>
     public ProductData(String mode, String productGeneratorName,
             ArrayList<String> eventIDs, String officeID, Date issueTime,
             HashMap<String, Serializable> data,
-            ArrayList<EditableEntryMap> editableEntries) {
+            ArrayList<ProductPart> editableEntries) {
         id = new CustomDataId(mode, productGeneratorName, eventIDs, officeID,
                 issueTime);
         this.data = data;
@@ -134,10 +137,10 @@ public class ProductData extends PersistableDataObject<CustomDataId>
         this.id = new CustomDataId(other.getId());
         this.data = (other.data == null ? null : new HashMap<>(other.data));
         this.editableEntries = (other.editableEntries == null ? null
-                : new ArrayList<EditableEntryMap>(other.editableEntries.size()));
+                : new ArrayList<ProductPart>(other.editableEntries.size()));
         if (this.editableEntries != null) {
-            for (EditableEntryMap editableEntry : other.editableEntries) {
-                this.editableEntries.add(new EditableEntryMap(editableEntry));
+            for (ProductPart editableEntry : other.editableEntries) {
+                this.editableEntries.add(new ProductPart(editableEntry));
             }
         }
     }
@@ -194,17 +197,17 @@ public class ProductData extends PersistableDataObject<CustomDataId>
         this.data = data;
     }
 
-    public ArrayList<EditableEntryMap> getEditableEntries() {
+    public ArrayList<ProductPart> getEditableEntries() {
         return editableEntries;
     }
 
-    public void setEditableEntries(
-            ArrayList<EditableEntryMap> editableEntries) {
+    public void setEditableEntries(ArrayList<ProductPart> editableEntries) {
         this.editableEntries = editableEntries;
     }
 
     public Long getExpirationTime() {
-        return (Long) ProductUtils.getDataElement(data, EXPIRATION_TIME_KEYS);
+        return ((Number) ProductUtils.getDataElement(data,
+                EXPIRATION_TIME_KEYS)).longValue();
     }
 
     public String getHazardType() {

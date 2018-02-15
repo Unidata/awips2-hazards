@@ -26,12 +26,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
@@ -61,6 +59,8 @@ import net.engio.mbassy.listener.Handler;
  *                                      session events.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
  *                                      toolbar contribution code.
+ * May 01, 2018   15561    Chris.Golden Changed method used to run recommender to use
+ *                                      the session manager directly.
  * </pre>
  * 
  * @author Chris.Golden
@@ -394,26 +394,11 @@ public class HazardTypeFirstPresenter
      * Run the recommender associated with the selected hazard type.
      */
     private void runRecommender() {
-
-        /*
-         * TODO: Currently, the business logic for running recommenders exist
-         * within the HazardServicesMessageHandler. We do not have time to
-         * extract said logic and place it in some more appropriate place, and
-         * thus will use the deprecated publish() method to send a deprecated
-         * notification to run the tool, which the message handler will receive
-         * and deal with.
-         * 
-         * When the message handler is refactored into oblivion, there will be
-         * either some sort of helper class for running recommenders, or the
-         * session manager will handle it. At that time, this will be changed to
-         * directly run the tool, instead of using this deprecated code.
-         */
-        publish(new ToolAction(ToolAction.RecommenderActionEnum.RUN_RECOMMENDER,
-                getModel().getConfigurationManager().getTypeFirstRecommender(
-                        selectedType),
-                ToolType.RECOMMENDER,
+        getModel().getRecommenderManager().runRecommender(
+                getModel().getConfigurationManager()
+                        .getTypeFirstRecommender(selectedType),
                 RecommenderExecutionContext.getHazardTypeFirstContext(
-                        selectedType, RecommenderTriggerOrigin.USER)));
+                        selectedType, RecommenderTriggerOrigin.USER));
     }
 
     /**

@@ -9,10 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
-import gov.noaa.gsd.viz.megawidgets.displaysettings.TextSettings;
-import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +45,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.TextSettings;
+import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
+
 /**
  * Text megawidget.
  * 
@@ -79,7 +79,7 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014   3982    Chris.Golden       Changed to have correct look when
+ * Jun 17, 2014   3982     Chris.Golden      Changed to have correct look when
  *                                           disabled.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
@@ -109,6 +109,7 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Oct 25, 2016  21677     Chris.Golden      Fixed behavior when set to be non-editable
  *                                           so that text can still be scrolled,
  *                                           selected, etc.
+ * Feb 01, 2017  28660     Robert.Blum       Added null/dispose check.
  * </pre>
  * 
  * @author Chris.Golden
@@ -123,6 +124,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      * Set of all mutable property names for instances of this class.
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+
     static {
         Set<String> names = new HashSet<>(
                 StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
@@ -135,8 +137,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     /**
      * Disabled foreground color. This is required because the
      * {@link StyledText} does not take on a proper disabled look when it is
-     * disabled. See <a
-     * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=4745">this SWT
+     * disabled. See
+     * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=4745">this SWT
      * bug</a> for details.
      */
     protected final Color DISABLED_FOREGROUND_COLOR = new Color(
@@ -219,14 +221,12 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
          * appropriate.
          */
         boolean multiLine = (specifier.getNumVisibleLines() > 1);
-        Composite panel = UiBuilder
-                .buildComposite(
-                        parent,
-                        (multiLine ? 1 : 2),
-                        SWT.NONE,
-                        (multiLine ? UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED
-                                : UiBuilder.CompositeType.SINGLE_ROW),
-                        specifier);
+        Composite panel = UiBuilder.buildComposite(parent, (multiLine ? 1 : 2),
+                SWT.NONE,
+                (multiLine
+                        ? UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED
+                        : UiBuilder.CompositeType.SINGLE_ROW),
+                specifier);
         label = UiBuilder.buildLabel(panel, specifier);
 
         /*
@@ -259,22 +259,25 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                 DISABLED_FOREGROUND_COLOR.dispose();
             }
         });
-        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(textViewer
-                .getTextWidget());
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(
+                textViewer.getTextWidget());
 
         /*
          * Place the text component in the grid.
          */
-        GridData gridData = new GridData((multiLine
-                || specifier.isHorizontalExpander() ? SWT.FILL : SWT.LEFT),
+        GridData gridData = new GridData(
+                (multiLine || specifier.isHorizontalExpander() ? SWT.FILL
+                        : SWT.LEFT),
                 (multiLine ? SWT.FILL : SWT.CENTER), true, multiLine);
         gridData.horizontalSpan = ((multiLine == false) && (label == null) ? 2
                 : 1);
         GC gc = new GC(textViewer.getTextWidget());
         FontMetrics fontMetrics = gc.getFontMetrics();
-        gridData.widthHint = textViewer.getTextWidget().computeSize(
-                (specifier.getVisibleTextLength() + 1)
-                        * fontMetrics.getAverageCharWidth(), SWT.DEFAULT).x;
+        gridData.widthHint = textViewer.getTextWidget()
+                .computeSize(
+                        (specifier.getVisibleTextLength() + 1)
+                                * fontMetrics.getAverageCharWidth(),
+                        SWT.DEFAULT).x;
         if (multiLine) {
             gridData.heightHint = textViewer.getTextWidget().computeSize(
                     SWT.DEFAULT,
@@ -330,8 +333,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
          * value has changed in such a way that the state change listener was
          * not notified.
          */
-        textViewer.getTextWidget().addSelectionListener(
-                new SelectionListener() {
+        textViewer.getTextWidget()
+                .addSelectionListener(new SelectionListener() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
                         Display.getCurrent().asyncExec(new Runnable() {
@@ -341,8 +344,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                                         .getTextWidget();
                                 if ((textWidget != null)
                                         && (textWidget.isDisposed() == false)) {
-                                    Point selection = textViewer
-                                            .getTextWidget().getSelection();
+                                    Point selection = textViewer.getTextWidget()
+                                            .getSelection();
                                     displaySettings.setSelectionRange(Range
                                             .closed(selection.x, selection.y));
                                 }
@@ -392,12 +395,11 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                             event.gc.setForeground(event.display
                                     .getSystemColor(SWT.COLOR_DARK_GRAY));
                         }
-                        event.gc.drawText(
-                                promptText,
+                        event.gc.drawText(promptText,
                                 styledText.getLeftMargin(),
                                 styledText.getTopMargin()
-                                        + styledText.getBaseline()
-                                        - event.gc.getFontMetrics().getAscent());
+                                        + styledText.getBaseline() - event.gc
+                                                .getFontMetrics().getAscent());
                     }
                 }
             });
@@ -415,8 +417,15 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                             Display.getCurrent().asyncExec(new Runnable() {
                                 @Override
                                 public void run() {
-                                    displaySettings.getScrollOrigin().y = textViewer
-                                            .getTextWidget().getTopPixel();
+                                    StyledText textWidget = textViewer
+                                            .getTextWidget();
+                                    if (textWidget != null && textWidget
+                                            .isDisposed() == false) {
+                                        displaySettings
+                                                .getScrollOrigin().y = textViewer
+                                                        .getTextWidget()
+                                                        .getTopPixel();
+                                    }
                                 }
                             });
                         }
@@ -437,8 +446,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                         StyledText textWidget = textViewer.getTextWidget();
                         if ((textWidget != null)
                                 && (textWidget.isDisposed() == false)) {
-                            displaySettings.setCaretPosition(textWidget
-                                    .getCaretOffset());
+                            displaySettings.setCaretPosition(
+                                    textWidget.getCaretOffset());
                             if (((TextSpecifier) getSpecifier())
                                     .getNumVisibleLines() == 1) {
                                 displaySettings.getScrollOrigin().x = textWidget
@@ -566,8 +575,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                              */
                             Range<Integer> selectionRange = textSettings
                                     .getSelectionRange();
-                            if ((selectionRange != null)
-                                    && (selectionRange.lowerEndpoint() != selectionRange
+                            if ((selectionRange != null) && (selectionRange
+                                    .lowerEndpoint() != selectionRange
                                             .upperEndpoint())) {
                                 textWidget.setSelection(
                                         selectionRange.lowerEndpoint(),
@@ -610,9 +619,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             label.setEnabled(enable);
         }
         textViewer.getTextWidget().setEnabled(enable);
-        textViewer.getTextWidget().setBackground(
-                helper.getBackgroundColor((enable && isEditable()),
-                        textViewer.getTextWidget(), label));
+        textViewer.getTextWidget().setBackground(helper.getBackgroundColor(
+                (enable && isEditable()), textViewer.getTextWidget(), label));
         textViewer.getTextWidget().setForeground(
                 enable ? defaultForegroundColor : DISABLED_FOREGROUND_COLOR);
     }
@@ -640,10 +648,11 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     }
 
     @Override
-    protected final String doGetStateDescription(String identifier, Object state)
-            throws MegawidgetStateException {
-        return (state == null ? ((TextSpecifier) getSpecifier())
-                .getValueIfEmpty() : state.toString());
+    protected final String doGetStateDescription(String identifier,
+            Object state) throws MegawidgetStateException {
+        return (state == null
+                ? ((TextSpecifier) getSpecifier()).getValueIfEmpty()
+                : state.toString());
     }
 
     @Override
@@ -664,9 +673,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      */
     private void doSetEditable(boolean editable) {
         textViewer.getTextWidget().setEditable(editable);
-        textViewer.getTextWidget().setBackground(
-                helper.getBackgroundColor(isEnabled() && editable,
-                        textViewer.getTextWidget(), label));
+        textViewer.getTextWidget().setBackground(helper.getBackgroundColor(
+                isEnabled() && editable, textViewer.getTextWidget(), label));
     }
 
     /**
@@ -718,8 +726,10 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      * change listener is assumed to be aware.
      */
     private void notifyListenersOfEndingStateChange() {
-        if (((lastForwardedValue != null) && (lastForwardedValue.equals(state) == false))
-                || ((lastForwardedValue == null) && (lastForwardedValue != state))) {
+        if (((lastForwardedValue != null)
+                && (lastForwardedValue.equals(state) == false))
+                || ((lastForwardedValue == null)
+                        && (lastForwardedValue != state))) {
             recordLastNotifiedState();
             notifyListeners();
         }

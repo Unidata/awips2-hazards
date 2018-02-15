@@ -26,10 +26,13 @@
     Aug 25, 2016       21458    Robert.Blum            Replacing hashTags with correct framing.
     Oct 13, 2016       22495    Sara.Stewart           Removed extraneous Dam & River words
     Oct 13, 2016       22510    Robert.Blum            Fixed siteImminent and siteFailed cases for FF.W.NonConvective.
+    Feb 07, 2017       7137     JRamer                 Minimal hooks to BurnScarMetaData.py
     @author Daniel.S.Schaffer@noaa.gov
 '''
 import os
 from TextProductCommon import TextProductCommon
+import traceback
+import sys
 
 class BasisText(object):
 
@@ -114,6 +117,27 @@ class BasisText(object):
         # Rain So Far Text
         self.rainSoFar = self.getRainSoFar(hazardDict)
 
+        # Last thing, pick up our burnScarMetaData if we can.
+        burnScarName = hazardDict.get('burnScarName')
+        if burnScarName == None :
+            # This happens if FFW but not burn scar FFW
+            return
+        if hasattr(self, 'burnScarMetaData') :
+            if burnScarName == self.burnScarMetaData.get("burnScarName") :
+                return
+        from MapsDatabaseAccessor import MapsDatabaseAccessor
+        mapsAccessor = MapsDatabaseAccessor()
+        self.burnScarMetaData = mapsAccessor.getBurnScarMetadata(burnScarName)
+        if self.burnScarMetaData == None :
+            errmsg = "\nWARNING: " + \
+                     "Burn scar in mapdata.burnscararea SQL table with no" + \
+                     " associated metadata in BurnScarMetaData.py\n\n"
+            sys.stderr.write(errmsg)
+            self.burnScarMetaData = {}
+        # Cache choice of scenario that was made in HID
+        self.scenario = hazardDict.get('scenario')
+
+
     def isExpected(self, floodLocation=None):
         '''
             Mimics the isExpected variable from the WarnGen templates.
@@ -186,13 +210,17 @@ class BasisText(object):
                     report = "that heavy rain was falling"
 
         # Use the floodLocation if given, otherwise use default text
+        linkingPreposition = " in "
         if burnScarTemplate:
             # Use burnScarName instead of floodLocation
             floodLocation = self.hazardDict.get("burnScarName", None)
+            if floodLocation:
+                floodLocation += " Burn Scar"
+                linkingPreposition = " over the "
         else:
             floodLocation = self.hazardDict.get("floodLocation", None)
         if floodLocation:
-            report += " in " + floodLocation + "."
+            report += linkingPreposition + floodLocation + "."
         else:
             report += " across the warned area."
 
@@ -203,7 +231,23 @@ class BasisText(object):
     def get_FF_W_BurnScarBulletText(self):
         result = ""
         if self.debrisFlow == "debrisFlowBurnScar":
-            result += "\n\nExcessive rainfall over the burn scar will result in debris flow moving through the |* debrisBurnScarDrainage *|. The debris flow can consist of rock...mud...vegetation and other loose materials."
+            drainage = "|* debrisBurnScarDrainage *|."
+            try :
+                burnDrainage = \
+                   self.burnScarMetaData["scenarios"][self.scenario]["burnDrainage"]
+                i = burnDrainage.lower().find(" include ")
+                if i>0 :
+                    drainage = burnDrainage[i+9:]
+            except :
+                errmsg = "\nWARNING: " + \
+                         "Burn scar in mapdata.burnscararea SQL table with no" + \
+                         " associated metadata in BurnScarMetaData.py\n\n"
+                sys.stderr.write(errmsg)
+                pass
+            result += "\n\nExcessive rainfall over the burn scar will result in debris flow moving through the "
+            # Test data sets we have received so far say 'drainage' will always have a period at the end.
+            result += drainage
+            result += " The debris flow can consist of rock...mud...vegetation and other loose materials."
         elif self.debrisFlow == "debrisFlowMudSlide":
             result += "\n\nExcessive rainfall over the warning area will cause mud slides near steep terrain. The mud slide can consist of rock...mud...vegetation and other loose materials."
         return result

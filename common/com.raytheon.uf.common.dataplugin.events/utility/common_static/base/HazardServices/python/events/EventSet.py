@@ -22,16 +22,6 @@
 #
 # An EventSet, based on a Java EventSet
 #
-#
-#     SOFTWARE HISTORY
-#
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    03/04/13                      jsanchez       Initial Creation.
-#    08/20/13        1360          hansen         Added code to create empty event
-#                                                 set when wrapped object is null.
-#    12/05/13        2527          bkowal         Use JUtil to convert Hazards
-#
 
 import JUtil
 import datetime
@@ -41,6 +31,10 @@ from HazardEvent import HazardEvent
 from java.util import Date
 
 from com.raytheon.uf.common.dataplugin.events import EventSet as JavaEventSet
+
+from GenericSessionObjectManagerHandler import pyGenericSessionObjectManagerToJavaGenericSessionObjectManager, javaGenericSessionObjectManagerToPyGenericSessionObjectManager
+JUtil.registerPythonToJava(pyGenericSessionObjectManagerToJavaGenericSessionObjectManager)
+JUtil.registerJavaToPython(javaGenericSessionObjectManagerToPyGenericSessionObjectManager)
 
 class EventSet(JUtil.JavaWrapperClass):
 
@@ -84,7 +78,7 @@ class EventSet(JUtil.JavaWrapperClass):
         self.attributes[key] = value
 
     def getAttribute(self, key):
-        return self.attributes[key]
+        return self.attributes.get(key, None)
 
     def getAttributes(self):
         return self.attributes

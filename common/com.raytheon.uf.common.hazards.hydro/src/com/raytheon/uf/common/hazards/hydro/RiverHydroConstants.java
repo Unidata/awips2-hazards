@@ -30,6 +30,8 @@ import java.util.TimeZone;
  * Date         Ticket#     Engineer    Description
  * ------------ ----------  ----------- --------------------------
  * May 08, 2015 6562        Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jan 20, 2017 28289       Kevin.Bisanz Add DateFormat for dates to be used in python.
+ * Mar 13, 2017 29675       Kevin.Bisanz Remove python date format after refactor.
  * 
  * </pre>
  * 
@@ -91,8 +93,12 @@ public class RiverHydroConstants {
      * Possible flood categories
      */
     public enum HydroFloodCategories {
-        NULL_CATEGORY(-1), NO_FLOOD_CATEGORY(0), MINOR_FLOOD_CATEGORY(1), MODERATE_FLOOD_CATEGORY(
-                2), MAJOR_FLOOD_CATEGORY(3), RECORD_FLOOD_CATEGORY(4);
+        NULL_CATEGORY(-1),
+        NO_FLOOD_CATEGORY(0),
+        MINOR_FLOOD_CATEGORY(1),
+        MODERATE_FLOOD_CATEGORY(2),
+        MAJOR_FLOOD_CATEGORY(3),
+        RECORD_FLOOD_CATEGORY(4);
 
         /**
          * @param rank
@@ -118,7 +124,8 @@ public class RiverHydroConstants {
     public static final ThreadLocal<SimpleDateFormat> dateFormat = new ThreadLocal<SimpleDateFormat>() {
         @Override
         protected SimpleDateFormat initialValue() {
-            SimpleDateFormat sTemp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            SimpleDateFormat sTemp = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss");
             sTemp.setTimeZone(TimeZone.getTimeZone("GMT"));
             return sTemp;
         }
@@ -130,5 +137,4 @@ public class RiverHydroConstants {
     public static SimpleDateFormat getDateFormat() {
         return dateFormat.get();
     }
-
 }

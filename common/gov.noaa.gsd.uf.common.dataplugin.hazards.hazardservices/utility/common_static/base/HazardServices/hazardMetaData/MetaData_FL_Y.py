@@ -11,13 +11,15 @@ class MetaData(CommonMetaData.MetaData):
         
         if self.hazardStatus == "ending":
             metaData = [
-                        self.getPreviousEditedText(),
                         self.getInclude(),
                         ]
+            return {
+                    METADATA_KEY: metaData
+                    }
+            
         else:
             pointDetails = [
-                        self.getPreviousEditedText(),
-                        self.getPointID(),
+                        self.getRiverLabel(),
                         self.getImmediateCause(),
                         self.getHiddenFloodSeverityNone(),
                         self.getFloodRecord(),
@@ -31,36 +33,35 @@ class MetaData(CommonMetaData.MetaData):
         
             metaData = [
                        {
-                "fieldType": "TabbedComposite",
-                "fieldName": "FLWTabbedComposite",
-                "leftMargin": 10,
-                "rightMargin": 10,
-                "topMargin": 10,
-                "bottomMargin": 10,
-                "expandHorizontally": True,
-                "expandVertically": True,
-                "pages": [
-                              {
-                                "pageName": "Point Details",
-                                "pageFields": pointDetails
-                               },
-                              {
-                                "pageName": "Crest Comparison",
-                                "pageFields": crests
-                               },
-                              {
-                                "pageName": "Impacts Statement",
-                                "pageFields": impacts
-                               }
+                        "fieldType": "TabbedComposite",
+                        "fieldName": "FLWTabbedComposite",
+                        "leftMargin": 10,
+                        "rightMargin": 10,
+                        "topMargin": 10,
+                        "bottomMargin": 10,
+                        "expandHorizontally": True,
+                        "expandVertically": True,
+                        "pages": [
+                                  {
+                                   "pageName": "Point Details",
+                                   "pageFields": pointDetails
+                                   },
+                                  {
+                                   "pageName": "Crest Comparison",
+                                   "pageFields": crests
+                                   },
+                                  {
+                                   "pageName": "Impacts Statement",
+                                   "pageFields": impacts
+                                   }
+                                  ]
+                        }
                         ]
-                 
-                }
-           ]
-        
-        
-        return {
-                METADATA_KEY: metaData
-                }    
+
+            return {
+                    METADATA_KEY: metaData,
+                    METADATA_MODIFIED_HAZARD_EVENT: hazardEvent
+                    }    
                         
     def includeChoices(self):
         return [

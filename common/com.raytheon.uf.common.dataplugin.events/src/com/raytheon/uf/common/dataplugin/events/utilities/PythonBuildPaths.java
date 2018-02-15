@@ -56,6 +56,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Nov 17, 2015 3473      Robert.Blum  Moved all python files under HazardServices localization dir.
  * Apr 25, 2015 17611     Robert.Blum  Updated so ConfigLoader can utilize.
  * Sep 20, 2016 21609     Kevin.Bisanz Add geoSpatialPath to includePath.
+ * Jan 18, 2017 28240     Kevin.Bisanz Update GFE localization path from python/gfe to gfe/python
  * </pre>
  * 
  * @author jsanchez
@@ -142,6 +143,13 @@ public class PythonBuildPaths {
         LocalizationContext baseContext = manager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
 
+        String gfeRootPath = manager
+                .getFile(baseContext,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR)
+                .getPath();
+        String localizationGfePath = FileUtil.join(gfeRootPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR);
+
         String pythonPath = manager
                 .getFile(baseContext,
                         HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
@@ -152,8 +160,6 @@ public class PythonBuildPaths {
                 .getPath();
         String dataAccessPath = FileUtil.join(pythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
-        String localizationGfePath = FileUtil.join(pythonPath,
-                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR);
         String dataTimePath = FileUtil.join(pythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_TIME_DIR);
         String localizationUtilitiesPath = FileUtil.join(

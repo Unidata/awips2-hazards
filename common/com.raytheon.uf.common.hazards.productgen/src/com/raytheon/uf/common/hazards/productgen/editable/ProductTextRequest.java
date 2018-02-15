@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.editable;
 
+import java.util.Date;
+import java.util.List;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -34,6 +37,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
  * Nov 10, 2016 22119      Kevin.Bisanz Add path attribute.
+ * Jun 12, 2017 35022      Kevin.Bisanz Change to contain attributes of a ProductText, instead of actual ProductText object.
  * 
  * </pre>
  * 
@@ -45,10 +49,31 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class ProductTextRequest implements IServerRequest {
 
     @DynamicSerializeElement
-    private ProductText productText;
+    private ProductRequestType type;
 
     @DynamicSerializeElement
-    private ProductRequestType type;
+    private List<String> eventIDs;
+
+    @DynamicSerializeElement
+    private String key;
+
+    @DynamicSerializeElement
+    private String officeID;
+
+    @DynamicSerializeElement
+    private String productCategory;
+
+    @DynamicSerializeElement
+    private String mode;
+
+    @DynamicSerializeElement
+    private String segment;
+
+    @DynamicSerializeElement
+    private String value;
+
+    @DynamicSerializeElement
+    private Date insertTime;
 
     /**
      * Path to export to or import from.
@@ -57,43 +82,34 @@ public class ProductTextRequest implements IServerRequest {
     private String path;
 
     public static enum ProductRequestType {
-        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE, EXPORT, IMPORT;
+        CREATE,
+        DELETE,
+        UPDATE,
+        RETRIEVE,
+        SAVE_OR_UPDATE,
+        EXPORT,
+        IMPORT;
     }
 
     /**
-     * 
+     * Constructor required for serialization.
      */
     public ProductTextRequest() {
     }
 
-    /**
-     * 
-     */
-    public ProductTextRequest(ProductText text, ProductRequestType type) {
-        this.productText = text;
+    public ProductTextRequest(ProductRequestType type, List<String> eventIDs,
+            String key, String officeID, String productCategory, String mode,
+            String segment, String value, Date insertTime, String path) {
         this.type = type;
-    }
-
-    public ProductTextRequest(ProductText text, ProductRequestType type,
-            String path) {
-        this.productText = text;
-        this.type = type;
+        this.eventIDs = eventIDs;
+        this.key = key;
+        this.officeID = officeID;
+        this.productCategory = productCategory;
+        this.mode = mode;
+        this.segment = segment;
+        this.value = value;
+        this.insertTime = insertTime;
         this.path = path;
-    }
-
-    /**
-     * @return the productText
-     */
-    public ProductText getProductText() {
-        return productText;
-    }
-
-    /**
-     * @param productText
-     *            the productText to set
-     */
-    public void setProductText(ProductText productText) {
-        this.productText = productText;
     }
 
     /**
@@ -124,5 +140,69 @@ public class ProductTextRequest implements IServerRequest {
      */
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public List<String> getEventIDs() {
+        return eventIDs;
+    }
+
+    public void setEventIDs(List<String> eventIDs) {
+        this.eventIDs = eventIDs;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public String getOfficeID() {
+        return officeID;
+    }
+
+    public void setOfficeID(String officeID) {
+        this.officeID = officeID;
+    }
+
+    public String getProductCategory() {
+        return productCategory;
+    }
+
+    public void setProductCategory(String productCategory) {
+        this.productCategory = productCategory;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+
+    public String getSegment() {
+        return segment;
+    }
+
+    public void setSegment(String segment) {
+        this.segment = segment;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+
+    public Date getInsertTime() {
+        return insertTime;
+    }
+
+    public void setInsertTime(Date insertTime) {
+        this.insertTime = insertTime;
     }
 }

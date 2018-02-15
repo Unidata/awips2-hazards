@@ -134,6 +134,12 @@ if [ $doImportConfig = 0 ] && [ $doImportDatabase = 0 ]; then
     exit 1
 fi
 
+if [ ! -d ${HS_EDEX_DATA} ]; then
+    echo "HS_EDEX_DATA=${HS_EDEX_DATA} is not mounted.  Cannot continue!"
+    markTaskFailed ${lock_file}
+    exit 1
+fi
+
 if [ $doImportConfig = 1 ]; then
    echo "Checking if localization directories exist for ${CAPS_SITE_ID}"
    edex_site_dest=${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/
@@ -167,15 +173,20 @@ if [ $doImportDatabase = 1 ]; then
    database_dest_temp=${HS_EDEX_DATA_SVCBU_DB}/.svcbutemporary
    database_dest_final=${HS_EDEX_DATA_SVCBU_DB}
    mkdir -p ${database_dest_temp}
-   mkdir -p ${database_dest_final}
-
+   
    echo "Moving database files into directory"
    cp ${OUTPUT_DIR}/${HS_DB_DIR}/* ${database_dest_temp}
-   # To prevent the deserialization from reading partial files, use a mv since it
-   # should be atomic (if directories are on the same file system).
+   # To prevent the deserialization from reading partial files, use a mv since
+   # it should be atomic (if directories are on the same file system).
    mv ${database_dest_temp}/* ${database_dest_final}
    rmdir ${database_dest_temp}
-   echo "Files successfully copied!"
+
+   if [ $USER = "root" ]
+   then
+      chown -R $nonRootUser:fxalpha ${HS_EDEX_DATA}/*
+   fi
+
+   echo "Files successfully copied to ${database_dest_final} on ${HOSTNAME}"
 fi
 
 echo "Changing ownership of received configuration"
@@ -185,7 +196,6 @@ then
     chown -R $nonRootUser:fxalpha ${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/HazardServices
     chown -R $nonRootUser:fxalpha ${HAZARD_SERVICES_LOG}
     chown -R $nonRootUser:fxalpha ${HS_LOCK_DIR}
-    chown -R $nonRootUser:fxalpha ${HS_EDEX_DATA_SVCBU_DB}
     chown -R $nonRootUser:fxalpha ${HS_SVCBU_HOME}
 elif [ $USER = "$nonRootUser" ]
 then

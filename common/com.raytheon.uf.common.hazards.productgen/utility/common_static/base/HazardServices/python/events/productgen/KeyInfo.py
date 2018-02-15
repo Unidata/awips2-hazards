@@ -18,65 +18,22 @@
 # further licensing information.
 # #
 
-#
-# Globally import and sets up instances of the products.
-#   
-#
-#    
-#    SOFTWARE HISTORY
-#    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    04/07/14                      jsanchez        Initial Creation.
-#    04/21/14        2336          Chris.Golden    Added capitalization of labels.
-#    04/23/14        3519          jsanchez        Added required fields.
-#    03/19/15        7094          Robert.Blum     Added eventIDs to label by default.
-#    04/27/15        7579          Robert.Blum     Only add eventIDs to label if there is a label.
-#    05/07/15        6979          Robert.Blum     Changed default value for eventIDInLabel.
-#    05/14/15        7376          Robert.Blum     Moved required * to the beginning of the label.
-#    07/28/15        9687          Robert.Blum     Added new displayLabel field.
-#    07/28/15        9681          Robert.Blum     Removed the * from the label, handle in the product editor.
-#    08/06/15        8836          Chris.Cody      Changes for a configurable Event Id
+
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
-from com.raytheon.uf.common.dataplugin.events.hazards.event import HazardServicesEventIdUtil
-IdDisplayType = HazardServicesEventIdUtil.IdDisplayType
 
 class KeyInfo(JUtil.JavaWrapperClass):
 
-    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False,
-                 label=None, required=False, displayLabel=True, index=0, eventIDInLabel=False):
+    def __init__(self, name, productCategory=None, mode=None, eventIDs=[], segment=None,
+                 index=0):
         self.name = name
         self.productCategory = productCategory
-        self.productID = productID
+        self.mode = mode
         if isinstance(eventIDs, list):
             self.eventIDs = tuple(eventIDs)
         else:
             self.eventIDs = tuple([eventIDs])
         self.segment = segment
-        self.editable = editable
-        self.displayable = displayable
-        if label is None:
-            self.label = self.name.title()
-        else:
-            self.label = label
-
-        # Add EventIDs to label
-        if label and eventIDInLabel:
-            if eventIDs:
-                firstEvent = True
-                for eventID in eventIDs:
-                    eventIDString = HazardServicesEventIdUtil.getDisplayId(eventID, IdDisplayType.ALWAYS_SITE)
-                    if firstEvent:
-                        # 1st eventID added to label
-                        
-                        self.label += ' - ' + str(eventIDString)
-                        firstEvent = False
-                    else:
-                        self.label += '/' + str(eventIDString)
-
-        self.required = required
-        self.displayLabel = displayLabel
         self.index = index
 
     def getName(self):
@@ -85,8 +42,8 @@ class KeyInfo(JUtil.JavaWrapperClass):
     def getProductCategory(self):
         return self.productCategory
     
-    def getProductID(self):
-        return self.productID
+    def getMode(self):
+        return self.mode
             
     def getEventIDs(self):
         return list(iter(self.eventIDs))
@@ -94,47 +51,30 @@ class KeyInfo(JUtil.JavaWrapperClass):
     def getSegment(self):
         return self.segment
     
-    def isEditable(self):
-        return self.editable
-    
-    def isDisplayable(self):
-        return self.displayable
-    
-    def getLabel(self):
-        return self.label
-    
     def getIndex(self):
         return self.index
 
     def __hash__(self):
-        return hash((self.name, self.productCategory, self.productID, self.eventIDs, self.segment))
+        return hash((self.name, self.productCategory, self.mode, self.eventIDs, self.segment))
     
     def __eq__(self, other):
-        return (self.name, self.productCategory, self.productID, self.getEventIDs(), self.segment, self.index) == (other.getName(), other.getProductCategory(), other.getProductID(), other.getEventIDs(), other.getSegment(), other.getIndex())
+        return (self.name, self.productCategory, self.mode, self.getEventIDs(), self.segment, self.index) == (other.getName(), other.getProductCategory(), other.getMode(), other.getEventIDs(), other.getSegment(), other.getIndex())
     
     def __str__(self):
         string = 'Name: ' + self.name + \
             '\nSegment: ' + str(self.segment) + \
             '\nEvent IDs: ' + str(self.getEventIDs()) + \
-            '\nEditable: ' + str(self.editable) + \
-            '\nDisplayable: ' + str(self.displayable) + \
-            '\nLabel: ' + self.label
+            '\nEvent IDs: ' + str(self.getEventIDs())
         return string
-            
+
     def toJavaObj(self):
         keyInfo = JavaKeyInfo()
         keyInfo.setName(self.name)
         keyInfo.setProductCategory(self.productCategory)
-        keyInfo.setProductID(self.productID)
+        keyInfo.setMode(self.mode)
         keyInfo.setEventIDs(JUtil.pyValToJavaObj(self.getEventIDs()))
         keyInfo.setSegment(self.segment)
-        keyInfo.setEditable(self.editable)
-        keyInfo.setDisplayable(self.displayable)
-        keyInfo.setLabel(self.label)
-        keyInfo.setRequired(self.required)
-        keyInfo.setDisplayLabel(self.displayLabel)
         keyInfo.setIndex(self.index)
-        
         return keyInfo
     
     @staticmethod

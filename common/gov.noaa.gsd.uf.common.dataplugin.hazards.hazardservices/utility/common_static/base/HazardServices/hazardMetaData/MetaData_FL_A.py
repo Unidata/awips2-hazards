@@ -14,13 +14,15 @@ class MetaData(CommonMetaData.MetaData):
 
         if self.hazardStatus in ["ending", "ended"]:
             metaData = [
-                        self.getPreviousEditedText(),
                         self.getInclude(),
             ]
+            return {
+                    METADATA_KEY: metaData
+                    }
+            
         else:
             pointDetails = [
-                            self.getPreviousEditedText(),
-                            self.getPointID(),
+                            self.getRiverLabel(),
                             self.getImmediateCause(),
                             self.getHiddenFloodSeverity(),
                             self.getFloodRecord(),
@@ -54,10 +56,10 @@ class MetaData(CommonMetaData.MetaData):
                     }
                ]
             
-            
-        return {
-                METADATA_KEY: metaData
-                }    
+            return {
+                    METADATA_KEY: metaData,
+                    METADATA_MODIFIED_HAZARD_EVENT: hazardEvent
+                    }    
 
     def includeChoices(self):
         return [

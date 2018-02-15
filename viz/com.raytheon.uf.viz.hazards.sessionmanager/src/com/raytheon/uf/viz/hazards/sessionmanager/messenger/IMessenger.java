@@ -9,14 +9,12 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
 
-import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
-import com.raytheon.uf.common.hazards.productgen.data.ProductData;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -43,6 +41,10 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      question being asked.
  * Jun 23, 2016  19537     Chris.Golden Changed to work with new generic
  *                                      tool spatial info gathering.
+ * Jan 18, 2017  27671     dgilling     Added tri-state method to
+ *                                      IQuestionAnswerer.
+ * Jan 31, 2017  28013     dgilling     Added "feature disabled for simulated
+ *                                      time reasons" warning method.
  * Jun 26, 2017  19207     Chris.Golden Changes to view products for specific
  *                                      events. Also added warnings/TODOs
  *                                      concerning use of the provided
@@ -55,6 +57,15 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      use new arguments.
  * Dec 17, 2017  20739     Chris.Golden Refactored away access to directly
  *                                      mutable session events.
+ * Apr 24, 2018  22308     Chris.Golden Changed product viewer to work with
+ *                                      viewing of products coming from text
+ *                                      database.
+ * May 22, 2018   3782     Chris.Golden Changed recommender parameter gathering
+ *                                      to be much more flexible, allowing the
+ *                                      user to change dialog parameters together
+ *                                      with visual features, and allowing visual
+ *                                      feature changes to be made multiple times
+ *                                      before the execution proceeds.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -63,10 +74,39 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 public interface IMessenger {
 
     /**
+     * Tri-state pseudo-boolean.
+     */
+    public enum TriStateBoolean {
+        TRUE, FALSE, CANCEL
+    }
+
+    /**
      * Interface defining a warner
      */
     public interface IWarner {
+
+        /**
+         * Display a warning message to the user. If the calling thread is the
+         * UI thread, this will be done synchronously, that is, the method will
+         * not return until the dialog is closed.
+         */
         public void warnUser(String title, String warning);
+
+        /**
+         * Display a warning message to the user asynchronously, regardless of
+         * whether the calling thread is the UI thread or not (unlike
+         * {@link #warnUser(String, String)}).
+         * 
+         * @param title
+         * @param warning
+         * @param afterClosing
+         *            Optional parameter; if provided, it is executed following
+         *            the closing of the dialog.
+         */
+        public void warnUserAsynchronously(String title, String warning,
+                Runnable afterClosing);
+
+        public void warnUserOfSimulatedTimeProblem(String disabledFeature);
     }
 
     /**
@@ -82,6 +122,8 @@ public interface IMessenger {
      */
     public interface IQuestionAnswerer {
         public boolean getUserAnswerToQuestion(String question);
+
+        TriStateBoolean getUserAnswerToQuestionTriState(String question);
 
         public boolean getUserAnswerToQuestion(String question,
                 String[] buttonLabels);
@@ -129,13 +171,9 @@ public interface IMessenger {
     public interface IProductViewerChooser {
 
         /**
-         * Get the products to be viewed or corrected.
-         * 
-         * @param productData
-         *            Data about the products to be shown and potentially
-         *            chosen.
+         * Show the user the product viewer chooser.
          */
-        public void getProductViewerChooser(List<ProductData> productData);
+        public void getProductViewerChooser();
     }
 
     /**
@@ -144,52 +182,68 @@ public interface IMessenger {
     public interface IToolParameterGatherer {
 
         /**
-         * Get the parameters for the specified type of tool.
+         * Get the parameters for the specified tool execution.
          * 
-         * @param type
-         *            Type of the tool.
-         * @param dialogInput
-         *            Map holding the parameters governing the contents of the
-         *            dialog to be created to gather the parameters.
-         * @param dialogParametersReceiver
-         *            Receiver to be passed parameters that the user chooses in
-         *            the dialog.
+         * @param identifier
+         *            Identifier of the tool execution.
+         * @param dialogSpecifier
+         *            Specifier of the dialog to be created to gather
+         *            parameters.
+         * @param notifyOfIncrementalChanges
+         *            Flag indicating whether or not notifications of
+         *            incremental changes to the parameters should be forwarded
+         *            to the model.
          */
-        public void getToolParameters(ToolType type,
-                Map<String, Serializable> dialogInput,
-                ISessionRecommenderManager.IDialogParametersReceiver dialogParametersReceiver);
+        public void getToolParameters(ToolExecutionIdentifier identifier,
+                ToolParameterDialogSpecifier dialogSpecifier,
+                boolean notifyOfIncrementalChanges);
 
         /**
-         * Get spatial input for the specified type of tool.
+         * Update parameters for the specified tool execution.
          * 
-         * @param type
-         *            Type of the tool.
+         * @param identifier
+         *            Identifier of the tool execution.
+         * @param changedMutableProperties
+         *            Map of mutable properties of the dialog that have been
+         *            changed.
+         */
+        public void updateToolParameters(ToolExecutionIdentifier identifier,
+                Map<String, Map<String, Object>> changedMutableProperties);
+
+        /**
+         * Get spatial input for the specified tool execution.
+         * 
+         * @param identifier
+         *            Identifier of the tool execution.
          * @param visualFeatures
          *            List of visual features to be used to get spatial input
          *            from the user.
-         * @param spatialParametersReceiver
-         *            Receiver to be passed parameters that the user chooses in
-         *            the spatial display.
          */
-        public void getToolSpatialInput(ToolType type,
-                VisualFeaturesList visualFeatures,
-                ISessionRecommenderManager.ISpatialParametersReceiver spatialParametersReceiver);
+        public void getToolSpatialInput(ToolExecutionIdentifier identifier,
+                VisualFeaturesList visualFeatures);
 
         /**
-         * Show the results for for the specified type of tool.
+         * Finish gathering spatial input for the specified tool execution. This
+         * must be called following any series of calls to
+         * {@link IToolParameterGatherer#getToolSpatialInput(ToolExecutionIdentifier, VisualFeaturesList)}
+         * in order to remove the visual features that were put in place by the
+         * last call to that method.
          * 
-         * @param type
-         *            Type of the tool.
-         * @param dialogResults
-         *            Map holding the parameters governing the contents of the
-         *            dialog to be created to show the results.
-         * @param displayCompleteNotifier
-         *            Notifier to be told when the tool results display is
-         *            complete.
+         * @param identifier
+         *            Identifier of the tool execution.
          */
-        public void showToolResults(ToolType type,
-                Map<String, Serializable> dialogResults,
-                ISessionRecommenderManager.IResultsDisplayCompleteNotifier displayCompleteNotifier);
+        public void finishToolSpatialInput(ToolExecutionIdentifier identifier);
+
+        /**
+         * Show the results for the specified tool execution.
+         * 
+         * @param identifier
+         *            Identifier of the tool execution.
+         * @param dialogSpecifier
+         *            Specifier of the dialog to be created to show the results.
+         */
+        public void showToolResults(ToolExecutionIdentifier identifier,
+                ToolResultDialogSpecifier dialogSpecifier);
     }
 
     /**
@@ -200,7 +254,7 @@ public interface IMessenger {
     }
 
     /**
-     * Returns a question/answer.
+     * Get a question/answer.
      * 
      * @param
      * @return `A question/answer. The implementation will allow a question to
@@ -210,7 +264,7 @@ public interface IMessenger {
     public IQuestionAnswerer getQuestionAnswerer();
 
     /**
-     * Returns a warner.
+     * Get a warner.
      * 
      * @param
      * @return A warner. The implementation will allow a warning to be displayed
@@ -219,7 +273,7 @@ public interface IMessenger {
     public IWarner getWarner();
 
     /**
-     * Returns a continue/canceller.
+     * Get a continue/canceller.
      * 
      * @param
      * @return A continue/canceller. The implementation will allow a question to
@@ -229,7 +283,7 @@ public interface IMessenger {
     public IContinueCanceller getContinueCanceller();
 
     /**
-     * Returns a rise-crest-fall editor.
+     * Get a rise-crest-fall editor.
      * 
      * @return A rise-crest-fall editor. The implementation will allow a
      *         graphical editor to be displayed for a specified event, and give
@@ -239,7 +293,7 @@ public interface IMessenger {
     public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEventView event);
 
     /**
-     * Returns a product viewer chooser.
+     * Get a product viewer chooser.
      * 
      * @return A product viewer chooser. The implementaiton will allow a list of
      *         product information to be displayed so that the forecaster may

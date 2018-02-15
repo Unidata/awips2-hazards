@@ -48,6 +48,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 
+import gov.noaa.gsd.viz.hazards.display.AbstractProductSelectionDlg;
+import gov.noaa.gsd.viz.hazards.display.ProductCorrectionSelectionDlg;
 import gov.noaa.gsd.viz.hazards.display.ProductViewerSelectionDlg;
 import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -69,6 +71,8 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
  *                                      line with MVP design at some future point.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
  *                                      toolbar contribution code.
+ * Jan 27, 2017   22308    Robert.Blum  Updates for pulling products from text
+ *                                      database.
  * </pre>
  * 
  * @author mpduff
@@ -132,8 +136,8 @@ public class ProductView
 
                     /*
                      * If correcting and previously viewing, or vice versa,
-                     * close the product viewer selection dialog, as it is open
-                     * in the wrong mode for what's needed now.
+                     * close the product correction or viewer selection dialog,
+                     * as it is open in the wrong mode for what's needed now.
                      */
                     boolean lastCorrection = correction;
                     correction = (type == ToolType.PRODUCT_CORRECTOR);
@@ -155,15 +159,22 @@ public class ProductView
                                     time));
 
                     /*
-                     * Create the dialog and open it if it is not already
-                     * showing, or just bring it to the top if it is showing.
+                     * Create the appropriate dialog and open it if it is not
+                     * already showing, or just bring it to the top if it is
+                     * showing.
                      */
                     Shell shell = VizWorkbenchManager.getInstance()
                             .getCurrentWindow().getShell();
-                    if (selectionDialog == null
+                    if ((selectionDialog == null)
                             || selectionDialog.isDisposed()) {
-                        selectionDialog = new ProductViewerSelectionDlg(shell,
-                                presenter, productData);
+                        selectionDialog = (correction
+                                ? new ProductCorrectionSelectionDlg(shell,
+                                        presenter, productData)
+                                : new ProductViewerSelectionDlg(shell,
+                                        presenter,
+                                        presenter.getSessionManager()
+                                                .getEventManager().getEvents(),
+                                        false));
                         VizApp.runSync(new Runnable() {
                             @Override
                             public void run() {
@@ -264,7 +275,7 @@ public class ProductView
 
     private ProductsPulldownAction productPullDownAction;
 
-    private ProductViewerSelectionDlg selectionDialog;
+    private AbstractProductSelectionDlg selectionDialog;
 
     private boolean correction;
 

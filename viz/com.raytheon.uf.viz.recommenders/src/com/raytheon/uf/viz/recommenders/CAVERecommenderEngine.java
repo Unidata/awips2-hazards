@@ -43,6 +43,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Mar 06, 2013            mnash        Initial creation
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Dec 16, 2015 14019      Robert.Blum  Updates for new PythonJobCoordinator API.
  * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance
  *                                      between H.S. sessions in the same CAVE session,

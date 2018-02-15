@@ -109,6 +109,7 @@ class LocalizationInterface():
     def __init__(self, edexHost="") :
         global caveEdexHost
         global caveEdexPort
+        global edexService
         global edexLocMap
         self.__curUser = getpass.getuser()
         self.__defLoc = None
@@ -121,14 +122,14 @@ class LocalizationInterface():
         if edexHost!="" :
             self.__locServer = edexHost
             try :
-                self.__lfi = LocalFileInstaller(edexHost)
+                self.__lfi = LocalFileInstaller(edexHost, edexService)
             except :
                 self.__lfi = AppFileInstaller(edexHost, defEdexPort)
             return
         if caveEdexHost!=None :
             self.__locServer = caveEdexHost
             try :
-                self.__lfi = LocalFileInstaller(caveEdexHost)
+                self.__lfi = LocalFileInstaller(caveEdexHost, edexService)
             except :
                 self.__lfi = AppFileInstaller(caveEdexHost, caveEdexPort)
             return
@@ -142,6 +143,7 @@ class LocalizationInterface():
                 caveEdexLoc = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getSite()
                 caveEdexHost = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getHost()
                 caveEdexPort = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getPort()
+                edexService = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getServiceId()
         except :
             pass
 
@@ -156,7 +158,7 @@ class LocalizationInterface():
         if caveEdexLoc!="" :
             edexLocMap[caveEdexHost] = caveEdexLoc
         try :
-            self.__lfi = LocalFileInstaller(caveEdexHost)
+            self.__lfi = LocalFileInstaller(caveEdexHost, edexService)
         except :
             self.__lfi = AppFileInstaller(caveEdexHost, caveEdexPort)
 
@@ -800,7 +802,9 @@ return ResponseMessageGeneric(site)
             self.__lfi.setName(locNames)
             try :
                 result = self.__lfi.getList(dirPath)
-            except :
+            except Exception as e:
+                msg = 'Error with getList({}): {}'.format(dirPath, str(e))
+                self.__logger.logMessage(msg, "Error")
                 return None
         else :
             fail = True
@@ -820,7 +824,9 @@ return ResponseMessageGeneric(site)
                 self.__lfi.setName(locName)
                 try:
                     result = self.__lfi.getList(dirPath)
-                except:
+                except Exception as e:
+                    msg = 'Error executing getList({}): {}'.format(dirPath, str(e))
+                    self.__logger.logMessage(msg, "Error")
                     continue
                 fail = False
                 for one in result :

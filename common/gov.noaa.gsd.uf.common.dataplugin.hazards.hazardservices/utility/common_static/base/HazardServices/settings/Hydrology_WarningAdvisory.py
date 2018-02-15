@@ -82,6 +82,7 @@ Hydrology_WarningAdvisory = {
         "issued",
         "elapsed",
         "ending",
+        "elapsing",
     ],
     "columns": {
         "Event ID": {
@@ -206,6 +207,12 @@ Hydrology_WarningAdvisory = {
             "sortDir": "none",
             "fieldName": "userName",
             "type": "string"
+        },
+        "Location Name" : {
+            "type" : "string",
+            "fieldName" : "name",
+            "sortDir" : "ascending",
+            "sortPriority" : 0
         },
     },
     "toolbarTools": [

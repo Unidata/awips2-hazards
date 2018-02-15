@@ -23,7 +23,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,7 +38,6 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
@@ -49,6 +47,8 @@ import com.raytheon.uf.common.util.DeployTestProperties;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 /**
  * Test the storage of an {@link IHazardEvent}
@@ -93,8 +93,6 @@ public abstract class AbstractHazardStorageTest {
                                                          // today, so we
                                                          // don't overlap
 
-    private final ProductClass clazz = ProductClass.OPERATIONAL;
-
     private final Coordinate coordinate = new Coordinate(10, 10);
 
     private static final String THRIFT_STREAM_MAXSIZE = "200";
@@ -114,10 +112,9 @@ public abstract class AbstractHazardStorageTest {
     }
 
     public HazardEvent createNewEvent() {
-        HazardEvent createdEvent = manager.createEvent();
+        HazardEvent createdEvent = manager.createEvent(true);
         createdEvent.setEventID(UUID.randomUUID().toString());
         createdEvent.setEndTime(date);
-        createdEvent.setHazardMode(clazz);
         createdEvent.setCreationTime(date);
         createdEvent.setPhenomenon(phen);
         createdEvent.setSignificance(sig);
@@ -128,8 +125,8 @@ public abstract class AbstractHazardStorageTest {
 
         GeometryFactory factory = new GeometryFactory();
         Geometry geometry = factory.createPoint(coordinate);
-        createdEvent.setGeometry(AdvancedGeometryUtilities
-                .createGeometryWrapper(geometry, 0));
+        createdEvent.setGeometry(
+                AdvancedGeometryUtilities.createGeometryWrapper(geometry, 0));
         return createdEvent;
     }
 
@@ -155,8 +152,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testByEventId() {
         IHazardEvent createdEvent = storeEvent();
-        HazardHistoryList list = manager.getHistoryByEventID(
-                createdEvent.getEventID(), true);
+        HazardHistoryList list = manager
+                .getHistoryByEventID(createdEvent.getEventID(), true);
         assertThat(list, hasSize(1));
         /*
          * the persist time attribute currently breaks the step below. the
@@ -170,11 +167,10 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testByGeometry() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager
-                .getHistoryByGeometry(
-                        AdvancedGeometryUtilities
-                                .getJtsGeometryAsCollection(createdEvent
-                                        .getGeometry()), true);
+        Map<String, HazardHistoryList> list = manager.getHistoryByGeometry(
+                AdvancedGeometryUtilities.getJtsGeometryAsCollection(
+                        createdEvent.getGeometry()),
+                true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -199,8 +195,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testByPhenomenon() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryByPhenomenon(
-                phen, true);
+        Map<String, HazardHistoryList> list = manager
+                .getHistoryByPhenomenon(phen, true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -212,8 +208,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testBySignificance() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryBySignificance(
-                sig, true);
+        Map<String, HazardHistoryList> list = manager
+                .getHistoryBySignificance(sig, true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -255,8 +251,8 @@ public abstract class AbstractHazardStorageTest {
         // special case - remove event from the list of created events
         this.createdHazardEvents.remove(createdEvent);
         assertTrue(tf);
-        HazardHistoryList list = manager.getHistoryByEventID(
-                createdEvent.getEventID(), true);
+        HazardHistoryList list = manager
+                .getHistoryByEventID(createdEvent.getEventID(), true);
         assertThat(list, hasSize(0));
     }
 
@@ -267,8 +263,8 @@ public abstract class AbstractHazardStorageTest {
         createdEvent.setCreationTime(newTime);
         boolean tf = manager.updateEvents(createdEvent);
         assertTrue(tf);
-        HazardHistoryList list = manager.getHistoryByEventID(
-                createdEvent.getEventID(), true);
+        HazardHistoryList list = manager
+                .getHistoryByEventID(createdEvent.getEventID(), true);
         assertThat(createdEvent.getEventID(), list, hasSize(1));
     }
 

@@ -9,6 +9,7 @@ class MetaData(CommonMetaData.MetaData):
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
         metaData = [
+                    self.getRiverLabel(),
                     self.getHiddenFloodSeverityNone(),
         ]
         return {

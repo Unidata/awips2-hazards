@@ -23,15 +23,6 @@ import JUtil
 #
 # An object representation of Product Text.  Only getters, as if the client wants
 # to set they need to use ProductTextUtil.py.
-#  
-#    
-#     SOFTWARE HISTORY
-#    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    08/28/2013                     mnash       Initial Creation.
-#    
-# 
 #
 
 class ProductText(JUtil.JavaWrapperClass):
@@ -45,15 +36,17 @@ class ProductText(JUtil.JavaWrapperClass):
     def getProductCategory(self):
         return self.jobj.getProductCategory()
     
-    def getProductID(self):
-        return self.jobj.getProductID()
+    def getMode(self):
+        return self.jobj.getMode()
     
     def getSegment(self):
         return self.jobj.getSegment()
         
     def getEventID(self):
-        return self.jobj.getEventIDs()
+        return self.jobj.getEventID()
         
     def getValue(self):
         return JUtil.javaObjToPyVal(self.jobj.getValue())
         
+    def getInsertTime(self):
+        return JUtil.javaObjToPyVal(self.jobj.getInsertTime())

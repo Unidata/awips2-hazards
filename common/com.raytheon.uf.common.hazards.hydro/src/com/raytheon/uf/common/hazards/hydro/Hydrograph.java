@@ -142,7 +142,7 @@ public abstract class Hydrograph<T extends SHEFBase> {
         return (this.shefHydroDataList);
     }
 
-    protected T getShefHydroByValue(boolean isMax) {
+    public T getShefHydroByValue(boolean isMax) {
         T shefHydroData = null;
         double shefHydroDataValue = 0.0D;
 

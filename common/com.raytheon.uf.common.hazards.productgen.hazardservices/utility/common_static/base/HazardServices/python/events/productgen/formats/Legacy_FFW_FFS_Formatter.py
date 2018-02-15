@@ -1,34 +1,6 @@
 '''
     Description: Legacy formatter for FFW products
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Oct 24, 2014    4933    Robert.Blum Initial creation
-    Jan 12  2015    4937    Robert.Blum Refactor to inherit from new
-                                        formatter classes.
-    Jan 31, 2015    4937    Robert.Blum General cleanup along with implementing a dictionary
-                                        mapping of productParts to the associated methods.
-    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
-    Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from product editor.
-    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
-    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
-    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
-                                        empty string.
-    Jun 03, 2015    8530    Robert.Blum Added ProductPart for initials and the additionalComments.
-    Aug 24, 2015    9553    Robert.Blum Replaced basisAndImpactsStatement_segmentLevel with basisBullet
-                                        product part.
-    Sep 15, 2015    8687    Robert.Blum Using riverName from DamMetaData.py for basisBullet.
-    Nov 09, 2015    7532    Robert.Blum CTAs are now section level.
-    Dec 18, 2015   14036    Robert.Blum Changed ellipses in basis bullet to comma.
-    Mar 15, 2016   11892    Robert.Blum Added optional flooding flag to basisText and reworked the templates.
-    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
-    Jun 20, 2016   19135    Robert.Blum Fixed Test message text.
-    Jul 13, 2016   18257    Kevin.Bisanz If action==COR, use prevAct instead for basisBullet
-    Jul 29, 2016   19473    Roger.Ferrel Include test messages when in Test mode.
-    Aug 25, 2016   21458    Robert.Blum Replacing hashTags with correct framing.
 '''
-
 
 import datetime, collections
 
@@ -36,64 +8,25 @@ import types, re, sys
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
 import AttributionFirstBulletText_FFW_FFS
+import HazardConstants
 
 class Format(Legacy_Hydro_Formatter.Format):
 
     def initialize(self, editableEntries) :
-        self.initProductPartMethodMapping()
         super(Format, self).initialize(editableEntries)
 
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'easMessage': self._easMessage,
-            'productHeader': self._productHeader,
-            'vtecRecords': self._vtecRecords,
-            'areaList': self._areaList,
-            'issuanceTimeDate': self._issuanceTimeDate,
-            'callsToAction_sectionLevel': self._callsToAction_sectionLevel,
-            'polygonText': self._polygonText,
-            'cityList': self._cityList,
-            'summaryHeadlines': self._summaryHeadlines,
-            'emergencyHeadline': self._emergencyHeadline,
-            'attribution': self._attribution,
-            'firstBullet': self._firstBullet,
-            'timeBullet': self._timeBullet,
-            'basisBullet': self._basisBullet,
-            'emergencyStatement': self._emergencyStatement,
-            'locationsAffected': self._locationsAffected,
-            'additionalComments': self._additionalComments,
-            'endingSynopsis': self._endingSynopsis,
-            'floodPointHeader': self._floodPointHeader,
-            'floodPointHeadline': self._floodPointHeadline,
-            'observedStageBullet': self._observedStageBullet,
-            'floodStageBullet': self._floodStageBullet,
-            'floodCategoryBullet': self._floodCategoryBullet,
-            'otherStageBullet': self._otherStageBullet,
-            'forecastStageBullet': self._forecastStageBullet,
-            'pointImpactsBullet': self._pointImpactsBullet,
-            'floodPointTable': self._floodPointTable,
-            'setUp_segment': self._setUp_segment,
-            'setUp_section': self._setUp_section,
-            'endSection': self._endSection,
-            'endSegment': self._endSegment,
-            'initials': self._initials,
-                               }
-
-    def execute(self, productDict, editableEntries, overrideProductText):
-        self.overrideProductText = overrideProductText
+    def execute(self, productDict, editableEntries):
         self.productDict = productDict
         self.initialize(editableEntries)
         legacyText = self._createTextProduct()
-        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
+        return [ProductUtils.wrapLegacy(legacyText)], self.editableParts
 
     ######################################################
     #  Product Part Methods 
     ######################################################
 
     ################# Product Level
-    def _easMessage(self, productDict):
+    def easMessage(self, productDict, productPart):
         # ALL CAPS per Mixed Case Text Guidelines
         easMessage = 'BULLETIN - EAS ACTIVATION REQUESTED'
         vtecRecords = productDict.get('vtecRecords')
@@ -108,52 +41,111 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
 
-    def _setUp_section(self, sectionDict):
+    def setUp_section(self, sectionDict, productPart):
         self.attributionFirstBullet = AttributionFirstBulletText_FFW_FFS.AttributionFirstBulletText(
             sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self.timezones)
         return ''
 
-    def _timeBullet(self, sectionDict):
-        bulletText = super(Format, self)._timeBullet(sectionDict)
-        return self._getFormattedText(bulletText, endText='\n')
+    def timeBullet(self, sectionDict, productPart):
+        bulletText = super(Format, self).timeBullet(sectionDict, productPart)
+        return bulletText + '\n'
 
-    def _basisBullet(self, sectionDict):
+    def basisBullet(self, sectionDict, productPart):
         vtecRecord = sectionDict.get('vtecRecord', {})
         action = vtecRecord.get('act', '')
         if action == 'COR':
             action = vtecRecord.get('prevAct', '')
-        # Get saved value from productText table if available
-        bulletText = self._getVal('basisBullet', sectionDict)
-        if bulletText is None:
-            bulletText = ''
-            phen = vtecRecord.get('phen')
-            sig = vtecRecord.get('sig')
-            hazards = sectionDict.get('hazardEvents')
-            # FFW_FFS sections will only contain one hazard
-            subType = hazards[0].get('subType')
-            hazardType = phen + '.' + sig + '.' + subType
-            basis = self.basisText.getBulletText(hazardType, hazards[0], vtecRecord)
-            damOrLeveeName = hazards[0].get('damOrLeveeName')
-            if '|* riverName *|' in basis and damOrLeveeName:
-                # replace the riverName with the one from DamMetaData.py
-                damInfo = self._damInfo().get(damOrLeveeName)
-                if damInfo:
-                    riverName = damInfo.get('riverName')
-                    if riverName:
-                        basis = basis.replace('|* riverName *|', riverName)
-            basis = self._tpc.substituteParameters(hazards[0], basis)
-            if basis is None :
-                 basis = 'Flash Flooding was reported'
 
-            # Create basis statement
-            eventTime = vtecRecord.get('startTime')
-            eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
-            bulletText += 'At ' + eventTime.rstrip() + ', ' + basis
-        self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
+        bulletText = ''
+        phen = vtecRecord.get('phen')
+        sig = vtecRecord.get('sig')
+        hazards = sectionDict.get('hazardEvents')
+        # FFW_FFS sections will only contain one hazard
+        subType = hazards[0].get('subType')
+        hazardType = phen + '.' + sig + '.' + subType
+        basis = self.basisText.getBulletText(hazardType, hazards[0], vtecRecord)
+        damOrLeveeName = hazards[0].get('damOrLeveeName')
+        if '|* riverName *|' in basis and damOrLeveeName:
+            # replace the riverName with the one from DamMetaData.py
+            damInfo = self._damInfo(damOrLeveeName)
+            if damInfo:
+                riverName = damInfo.get('riverName')
+                if riverName:
+                    basis = basis.replace('|* riverName *|', riverName)
+        basis = self._tpc.substituteParameters(hazards[0], basis)
+        if basis is None :
+             basis = 'Flash Flooding was reported'
+
+        # Create basis statement
+        eventTime = vtecRecord.get('startTime')
+        eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
+        bulletText += 'At ' + eventTime.rstrip() + ', ' + basis
+
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletText)
 
         startText = ''
         if action in ['NEW', 'EXT']:
             startText = '* '
         if self._testMode:
             startText += "THIS IS A TEST MESSAGE. "
-        return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
+        return self.getFormattedText(productPart, startText=startText, endText='\n\n')
+
+
+    def callsToAction_sectionLevel(self, sectionDict, productPart):
+        callsToAction =  self._tpc.getVal(sectionDict, HazardConstants.CALLS_TO_ACTION, '')
+        if callsToAction and callsToAction != '':
+            callsToAction = callsToAction.rstrip()
+
+        # This logic may end up being fairly brittle, but here we change the
+        # wording for certain CTAs depending on certain choices made for
+        # burn scar warnings.
+        burnScarName = None
+        try :
+            burnScarName = sectionDict['hazardEvents'][0]['burnScarName']
+            isEmergency = 'ffwEmergency' in sectionDict['hazardEvents'][0]['include']
+        except :
+            isEmergency = False
+
+        if isEmergency :
+            srchstr = "act quickly to protect your life"
+            i = callsToAction.lower().find(srchstr)
+            if i > 0 :
+                i = callsToAction.rfind("\n", 0, i)
+                if i<0 :
+                    i = 0
+                callsToAction = callsToAction[:i]+\
+                  "Move to higher ground now. This is an extremely dangerous and life "+\
+                  "threatening situation. Do not attempt to travel unless you are "+\
+                  "fleeing an area subject to flooding or under an evacuation order.\n\n"+\
+                  callsToAction[i:]
+
+        # tagstr must match same in MetaData_FF_W_BurnScar:ctaBurnScarScenario()
+        tagstr = "|*Burn-Scar*|"
+        i = callsToAction.find(tagstr) 
+        if i>0 and isinstance(burnScarName, str) :
+            from MapsDatabaseAccessor import MapsDatabaseAccessor
+            mapsAccessor = MapsDatabaseAccessor()
+            burnScarMetaData = \
+              mapsAccessor.getBurnScarMetadata(burnScarName)
+            try :
+                scenario =  sectionDict['hazardEvents'][0]['scenario']
+                burnCTA = burnScarMetaData["scenarios"][scenario]["burnCTA"]
+                i1 = callsToAction.rfind("\n", 0, i)
+                i2 = callsToAction.find("\n", i)
+                if i1>=0 :
+                    burnCTA = callsToAction[:i1+1]+burnCTA
+                if i2>0 :
+                    callsToAction = burnCTA+callsToAction[i2:]
+                else :
+                    callsToAction = burnCTA
+                i = -1
+            except :
+                pass
+            if i>=0 :
+                i2 = i+len(tagstr)
+                callsToAction = callsToAction[:i]+burnScarName+callsToAction[i2:]
+
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(callsToAction)
+        return self.getFormattedText(productPart, startText='PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n', endText='\n\n&&\n\n')

@@ -38,6 +38,9 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapRes
  * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from old
  *                                      SelectByAreaDrawingActionGeometryResource
  *                                      inner class).
+ * Jun 07, 2017   34206    Kevin.Bisanz Check for userData on Geometry before equals()
+ *                                      in isContainedInSelectedGeometries(..)
+ * Jun 29, 2017   34206    Kevin.Bisanz Revert previous change under this ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -242,7 +245,7 @@ public class SelectByAreaInputHandler extends BaseInputHandler {
      */
     private boolean isContainedInSelectedGeometries(Geometry selectedGeometry,
             boolean replaceIfFound) {
-        for (int j = 0; j < selectedGeometries.size(); j++) {
+        for (int j = 0; j < selectedGeometries.size(); ++j) {
             if (selectedGeometries.get(j).equals(selectedGeometry)) {
                 if (replaceIfFound) {
                     selectedGeometries.set(j, selectedGeometry);

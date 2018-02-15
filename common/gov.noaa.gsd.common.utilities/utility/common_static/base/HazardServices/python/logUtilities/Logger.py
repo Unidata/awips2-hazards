@@ -2,7 +2,6 @@
 logger = None
 
 import logging
-import logging.handlers
 
 #-------------------------------------------------------------------------
 #setup for the logger, simply importing this module will set up the
@@ -26,14 +25,9 @@ logger.setLevel(loggingLevel)   #set to DEBUG to log practically everything
 ch = logging.StreamHandler()
 ch.setLevel(loggingLevel)
 
-rfh = logging.handlers.RotatingFileHandler("/tmp/status.log", 'a', 50000000, 9)
-rfh.setLevel(loggingLevel)  #set to DEBUG to log practically everything
-
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-rfh.setFormatter(formatter)
 ch.setFormatter(formatter)
 
-logger.addHandler(rfh)
 logger.addHandler(ch)
 
 

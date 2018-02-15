@@ -54,32 +54,14 @@ class Product(HydroGenerator.Product):
             "choices": ["Use selected set of hazards", "Report on all hazards"]
             }
 
-        headlineStatement = {
-             "fieldType": "Text",
-             "fieldName": "headlineStatement",
-             "expandHorizontally": True,
-             "visibleChars": 25,
-             "lines": 1,
-             "values": "|* Enter Headline Statement *|",
-            } 
-
-        narrativeInformation = {
-             "fieldType": "Text",
-             "fieldName": "narrativeInformation",
-             "expandHorizontally": True,
-             "visibleChars": 25,
-             "lines": 25,
-             "values": "|* Enter Narrative Information *|",
-            } 
-
-        fieldDicts = [floodPointTableDict, selectedHazardsDict, headlineStatement, narrativeInformation]
+        fieldDicts = [floodPointTableDict, selectedHazardsDict]
         dialogDict["metadata"] = fieldDicts
         return dialogDict
 
 
-    def executeFrom(self, dataList, eventSet, keyInfo=None):
-        if keyInfo is not None:
-            dataList = self.correctProduct(dataList, eventSet, keyInfo, False)
+    def executeFrom(self, dataList, eventSet, productParts=None):
+        if isinstance(productParts, list) and len(productParts) > 0:
+            dataList = self.correctProduct(dataList, eventSet, productParts, False)
         else:
             self.updateExpireTimes(dataList)
         return dataList
@@ -149,8 +131,17 @@ class Product(HydroGenerator.Product):
         return productSegmentGroups
 
     def _addProductParts(self, productSegmentGroup):
-        productSegments = productSegmentGroup.productSegments
-        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_RVS(productSegments))
+        productPartsDict = self._hydroProductParts.productParts_RVS()
+        eventIDSet = set()
+        ugcsSet = set()
+        for event in self._inputHazardEvents:
+            eventIDSet.add(event.getEventID())
+            ugcsSet.update(hazardEvent.get('ugcs'))
+        eventIDs, ugcs = self._tpc.parameterSetupForKeyInfo(eventIDSet, ugcsSet)
+        productPartsDict["eventIDs"] = eventIDs
+        productPartsDict["ugcs"] = ugcs
+        productParts = self.createProductParts(productPartsDict)
+        productSegmentGroup.setProductParts(productParts)
 
     def _createProductLevelProductDictionaryData(self, productDict):
         hazardEventsList = self._generatedHazardEvents

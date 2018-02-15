@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecevent;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecrecord;
@@ -25,6 +25,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 08, 2015 6562       Chris.Cody   Restructure River Forecast Points/Recommender
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * May 04, 2016 15584      Kevin.Bisanz Added toString()
+ * Mar 13, 2017 28708      mduff        Changes to support event id refactor.
  * Jun 01, 2017 15561      Chris.Golden Changed to no longer use "type" attribute,
  *                                      so that the latter's existence is not relied
  *                                      upon; hazard type is already provided for each
@@ -35,7 +36,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * @author Bryon.Lawrence
  */
 public class HydroEvent {
-    public static final int END_TIME_WITHIN = (int) (TimeUtil.MILLIS_PER_HOUR / 2);
+    public static final int END_TIME_WITHIN = (int) (TimeUtil.MILLIS_PER_HOUR
+            / 2);
 
     /**
      * VTEC related information.
@@ -282,7 +284,8 @@ public class HydroEvent {
      * @return The previous event (now inactive) for this forecast point.
      */
     private Map<String, Object> getPreviousInactiveEvent(String geoId,
-            Map<String, Object> eventDict, String significance, long systemTime) {
+            Map<String, Object> eventDict, String significance,
+            long systemTime) {
         String activeETN = null;
 
         Map<String, Object> previousInactiveEvent = null;
@@ -324,7 +327,7 @@ public class HydroEvent {
 
                     if (active && (activeETN == null)) {
                         // This is not a true ETN
-                        activeETN = HazardServicesEventIdUtil
+                        activeETN = AbstractHazardServicesEventIdUtil
                                 .getSerialIdFromFullId(eventID);
                         break;
                     }
@@ -370,12 +373,12 @@ public class HydroEvent {
                             previousEventEndtime);
 
                     // This is not a true ETN
-                    String eventNumericSuffix = HazardServicesEventIdUtil
+                    String eventNumericSuffix = AbstractHazardServicesEventIdUtil
                             .getSerialIdFromFullId(eventID);
 
                     if ((eventCreationTime >= mostRecentCreationTime)
-                            && (!active)
-                            && (eventNumericSuffix.equals(activeETN) == false)) {
+                            && (!active) && (eventNumericSuffix
+                                    .equals(activeETN) == false)) {
                         mostRecentCreationTime = eventCreationTime;
                         previousInactiveEvent = dict;
                     }
@@ -409,7 +412,7 @@ public class HydroEvent {
 
             // This is not a true ETN
             String eventID = (String) eventDict.get(HazardConstants.EVENT_ID);
-            String eventIdNumericSuffix = HazardServicesEventIdUtil
+            String eventIdNumericSuffix = AbstractHazardServicesEventIdUtil
                     .getSerialIdFromFullId(eventID);
             this.vtecInfo.setEtn(Short.parseShort(eventIdNumericSuffix));
 
@@ -509,7 +512,8 @@ public class HydroEvent {
      *            The hydro event to test for active status
      * @return true - the event is active, false - the event is not active
      */
-    public boolean checkIfEventActive(HydroEvent event, long currentSystemTime) {
+    public boolean checkIfEventActive(HydroEvent event,
+            long currentSystemTime) {
         boolean active = false;
 
         Vtecevent vtecInfo = event.getPreviousFLW().getVtecInfo();

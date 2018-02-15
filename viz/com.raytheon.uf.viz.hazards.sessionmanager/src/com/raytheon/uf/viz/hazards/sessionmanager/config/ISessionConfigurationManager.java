@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
+import java.io.File;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
@@ -28,6 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.FilterIcons;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenTools;
@@ -76,6 +79,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      types can be used to replace a particular
  *                                      hazard event.
  * Sep 28, 2015 10302,8167 hansen       Added "getSettingsValue"
+ * Nov 02, 2015 11864      Robert.Blum  Added getExpirationWindow().
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
@@ -89,6 +93,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      times.
  * May 04, 2016 18266      Chris.Golden Added passing of data time to method allowing
  *                                      triggering by data layer change.
+ * May 12, 2016 16374      mduff        Added getFilterIcons.
  * Jul 08, 2016 13788      Chris.Golden Added validation of hazard events.
  * Jul 27, 2016 19924      Chris.Golden Removed obsolete code related to data layer
  *                                      changes triggering event-driven tools; the
@@ -104,6 +109,10 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 12, 2016 21873      Chris.Golden Added code to track the time resolutions of all 
  *                                      managed hazard events.
  * Feb 01, 2017 15556      Chris.Golden Added originator parameter for setting site ID.
+ * Mar 21, 2017 29996      Robert.Blum  Added methods so Staging dialog can refreshMetadata.
+ * Apr 17, 2017 33082      Robert.Blum  Validating multiple events at once.
+ * May 17, 2017 34152      Robert.Blum  Fix Product Generation case that results in
+ *                                      invalid products.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
  * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such
@@ -243,6 +252,16 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @return
      */
     public Color getColor(IReadableHazardEvent event);
+
+    /**
+     * Use color table to determine which color should be used for a persistent
+     * shape.
+     * 
+     * @param identifier
+     *            Identifier of the persistent shape.
+     * @return Color for the persistent shape.
+     */
+    public Color getColor(String identifier);
 
     /**
      * Get the border width to use when displaying an event.
@@ -467,14 +486,67 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     public void triggerFrameChangeDrivenTool();
 
     /**
-     * Validate the specified hazard event.
+     * Validate the specified hazard events.
+     * 
+     * @param hazardEvents
+     *            Hazard events to be validated.
+     * @return Description of validation problems if one or more of the hazard
+     *         events are invalid, or <code>null</code> if the events validate
+     *         properly.
+     */
+    public String validateHazardEvents(
+            List<? extends IReadableHazardEvent> hazardEvents);
+
+    /**
+     * Get the expiration before/after minutes for the specified hazard event.
      * 
      * @param event
-     *            Hazard event to be validated.
-     * @return Description of validation problems if the hazard event is
-     *         invalid, or <code>null</code> if the event validates properly.
+     *            Hazard event for which to fetch the expiration window.
+     * @return Expiration before/after minutes.
      */
-    public String validateHazardEvent(IReadableHazardEvent event);
+    public int[] getExpirationWindow(IReadableHazardEvent event);
+
+    /**
+     * Gets all the includeAll hazard types that share a generator with the
+     * specified event.
+     * 
+     * @param newEvent
+     *            Event for which to check for hazard types that share a
+     *            generator with it.
+     * @return Hazard types that share a generator with the event.
+     */
+    public Set<String> getIncludeAllHazards(IReadableHazardEvent newEvent);
+
+    /**
+     * Get the set of megawidget identifiers from the specified list, which may
+     * contain raw specifiers and their descendants, of any megawidget
+     * specifiers that include the specified parameter name.
+     * 
+     * @param list
+     *            List to be checked.
+     * @param parameterName
+     *            Parameter name for which to search.
+     * @return Set of megawidget identifiers that contain the specified
+     *         parameter.
+     */
+    public Set<String> getMegawidgetIdentifiersWithParameter(List<?> list,
+            String parameterName);
+
+    /**
+     * Get the file holding the script for the specified product.
+     * 
+     * @param product
+     *            Product for which to find the script file.
+     * @return Script file.
+     */
+    public File getScriptFile(String productGeneratorName);
+
+    /**
+     * Get the filter icon config data.
+     * 
+     * @return FilterIcons config data
+     */
+    public FilterIcons getFilterIcons();
 
     /**
      * Execute any shutdown needed.

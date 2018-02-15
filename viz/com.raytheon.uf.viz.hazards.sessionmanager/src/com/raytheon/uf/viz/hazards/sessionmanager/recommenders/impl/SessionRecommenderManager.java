@@ -26,23 +26,29 @@ import java.util.Set;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.GenericSessionObjectManager;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.AbstractHazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.recommenders.EventRecommender;
+import com.raytheon.uf.common.recommenders.executors.MutablePropertiesAndVisualFeatures;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
+import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
@@ -51,7 +57,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIssuanceCountModification;
@@ -76,10 +81,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.RevertOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.Merger;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -149,12 +158,15 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Dec 12, 2016   21504    Robert.Blum  Switched from user name and workstation to
  *                                      WsId.
  * Feb 01, 2017   15556    Chris.Golden Minor cleanup.
+ * Feb 16, 2017   28708    Chris.Golden Added setting is issue site identifier for
+ *                                      recommended events as necessary.
  * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
  *                                      asynchronous scheduler.
  * Apr 13, 2017   33142    Chris.Golden Added use of new method in session manager to
  *                                      clear the set of identifiers of events that
  *                                      have been removed when initiating recommender
  *                                      execution.
+ * Apr 28, 2017   33430    Robert.Blum  Removed use of HazardMode.
  * May 31, 2017   34684    Chris.Golden Moved recommender-specific methods to the
  *                                      session recommender manager where they belong.
  *                                      Also added support for executing recommenders
@@ -262,6 +274,22 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Mar 29, 2018   48027    Chris.Golden Removed "hazard event visual feature changed"
  *                                      recommender trigger, as it has been folded into
  *                                      "hazard event modified".
+ * May 08, 2018   15561    Chris.Golden Changed BaseHazardEvent to SessionHazardEvent.
+ * May 22, 2018    3782    Chris.Golden Changed recommender parameter gathering to be
+ *                                      much more flexible, allowing the user to change
+ *                                      dialog parameters together with visual features,
+ *                                      and allowing visual feature changes to be made
+ *                                      multiple times before the execution proceeds.
+ *                                      Also synchronized access to member variables.
+ *                                      Also refactored tool dialog so that it does not
+ *                                      take raw maps for its parameters, and to be
+ *                                      closer to the MVP design guidelines.
+ * May 30, 2018   14791    Chris.Golden Added generic session object manager usage, so
+ *                                      that recommenders can store objects that persist
+ *                                      on the client for the duration of the session.
+ * Jun 06, 2018   15561    Chris.Golden Added use of temporary event identifiers for
+ *                                      events created by recommenders.
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -278,133 +306,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         DO_NOT_SET, SET_TRUE, SET_FALSE
     }
 
-    // Private Classes
-
-    /**
-     * Base class for execution continuers of the currently running recommender.
-     */
-    private abstract class ExecutionContinuer {
-
-        // Protected Variables
-
-        /**
-         * Identifier of the recommender for which execution is to be continued.
-         * If this does not match the current
-         * {@link #runningRecommenderIdentifier} of the enclosing object, this
-         * continuer is to be ignored.
-         */
-        protected final String recommenderIdentifier;
-
-        /**
-         * Context in which the recommender for which execution is to be
-         * continued is running. If this does not match the current
-         * {@link #runningContext} of the enclosing object, this continuer is to
-         * be ignored.
-         */
-        protected final RecommenderExecutionContext context;
-
-        // Private Constructors
-
-        /**
-         * Construct a standard instance.
-         */
-        private ExecutionContinuer() {
-            this.recommenderIdentifier = runningRecommenderIdentifier;
-            this.context = runningContext;
-        }
-
-        // Protected Methods
-
-        /**
-         * Determine whether or not this receiver is relevant to the recommender
-         * that is currently running, if any.
-         * 
-         * @return <code>true</code> if this receiver is relevant,
-         *         <code>false</code> otherwise. If the latter, any parameters
-         *         provided to the receiver are ignored.
-         */
-        protected final boolean isRelevant() {
-            return (recommenderIdentifier.equals(runningRecommenderIdentifier)
-                    && context.getIdentifier() == runningContext
-                            .getIdentifier());
-        }
-    }
-
-    /**
-     * Implementation of a dialog parameters receiver.
-     */
-    private class DialogParametersReceiver extends ExecutionContinuer
-            implements IDialogParametersReceiver {
-
-        // Public Methods
-
-        @Override
-        public void receiveDialogParameters(
-                Map<String, Serializable> parameters) {
-            if (isRelevant()) {
-                if (parameters != null) {
-                    executeRunningRecommender(null, parameters);
-                } else {
-                    cancelRunningRecommender();
-                }
-            } else {
-                statusHandler.error(
-                        "Received dialog parameters for recommender "
-                                + recommenderIdentifier + " (" + context
-                                + ") which is not currently running; ignoring",
-                        new Exception());
-            }
-        }
-    }
-
-    /**
-     * Implementation of a spatial parameters receiver.
-     */
-    private class SpatialParametersReceiver extends ExecutionContinuer
-            implements ISpatialParametersReceiver {
-
-        // Public Methods
-
-        @Override
-        public void receiveSpatialParameters(VisualFeaturesList parameters) {
-            if (isRelevant()) {
-                if (parameters != null) {
-                    executeRunningRecommender(parameters, null);
-                } else {
-                    cancelRunningRecommender();
-                }
-            } else {
-                statusHandler.error(
-                        "Received spatial parameters for recommender "
-                                + recommenderIdentifier + " (" + context
-                                + ") which is not currently running; ignoring",
-                        new Exception());
-            }
-        }
-    }
-
-    /**
-     * Implementation of a results display complete notifier.
-     */
-    private class ResultsDisplayCompleteNotifier extends ExecutionContinuer
-            implements IResultsDisplayCompleteNotifier {
-
-        // Public Methods
-
-        @Override
-        public void resultsDisplayCompleted() {
-            if (isRelevant()) {
-                finishRunningRecommender();
-            } else {
-                statusHandler.error(
-                        "Received results display completion notification for recommender "
-                                + recommenderIdentifier + " (" + context
-                                + ") which is not currently running; ignoring",
-                        new Exception());
-            }
-        }
-    }
-
     // Private Static Constants
 
     /**
@@ -412,6 +313,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * {@link #sequentialRecommendersForExecutionContextIdentifiers} map.
      */
     private static final int MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE = 100;
+
+    /**
+     * Current time provider.
+     */
+    private static final ICurrentTimeProvider CURRENT_TIME_PROVIDER = new ICurrentTimeProvider() {
+        @Override
+        public long getCurrentTime() {
+            return SimulatedTime.getSystemTime().getMillis();
+        }
+    };
 
     // Private Static Variables
 
@@ -422,6 +333,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             .getHandler(SessionRecommenderManager.class);
 
     // Private Variables
+
+    /**
+     * Flag indicating whether or not practice mode is in effect.
+     */
+    private final boolean practiceMode = !CAVEMode.OPERATIONAL
+            .equals(CAVEMode.getMode());
 
     /**
      * Session manager.
@@ -465,6 +382,36 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * {@link #pendingRecommenderExecutionRequests}.
      */
     private RecommenderExecutionContext runningContext;
+
+    /**
+     * Generic session object manager, used by recommenders to store and
+     * retrieve arbitrary values associated with keys of the recommenders'
+     * choice as needed.
+     */
+    private final GenericSessionObjectManager genericSessionObjectManager = new GenericSessionObjectManager();
+
+    /**
+     * Event set in use during any parameter gathering from the user.
+     */
+    private EventSet<IEvent> parameterGatheringEventSet;
+
+    /**
+     * Flag indicating whether parameter gathering via dialog is currently
+     * occurring.
+     */
+    private boolean parameterGatheringViaDialog;
+
+    /**
+     * Mutable dialog properties, in use during dialog-based parameter gathering
+     * from the user.
+     */
+    private Map<String, Map<String, Object>> parameterGatheringMutableProperties;
+
+    /**
+     * Visual features used for gathering information, in use during
+     * dialog-based parameter gathering from the user.
+     */
+    private VisualFeaturesList parameterGatheringVisualFeatures;
 
     /**
      * Flag indicating whether batching of notifications is currently occurring.
@@ -782,6 +729,178 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                     Sets.newHashSet(commandIdentifier),
                                     Collections.<String> emptySet(),
                                     RecommenderTriggerOrigin.USER));
+        }
+    }
+
+    @Override
+    public void parameterDialogChanged(ToolExecutionIdentifier identifier,
+            Collection<String> parameterIdentifiers,
+            Map<String, Map<String, Object>> mutableProperties) {
+        if (isRelevant(identifier)) {
+
+            /*
+             * Remember the mutable properties.
+             */
+            parameterGatheringMutableProperties = mutableProperties;
+
+            /*
+             * Let the recommender handle the parameter change (or
+             * initialization), and get the resulting mutable properties that
+             * have changed, and the new set of visual features, if any.
+             */
+            MutablePropertiesAndVisualFeatures results = recommenderEngine
+                    .handleDialogParameterChange(identifier.getToolIdentifier(),
+                            null, parameterIdentifiers,
+                            parameterGatheringMutableProperties,
+                            Collections.<String> emptySet(),
+                            parameterGatheringVisualFeatures, true);
+
+            /*
+             * Ensure that the parameter gatherers are updated.
+             */
+            updateDialogParameterGatherers(identifier, results);
+        } else {
+            statusHandler.error(
+                    "Received dialog parameters for recommender " + identifier
+                            + " which is not currently running; ignoring",
+                    new Exception());
+        }
+    }
+
+    @Override
+    public void parameterDialogComplete(ToolExecutionIdentifier identifier,
+            Map<String, Serializable> valuesForParameters) {
+        if (isRelevant(identifier)) {
+
+            /*
+             * Get the visual features to be displayed while the recommender is
+             * running, if any, and send them to the spatial display.
+             */
+            MutablePropertiesAndVisualFeatures result = recommenderEngine
+                    .handleDialogParameterChange(identifier.getToolIdentifier(),
+                            null, Collections.<String> emptySet(),
+                            parameterGatheringMutableProperties,
+                            Collections.<String> emptySet(),
+                            parameterGatheringVisualFeatures, false);
+            messenger.getToolParameterGatherer().getToolSpatialInput(identifier,
+                    (result != null ? result.getVisualFeatures() : null));
+
+            /*
+             * Execute the recommender.
+             */
+            executeRunningRecommender(parameterGatheringVisualFeatures,
+                    valuesForParameters);
+        } else {
+            statusHandler.error(
+                    "Received dialog parameters for recommender " + identifier
+                            + " which is not currently running; ignoring",
+                    new Exception());
+        }
+    }
+
+    @Override
+    public void parameterDialogCancelled(ToolExecutionIdentifier identifier) {
+        if (isRelevant(identifier)) {
+            cancelRunningRecommender();
+        } else {
+            statusHandler.error(
+                    "Received dialog cancellation for recommender " + identifier
+                            + " which is not currently running; ignoring",
+                    new Exception());
+        }
+    }
+
+    @Override
+    public void spatialParametersChanged(ToolExecutionIdentifier identifier,
+            Collection<String> parameterIdentifiers,
+            VisualFeaturesList parameters) {
+        if (isRelevant(identifier)) {
+
+            /*
+             * If the visual features that changed are part of dialog-based
+             * parameter gathering, handle the change one way; if part of a
+             * spatial-only parameter gathering, handle it another way.
+             */
+            if (parameterGatheringViaDialog) {
+
+                /*
+                 * Do nothing if the recommender's handle-parameter-change
+                 * dialog is not to be invoked.
+                 */
+                if (Boolean.TRUE.equals(getRecommenderMetadata(
+                        identifier.getToolIdentifier()).get(
+                                HazardConstants.RECOMMENDER_METADATA_HANDLE_DIALOG_PARAMETER_CHANGES)) == false) {
+                    return;
+                }
+
+                /*
+                 * Let the recommender handle the parameter change, and get the
+                 * resulting mutable properties that have changed, and the new
+                 * set of visual features, if any.
+                 */
+                MutablePropertiesAndVisualFeatures results = recommenderEngine
+                        .handleDialogParameterChange(
+                                identifier.getToolIdentifier(), null,
+                                Collections.<String> emptySet(),
+                                parameterGatheringMutableProperties,
+                                parameterIdentifiers, parameters, true);
+
+                /*
+                 * Ensure that the parameter gatherers are updated.
+                 */
+                updateDialogParameterGatherers(identifier, results);
+
+            } else {
+
+                /*
+                 * Check to see if the process of spatial input gathering is not
+                 * complete.
+                 */
+                boolean continueGatheringSpatialInfo = (recommenderEngine
+                        .isSpatialInfoComplete(identifier.getToolIdentifier(),
+                                null, parameters) == false);
+
+                /*
+                 * Get the visual features to be displayed either for the next
+                 * round of gathering, or to show the user while the recommender
+                 * is executing (the latter if gathering of spatial input is
+                 * complete).
+                 */
+                VisualFeaturesList visualFeatures = recommenderEngine
+                        .getSpatialInfo(identifier.getToolIdentifier(), null,
+                                parameters, continueGatheringSpatialInfo);
+
+                /*
+                 * If spatial input must continue to be gathered, pass the
+                 * visual features on so that they are displayed; otherwise,
+                 * pass on any visual features to be used for display purposes
+                 * only while the recommender is running, and execute the
+                 * recommender.
+                 */
+                messenger.getToolParameterGatherer()
+                        .getToolSpatialInput(identifier, visualFeatures);
+                if (continueGatheringSpatialInfo == false) {
+                    executeRunningRecommender(parameters, null);
+                }
+            }
+        } else {
+            statusHandler.error(
+                    "Received spatial parameters for recommender " + identifier
+                            + " which is not currently running; ignoring",
+                    new Exception());
+        }
+    }
+
+    @Override
+    public void resultDialogClosed(ToolExecutionIdentifier identifier) {
+        if (isRelevant(identifier)) {
+            finishRunningRecommender();
+        } else {
+            statusHandler.error(
+                    "Received results display completion notification for recommender "
+                            + identifier
+                            + " which is not currently running; ignoring",
+                    new Exception());
         }
     }
 
@@ -1207,6 +1326,46 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     }
 
     /**
+     * Update the dialog parameter gatherer user interface elements by applying
+     * the specified changed mutable properties and visual features.
+     * 
+     * @param identifier
+     *            Tool execution identifier.
+     * @param mutablePropertiesAndVisualFeatures
+     *            Changed mutable properties, and the set of visual features.
+     */
+    private void updateDialogParameterGatherers(
+            ToolExecutionIdentifier identifier,
+            MutablePropertiesAndVisualFeatures mutablePropertiesAndVisualFeatures) {
+
+        /*
+         * Merge the changed mutable properties into the copy of all mutable
+         * properties held by this object, and forward the changes to the
+         * dialog.
+         */
+        Map<String, Map<String, Object>> changedMutableProperties = mutablePropertiesAndVisualFeatures
+                .getMutableProperties();
+        if (changedMutableProperties != null) {
+            for (Map.Entry<String, Map<String, Object>> entry : changedMutableProperties
+                    .entrySet()) {
+                parameterGatheringMutableProperties.get(entry.getKey())
+                        .putAll(entry.getValue());
+            }
+            messenger.getToolParameterGatherer()
+                    .updateToolParameters(identifier, changedMutableProperties);
+        }
+
+        /*
+         * Track the new visual features list, and forward the changes to the
+         * spatial display.
+         */
+        parameterGatheringVisualFeatures = mutablePropertiesAndVisualFeatures
+                .getVisualFeatures();
+        messenger.getToolParameterGatherer().getToolSpatialInput(identifier,
+                parameterGatheringVisualFeatures);
+    }
+
+    /**
      * Run the specified recommenders sequentially, waiting for the first to
      * complete before running the second and so on. If parameters must be
      * gathered from the user via spatial or dialog input, this method will do
@@ -1227,8 +1386,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * subsquent ones may be run after the first one.
          */
         if (recommenderIdentifiers.size() > 1) {
-            sequentialRecommendersForExecutionContextIdentifiers.put(
-                    runningContext.getIdentifier(), recommenderIdentifiers);
+            RecommenderExecutionContext context;
+            synchronized (pendingRecommenderExecutionRequests) {
+                context = runningContext;
+            }
+            sequentialRecommendersForExecutionContextIdentifiers
+                    .put(context.getIdentifier(), recommenderIdentifiers);
         }
 
         /*
@@ -1249,22 +1412,29 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Get the recommender metadata, and determine whether or not dialog
          * info and/or spatial info are needed.
          */
+        String recommenderIdentifier;
+        RecommenderExecutionContext context;
+        synchronized (pendingRecommenderExecutionRequests) {
+            recommenderIdentifier = runningRecommenderIdentifier;
+            context = runningContext;
+        }
         Map<String, Serializable> metadata = getRecommenderMetadata(
-                runningRecommenderIdentifier);
+                recommenderIdentifier);
         boolean getDialogInfoNeeded = (Boolean.FALSE.equals(metadata.get(
                 HazardConstants.RECOMMENDER_METADATA_GET_DIALOG_INFO_NEEDED)) == false);
         boolean getSpatialInfoNeeded = (Boolean.FALSE.equals(metadata.get(
                 HazardConstants.RECOMMENDER_METADATA_GET_SPATIAL_INFO_NEEDED)) == false);
+        boolean handleDialogParameterChangeNeeded = Boolean.TRUE.equals(metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_HANDLE_DIALOG_PARAMETER_CHANGES));
 
         /*
          * Create the event set to be used if dialog and/or spatial info is to
          * be fetched; if no event set can be created, cancel the running of the
          * recommender.
          */
-        EventSet<IEvent> eventSet = null;
         if (getDialogInfoNeeded || getSpatialInfoNeeded) {
-            eventSet = createEventSet();
-            if (eventSet == null) {
+            parameterGatheringEventSet = createEventSet();
+            if (parameterGatheringEventSet == null) {
                 cancelRunningRecommender();
                 return;
             }
@@ -1279,33 +1449,44 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Otherwise, just run the recommender.
          */
         VisualFeaturesList visualFeatures = (getSpatialInfoNeeded
-                ? recommenderEngine.getSpatialInfo(runningRecommenderIdentifier,
-                        eventSet)
+                ? recommenderEngine.getSpatialInfo(recommenderIdentifier,
+                        parameterGatheringEventSet, null, true)
                 : null);
         Map<String, Serializable> dialogDescription = (getDialogInfoNeeded
-                ? recommenderEngine.getDialogInfo(runningRecommenderIdentifier,
-                        eventSet)
+                ? recommenderEngine.getDialogInfo(recommenderIdentifier,
+                        parameterGatheringEventSet)
                 : null);
         if (((visualFeatures != null) && (visualFeatures.isEmpty() == false))
                 || ((dialogDescription != null)
                         && (dialogDescription.isEmpty() == false))) {
             if ((visualFeatures != null)
                     && (visualFeatures.isEmpty() == false)) {
-                messenger.getToolParameterGatherer().getToolSpatialInput(
-                        ToolType.RECOMMENDER, visualFeatures,
-                        new SpatialParametersReceiver());
+                messenger.getToolParameterGatherer()
+                        .getToolSpatialInput(
+                                new ToolExecutionIdentifier(
+                                        recommenderIdentifier, context),
+                                visualFeatures);
             }
             if ((dialogDescription != null)
                     && (dialogDescription.isEmpty() == false)) {
-                dialogDescription
-                        .put(HazardConstants.FILE_PATH_KEY,
-                                recommenderEngine
-                                        .getInventory(
-                                                runningRecommenderIdentifier)
-                                        .getFile().getFile().getPath());
+
+                TimeRange timeRange = sessionManager.getTimeManager()
+                        .getVisibleTimeRange();
+                parameterGatheringViaDialog = true;
+                parameterGatheringVisualFeatures = getVisualFeaturesFromRawSpecifier(
+                        dialogDescription);
+
+                ToolParameterDialogSpecifier dialogSpecifier = new ToolParameterDialogSpecifier(
+                        dialogDescription,
+                        recommenderEngine.getInventory(recommenderIdentifier)
+                                .getFile().getFile().getPath(),
+                        timeRange.getStart().getTime(),
+                        timeRange.getEnd().getTime(), CURRENT_TIME_PROVIDER);
+
                 messenger.getToolParameterGatherer().getToolParameters(
-                        ToolType.RECOMMENDER, dialogDescription,
-                        new DialogParametersReceiver());
+                        new ToolExecutionIdentifier(recommenderIdentifier,
+                                context),
+                        dialogSpecifier, handleDialogParameterChangeNeeded);
             }
         } else {
             executeRunningRecommender(null, null);
@@ -1323,9 +1504,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * @param dialogInfo
      *            Map of dialog parameters, if any.
      */
-    @SuppressWarnings("unchecked")
     private void executeRunningRecommender(VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo) {
+
+        /*
+         * Forget any event set or parameters compiled for parameter gathering.
+         */
+        parameterGatheringEventSet = null;
+        parameterGatheringViaDialog = false;
+        parameterGatheringMutableProperties = null;
+        parameterGatheringVisualFeatures = null;
 
         /*
          * Create the event set, and if the creation fails, cancel the running
@@ -1344,7 +1532,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * about to occur. Do the same thing with the map of event identifiers
          * to modifications.
          */
+        String recommenderIdentifier;
+        RecommenderExecutionContext context;
         synchronized (pendingRecommenderExecutionRequests) {
+            recommenderIdentifier = runningRecommenderIdentifier;
+            context = runningContext;
             identifiersOfEventsRemovedSinceLastRecommenderRun.clear();
             modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
                     .clear();
@@ -1353,11 +1545,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         /*
          * Get the engine to initiate the execution of the recommender.
          */
-        final String toolName = (String) getRecommenderMetadata(
-                runningRecommenderIdentifier)
+        final String recommenderName = (String) getRecommenderMetadata(
+                recommenderIdentifier)
                         .get(HazardConstants.RECOMMENDER_METADATA_TOOL_NAME);
-        recommenderEngine.runExecuteRecommender(runningRecommenderIdentifier,
-                eventSet, visualFeatures, dialogInfo,
+        final ToolExecutionIdentifier toolExecutionIdentifier = new ToolExecutionIdentifier(
+                recommenderIdentifier, context);
+        recommenderEngine.runExecuteRecommender(recommenderIdentifier, eventSet,
+                visualFeatures, dialogInfo,
                 new IPythonJobListener<EventSet<IEvent>>() {
 
                     @Override
@@ -1374,58 +1568,33 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                     public void run() {
 
                                         /*
-                                         * If a results message was supplied,
-                                         * display the message for the user.
-                                         * Otherwise, if a results dialog
-                                         * description was provided, show the
-                                         * dialog. In the latter case, note that
-                                         * this is occurring, so that the next
-                                         * recommender to be run in the sequence
-                                         * (if any) will not be run a few lines
-                                         * down -- the results dialog must be
-                                         * closed by the user before the next
-                                         * one is run.
+                                         * Erase any spatial input visual
+                                         * features that were showing.
                                          */
-                                        boolean showingResultsDialog = false;
-                                        String resultMessage = (String) result
-                                                .getAttribute(
-                                                        HazardConstants.RECOMMENDER_RESULT_MESSAGE);
-                                        Map<String, Serializable> resultDialogDescription = (Map<String, Serializable>) result
-                                                .getAttribute(
-                                                        HazardConstants.RECOMMENDER_RESULT_DIALOG);
-                                        if (resultMessage != null) {
-                                            messenger.getWarner().warnUser(
-                                                    toolName, resultMessage);
-                                        } else if (resultDialogDescription != null) {
-                                            showingResultsDialog = true;
-                                            resultDialogDescription.put(
-                                                    HazardConstants.FILE_PATH_KEY,
-                                                    recommenderEngine
-                                                            .getInventory(
-                                                                    runningRecommenderIdentifier)
-                                                            .getFile().getFile()
-                                                            .getPath());
-                                            messenger.getToolParameterGatherer()
-                                                    .showToolResults(
-                                                            ToolType.RECOMMENDER,
-                                                            resultDialogDescription,
-                                                            new ResultsDisplayCompleteNotifier());
-                                        }
+                                        messenger.getToolParameterGatherer()
+                                                .finishToolSpatialInput(
+                                                        toolExecutionIdentifier);
 
                                         /*
                                          * Handle the resulting changes to the
                                          * session.
                                          */
-                                        handleRecommenderResult(
-                                                runningRecommenderIdentifier,
+                                        Map<String, String> permanentIdsForTemporaryIds = handleRecommenderResult(
+                                                toolExecutionIdentifier
+                                                        .getToolIdentifier(),
                                                 result);
 
                                         /*
-                                         * If no results are being displayed,
-                                         * run the next recommender in the
-                                         * sequence of recommenders, if any.
+                                         * Show any results dialog that was
+                                         * specified by the results. If no
+                                         * results are being displayed, run the
+                                         * next recommender in the sequence of
+                                         * recommenders, if any.
                                          */
-                                        if (showingResultsDialog == false) {
+                                        if (showResultsDialogAsAppropriate(
+                                                recommenderName,
+                                                toolExecutionIdentifier, result,
+                                                permanentIdsForTemporaryIds) == false) {
                                             finishRunningRecommender();
                                         }
                                     }
@@ -1433,9 +1602,25 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     }
 
                     @Override
-                    public void jobFailed(Throwable e) {
-                        statusHandler.error(
-                                "Recommender " + toolName + " failed.", e);
+                    public void jobFailed(final Throwable e) {
+
+                        /*
+                         * Ensure that the thread used to process the result is
+                         * the one used by the session manager.
+                         */
+                        sessionManager.getRunnableAsynchronousScheduler()
+                                .schedule(new Runnable() {
+
+                                    @Override
+                                    public void run() {
+                                        messenger.getToolParameterGatherer()
+                                                .finishToolSpatialInput(
+                                                        toolExecutionIdentifier);
+                                        statusHandler.error("Recommender "
+                                                + recommenderName + " failed.",
+                                                e);
+                                    }
+                                });
                     }
                 });
     }
@@ -1452,7 +1637,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Otherwise, execute the next recommender in the requests queue, if
          * any.
          */
-        long contextIdentifier = runningContext.getIdentifier();
+        long contextIdentifier;
+        synchronized (pendingRecommenderExecutionRequests) {
+            contextIdentifier = runningContext.getIdentifier();
+        }
         List<String> sequentialRecommenders = sequentialRecommendersForExecutionContextIdentifiers
                 .get(contextIdentifier);
         if (sequentialRecommenders != null) {
@@ -1464,9 +1652,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * sequential-recommenders map since it will no longer be
              * referenced.
              */
-            int nextIndex = sequentialRecommenders
-                    .indexOf(runningRecommenderIdentifier) + 1;
+            int nextIndex;
+            ;
             synchronized (pendingRecommenderExecutionRequests) {
+                nextIndex = sequentialRecommenders
+                        .indexOf(runningRecommenderIdentifier) + 1;
                 runningRecommenderIdentifier = sequentialRecommenders
                         .get(nextIndex);
             }
@@ -1503,11 +1693,37 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     private void cancelRunningRecommender() {
 
         /*
+         * Forget any event set and parameters compiled for parameter gathering.
+         */
+        parameterGatheringEventSet = null;
+        parameterGatheringViaDialog = false;
+        parameterGatheringMutableProperties = null;
+        parameterGatheringVisualFeatures = null;
+
+        /*
+         * Ensure that any gathering of spatial parameters is cancelled.
+         */
+        String recommenderIdentifier;
+        RecommenderExecutionContext context;
+        synchronized (pendingRecommenderExecutionRequests) {
+            recommenderIdentifier = runningRecommenderIdentifier;
+            context = runningContext;
+        }
+        ToolExecutionIdentifier toolExecutionIdentifier = new ToolExecutionIdentifier(
+                recommenderIdentifier, context);
+        messenger.getToolParameterGatherer()
+                .finishToolSpatialInput(toolExecutionIdentifier);
+
+        /*
          * Remove the list of recommenders to be run sequentially after this
          * one, if such a list is found.
          */
+        long contextIdentifier;
+        synchronized (pendingRecommenderExecutionRequests) {
+            contextIdentifier = runningContext.getIdentifier();
+        }
         sequentialRecommendersForExecutionContextIdentifiers
-                .remove(runningContext.getIdentifier());
+                .remove(contextIdentifier);
 
         /*
          * Clean up after the attempted running of the recommender.
@@ -1516,7 +1732,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     }
 
     /**
-     * Set the batching flag as speciifed, and then run the next requested
+     * Set the batching flag as specified, and then run the next requested
      * recommender if appropriate.
      * 
      * @param setBatchingAction
@@ -1666,8 +1882,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Get the recommender metadata, and decide what events are to be
          * included in the event set based upon its values.
          */
+        String recommenderIdentifier;
+        RecommenderExecutionContext context;
+        synchronized (pendingRecommenderExecutionRequests) {
+            recommenderIdentifier = runningRecommenderIdentifier;
+            context = runningContext;
+        }
         Map<String, Serializable> metadata = getRecommenderMetadata(
-                runningRecommenderIdentifier);
+                recommenderIdentifier);
         Boolean onlyIncludeTriggerEvent = (Boolean) metadata.get(
                 HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
         List<String> includeEventTypesList = (List<String>) metadata
@@ -1685,10 +1907,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * of each such event to the set.
          */
         EventSet<IEvent> eventSet = new EventSet<>();
-        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((runningContext
+        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((context
                 .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
-                || (runningContext
-                        .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
+                || (context.getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
 
             /*
              * Since the recommender is meant to only be passed the triggering
@@ -1697,8 +1918,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * caused the triggering of the recommender run. If none are found,
              * return nothing, since the event set cannot be created.
              */
-            for (String eventIdentifier : runningContext
-                    .getEventIdentifiers()) {
+            for (String eventIdentifier : context.getEventIdentifiers()) {
                 IHazardEventView event = sessionManager.getEventManager()
                         .getEventById(eventIdentifier);
                 if (event != null) {
@@ -1728,7 +1948,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         /*
          * Add the execution context parameters to the event set.
          */
-        addContextAsEventSetAttributes(runningContext, eventSet);
+        addContextAsEventSetAttributes(context, eventSet);
 
         /*
          * Add session information to event set.
@@ -1746,6 +1966,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 VizApp.getWsId().getUserName());
         eventSet.addAttribute(HazardConstants.WORKSTATION,
                 VizApp.getWsId().getHostName());
+        eventSet.addAttribute(HazardConstants.SESSION_OBJECTS,
+                genericSessionObjectManager);
 
         /*
          * If the data times are to be included, add them to the event set as
@@ -1777,8 +1999,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      *            Event to be copied.
      * @return Base hazard event copy.
      */
-    private BaseHazardEvent createBaseHazardEvent(IHazardEventView event) {
-        BaseHazardEvent copy = new BaseHazardEvent(event);
+    private SessionHazardEvent createBaseHazardEvent(IHazardEventView event) {
+        SessionHazardEvent copy = new SessionHazardEvent(event);
 
         /*
          * TODO: Change recommenders so that they have a separate set of
@@ -1800,7 +2022,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 sessionManager.getConfigurationManager().getSiteID());
         eventSet.addAttribute(HazardConstants.LOCALIZED_SITE_ID,
                 LocalizationManager.getInstance().getSite());
-        eventSet.addAttribute(HazardConstants.HAZARD_MODE,
+        eventSet.addAttribute(HazardConstants.RUN_MODE,
                 CAVEMode.getMode().toString());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_EXECUTION_TRIGGER,
                 context.getTrigger().toString());
@@ -1890,14 +2112,19 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * @param events
      *            Set of events that were created or modified by the
      *            recommender.
+     * @return Map pairing any temporary event identifiers from events created
+     *         by the recommender to the permanent identifiers said events were
+     *         given when added to the session.
      */
-    private void handleRecommenderResult(String recommenderIdentifier,
-            EventSet<IEvent> events) {
+    private Map<String, String> handleRecommenderResult(
+            String recommenderIdentifier, EventSet<IEvent> events) {
 
         /*
          * If an event set was returned by the recommender as a result, ingest
          * the events and respond to any attributes included within the set.
          */
+        Map<String, String> permanentIdsForTemporaryIds = new HashMap<>(
+                events.size(), 1.0f);
         if (events != null) {
             ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
                     .getConfigurationManager();
@@ -1934,9 +2161,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             /*
              * Determine whether or not the events that are to be saved to the
              * database are to be kept locked after the save, instead of the
-             * usual practice of unlocking them. Also determine whether or not
-             * any modifications being made to events should be counted as
-             * modifications from the events' perspectives.
+             * usual practice of unlocking them.
              */
             Serializable keepLockedAttribute = events.getAttribute(
                     HazardConstants.RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE);
@@ -1948,43 +2173,29 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     && (keepLockedAttribute instanceof Collection)
                             ? new HashSet<>((Collection<?>) keepLockedAttribute)
                             : Collections.emptySet());
+
+            /*
+             * Determine whether or not any modifications being made to events
+             * should be counted as modifications from the events' perspectives.
+             * Also determine whether or not the events that are to be saved to
+             * the history list and/or to the latest version set are to be
+             * treated as issuances.
+             */
             boolean doNotCountAsModification = Boolean.TRUE
                     .equals(events.getAttribute(
                             HazardConstants.RECOMMENDER_RESULT_DO_NOT_COUNT_AS_MODIFICATION));
-
-            /*
-             * Determine whether or not the events that are to be saved to the
-             * history list and/or to the latest version set are to be treated
-             * as issuances.
-             */
             boolean treatAsIssuance = Boolean.TRUE.equals(events.getAttribute(
                     HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
-
-            /*
-             * Determine whether or not all hazard events that are brand new
-             * (i.e., just created by the recommender) should be saved to either
-             * the history list or the database, and for those that are being
-             * saved to the database, whether or not they should be kept locked.
-             */
-            boolean saveAllNewToHistory = isListContainingNullElement(
-                    addToHistoryAttribute);
-            boolean saveAllNewToDatabase = ((saveAllNewToHistory == false)
-                    && isListContainingNullElement(addToDatabaseAttribute));
-            boolean keepAllNewLocked = (keepLocked
-                    || isListContainingNullElement(keepLockedAttribute));
-            List<IHazardEventView> addedNewEvents = (saveAllNewToHistory
-                    || saveAllNewToDatabase ? new ArrayList<IHazardEventView>()
-                            : null);
 
             /*
              * Create three lists to hold the events to be saved to history
              * list, to database, and to database but kept locked, respectively.
              */
-            List<IHazardEventView> addedEventsToSaveToHistory = new ArrayList<IHazardEventView>(
+            List<IHazardEventView> resultingEventsToSaveToHistory = new ArrayList<IHazardEventView>(
                     events.size());
-            List<IHazardEventView> addedEventsToSaveToDatabase = new ArrayList<IHazardEventView>(
+            List<IHazardEventView> resultingEventsToSaveToDatabase = new ArrayList<IHazardEventView>(
                     events.size());
-            List<IHazardEventView> addedEventsToSaveToDatabaseLocked = new ArrayList<IHazardEventView>(
+            List<IHazardEventView> resultingEventsToSaveToDatabaseLocked = new ArrayList<IHazardEventView>(
                     events.size());
 
             /*
@@ -2057,6 +2268,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * the event manager to add them to the session or modifying the
              * existing copies in the session.
              */
+            AbstractHazardServicesEventIdUtil eventIdUtil = HazardServicesEventIdUtil
+                    .getInstance(practiceMode);
             List<IHazardEventView> addedOrModifiedEvents = new ArrayList<>(
                     events.size());
             synchronized (pendingRecommenderExecutionRequests) {
@@ -2075,7 +2288,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         IHazardEvent hazardEvent = (IHazardEvent) event;
                         boolean isNew = ((hazardEvent.getEventID() == null)
                                 || (hazardEvent.getEventID().trim()
-                                        .length() == 0));
+                                        .length() == 0)
+                                || eventIdUtil.isTemporaryEventID(
+                                        hazardEvent.getEventID()));
                         if ((isNew == false)
                                 && (identifiersOfEventsRemovedSinceLastRecommenderRun
                                         .contains(hazardEvent.getEventID())
@@ -2121,12 +2336,18 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         }
 
                         /*
-                         * Add the site identifier if it not already set, set
-                         * the workstation identifier and source.
+                         * Add the site identifier and/or issue site identifier
+                         * if they are not already set, and then set the
+                         * workstation identifier and source.
                          */
                         if (hazardEvent.getSiteID() == null) {
                             hazardEvent.setSiteID(configManager.getSiteID());
                         }
+                        if (hazardEvent.getIssueSiteID() == null) {
+                            hazardEvent
+                                    .setIssueSiteID(configManager.getSiteID());
+                        }
+
                         hazardEvent.setWsId(VizApp.getWsId());
                         hazardEvent.setSource(IHazardEvent.Source.RECOMMENDER);
 
@@ -2136,11 +2357,23 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                          */
                         hazardEvent.removeHazardAttribute(
                                 HazardConstants.HAZARD_EVENT_SELECTED);
-                        IHazardEventView addedEvent = null;
+                        IHazardEventView resultingEvent = null;
                         if (isNew) {
                             try {
-                                addedEvent = eventManager.addEvent(hazardEvent,
-                                        originator);
+                                String temporaryEventIdentifier = hazardEvent
+                                        .getEventID();
+                                if ((temporaryEventIdentifier != null)
+                                        && (temporaryEventIdentifier.trim()
+                                                .length() == 0)) {
+                                    temporaryEventIdentifier = null;
+                                }
+                                resultingEvent = eventManager
+                                        .addEvent(hazardEvent, originator);
+                                if (temporaryEventIdentifier != null) {
+                                    permanentIdsForTemporaryIds.put(
+                                            temporaryEventIdentifier,
+                                            resultingEvent.getEventID());
+                                }
                             } catch (HazardEventServiceException e) {
                                 statusHandler.error(
                                         "Could not add hazard event generated by "
@@ -2149,9 +2382,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                 continue;
                             }
                         } else {
-                            addedEvent = eventManager
+                            resultingEvent = eventManager
                                     .getEventById(hazardEvent.getEventID());
-                            if (addedEvent != null) {
+                            if (resultingEvent != null) {
 
                                 /*
                                  * Merge the changes into the session copy of
@@ -2167,13 +2400,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                  */
                                 EventPropertyChangeResult result = eventManager
                                         .mergeHazardEvents(hazardEvent,
-                                                addedEvent, false,
+                                                resultingEvent, false,
                                                 ((addToHistory == false)
                                                         && (addToHistoryEventIdentifiers
                                                                 .contains(
-                                                                        addedEvent
+                                                                        resultingEvent
                                                                                 .getEventID()) == false)),
-                                                doNotCountAsModification,
+                                                false, doNotCountAsModification,
                                                 originator);
                                 if (result != EventPropertyChangeResult.SUCCESS) {
                                     statusHandler
@@ -2187,29 +2420,30 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                 }
                             }
                         }
-                        addedOrModifiedEvents.add(addedEvent);
+                        addedOrModifiedEvents.add(resultingEvent);
 
                         /*
-                         * If the event is new and new events are to be all
-                         * saved to history or database, add it to the new
-                         * events list; otherwise, if the event is to be saved
-                         * to history or to the database, put it in the
-                         * appropriate list.
+                         * If the event is to be saved to history or to the
+                         * database, put it in the appropriate list. Note that
+                         * the identifier provided by the event taken from the
+                         * event set, and not the identifier of the session
+                         * version of the event, is used, since the recommender
+                         * results' lists of events to be saved to history, etc.
+                         * will use the temporary identifiers.
                          */
-                        if (isNew && (addedNewEvents != null)) {
-                            addedNewEvents.add(addedEvent);
-                        } else if (addToHistory || addToHistoryEventIdentifiers
-                                .contains(addedEvent.getEventID())) {
-                            addedEventsToSaveToHistory.add(addedEvent);
+                        if (addToHistory || addToHistoryEventIdentifiers
+                                .contains(hazardEvent.getEventID())) {
+                            resultingEventsToSaveToHistory.add(resultingEvent);
                         } else if (addToDatabase
                                 || addToDatabaseEventIdentifiers
-                                        .contains(addedEvent.getEventID())) {
+                                        .contains(hazardEvent.getEventID())) {
                             if (keepLocked || keepLockedEventIdentifiers
-                                    .contains(addedEvent.getEventID())) {
-                                addedEventsToSaveToDatabaseLocked
-                                        .add(addedEvent);
+                                    .contains(hazardEvent.getEventID())) {
+                                resultingEventsToSaveToDatabaseLocked
+                                        .add(resultingEvent);
                             } else {
-                                addedEventsToSaveToDatabase.add(addedEvent);
+                                resultingEventsToSaveToDatabase
+                                        .add(resultingEvent);
                             }
                         }
                     }
@@ -2225,28 +2459,19 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             }
 
             /*
-             * If all brand-new hazard events are to be saved to the history or
-             * database, perform the save.
-             */
-            if (addedNewEvents != null) {
-                eventManager.saveEvents(addedNewEvents, saveAllNewToHistory,
-                        keepAllNewLocked, treatAsIssuance, originator);
-            }
-
-            /*
              * Save any events to the history list or the database as directed
              * by the recommender.
              */
-            if (addedEventsToSaveToHistory.isEmpty() == false) {
-                eventManager.saveEvents(addedEventsToSaveToHistory, true, false,
-                        treatAsIssuance, originator);
-            }
-            if (addedEventsToSaveToDatabase.isEmpty() == false) {
-                eventManager.saveEvents(addedEventsToSaveToDatabase, false,
+            if (resultingEventsToSaveToHistory.isEmpty() == false) {
+                eventManager.saveEvents(resultingEventsToSaveToHistory, true,
                         false, treatAsIssuance, originator);
             }
-            if (addedEventsToSaveToDatabaseLocked.isEmpty() == false) {
-                eventManager.saveEvents(addedEventsToSaveToDatabaseLocked,
+            if (resultingEventsToSaveToDatabase.isEmpty() == false) {
+                eventManager.saveEvents(resultingEventsToSaveToDatabase, false,
+                        false, treatAsIssuance, originator);
+            }
+            if (resultingEventsToSaveToDatabaseLocked.isEmpty() == false) {
+                eventManager.saveEvents(resultingEventsToSaveToDatabaseLocked,
                         false, true, treatAsIssuance, originator);
             }
 
@@ -2294,27 +2519,215 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             sessionManager.finishBatchedChanges();
         }
 
+        return permanentIdsForTemporaryIds;
     }
 
     /**
-     * Determine whether or not the specified list contains at least one null
-     * element.
+     * Show any results dialog called for by the specified resulting event set.
      * 
-     * @param list
-     *            Potential list to be examined; typed as an <code>Object</code>
-     *            for convenience, since callers will be using such.
-     * @return <code>true</code> if the list contains at least one null element,
+     * @param recommenderName
+     *            Name of the recommender.
+     * @param identifier
+     *            Identifier of the recommender execution.
+     * @param result
+     *            Resulting event set that may indicate a results dialog should
+     *            be shown.
+     * @param permanentIdsForTemporaryIds
+     *            Map pairing temporary event identifiers for events created by
+     *            the recommender with the permanent identifiers said events
+     *            were assigned when brought into the session.
+     * @return <code>true</code> if a results dialog is being shown,
      *         <code>false</code> otherwise.
      */
-    private boolean isListContainingNullElement(Object list) {
-        if (list instanceof List == false) {
-            return false;
-        }
-        for (Object identifier : (List<?>) list) {
-            if (identifier == null) {
-                return true;
-            }
+    private boolean showResultsDialogAsAppropriate(String recommenderName,
+            final ToolExecutionIdentifier identifier, EventSet<IEvent> result,
+            Map<String, String> permanentIdsForTemporaryIds) {
+
+        /*
+         * If a results message was supplied, display the message for the user.
+         * Otherwise, if a results dialog description was provided, show the
+         * dialog. In either of these cases, note that this is occurring, so
+         * that the next recommender to be run in the sequence (if any) will not
+         * be run a few lines down -- the results dialog must be closed by the
+         * user before the next one is run.
+         */
+        String resultMessage = (String) result
+                .getAttribute(HazardConstants.RECOMMENDER_RESULT_MESSAGE);
+        @SuppressWarnings("unchecked")
+        Map<String, Serializable> resultDialogDescription = (Map<String, Serializable>) result
+                .getAttribute(HazardConstants.RECOMMENDER_RESULT_DIALOG);
+        if (resultMessage != null) {
+            resultMessage = HazardServicesEventIdUtil.getInstance(practiceMode)
+                    .replaceTemporaryEventIDs(resultMessage,
+                            permanentIdsForTemporaryIds);
+            messenger.getWarner().warnUserAsynchronously(recommenderName,
+                    resultMessage, new Runnable() {
+                        @Override
+                        public void run() {
+                            SessionRecommenderManager.this
+                                    .resultDialogClosed(identifier);
+                        }
+                    });
+            return true;
+        } else if (resultDialogDescription != null) {
+            TimeRange timeRange = sessionManager.getTimeManager()
+                    .getVisibleTimeRange();
+            resultDialogDescription = replaceTemporaryEventIdentifiers(
+                    resultDialogDescription, permanentIdsForTemporaryIds);
+            ToolResultDialogSpecifier dialogSpecifier = new ToolResultDialogSpecifier(
+                    resultDialogDescription,
+                    recommenderEngine
+                            .getInventory(identifier.getToolIdentifier())
+                            .getFile().getFile().getPath(),
+                    timeRange.getStart().getTime(),
+                    timeRange.getEnd().getTime(), CURRENT_TIME_PROVIDER);
+            messenger.getToolParameterGatherer().showToolResults(identifier,
+                    dialogSpecifier);
+            return true;
         }
         return false;
+    }
+
+    /**
+     * Find any temporary event identifiers found within strings that are values
+     * of the specified map (or values in nested maps, or elements in nested
+     * collections), and replace these temporary identifiers with their
+     * permanent counterparts.
+     * 
+     * @param map
+     *            Map in which to perform the substitution.
+     * @param permanentIdsForTemporaryIds
+     *            Map pairing temporary event identifiers for events created by
+     *            the recommender with the permanent identifiers said events
+     *            were assigned when brought into the session.
+     * @return Map with substitutions.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Serializable> replaceTemporaryEventIdentifiers(
+            Map<String, Serializable> map,
+            Map<String, String> permanentIdsForTemporaryIds) {
+        Map<String, Serializable> newMap = new HashMap<>(map.size(), 1.0f);
+        for (Map.Entry<String, Serializable> entry : map.entrySet()) {
+            if (entry.getValue() instanceof String) {
+                newMap.put(entry.getKey(),
+                        HazardServicesEventIdUtil.getInstance(practiceMode)
+                                .replaceTemporaryEventIDs(
+                                        (String) entry.getValue(),
+                                        permanentIdsForTemporaryIds));
+            } else if (entry.getValue() instanceof Map) {
+                newMap.put(entry.getKey(),
+                        (Serializable) replaceTemporaryEventIdentifiers(
+                                (Map<String, Serializable>) entry.getValue(),
+                                permanentIdsForTemporaryIds));
+            } else if (entry.getValue() instanceof Collection) {
+                newMap.put(entry.getKey(),
+                        (Serializable) replaceTemporaryEventIdentifiers(
+                                (Collection<Serializable>) entry.getValue(),
+                                permanentIdsForTemporaryIds));
+            } else {
+                newMap.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return newMap;
+    }
+
+    /**
+     * Find any temporary event identifiers found within strings that elements
+     * of the specified collection (or values in nested maps, or elements in
+     * nested collections), and replace these temporary identifiers with their
+     * permanent counterparts.
+     * 
+     * @param collection
+     *            Collection in which to perform the substitution.
+     * @param permanentIdsForTemporaryIds
+     *            Map pairing temporary event identifiers for events created by
+     *            the recommender with the permanent identifiers said events
+     *            were assigned when brought into the session.
+     */
+    @SuppressWarnings("unchecked")
+    private Collection<Serializable> replaceTemporaryEventIdentifiers(
+            Collection<Serializable> collection,
+            Map<String, String> permanentIdsForTemporaryIds) {
+
+        /*
+         * Collection must be either a list or a set; otherwise, no replacement
+         * will be done.
+         */
+        Collection<Serializable> newCollection = (collection instanceof List
+                ? new ArrayList<Serializable>(collection.size())
+                : (collection instanceof Set
+                        ? new HashSet<Serializable>(collection.size(), 1.0f)
+                        : null));
+        if (newCollection == null) {
+            statusHandler.warn("Could not perform temporary event identifier "
+                    + "replacement on elements of collection of type "
+                    + collection.getClass());
+            return collection;
+        }
+
+        for (Serializable element : collection) {
+            if (element instanceof String) {
+                newCollection.add(HazardServicesEventIdUtil
+                        .getInstance(practiceMode).replaceTemporaryEventIDs(
+                                (String) element, permanentIdsForTemporaryIds));
+            } else if (element instanceof Map) {
+                newCollection
+                        .add((Serializable) replaceTemporaryEventIdentifiers(
+                                (Map<String, Serializable>) element,
+                                permanentIdsForTemporaryIds));
+            } else if (element instanceof Collection) {
+                newCollection
+                        .add((Serializable) replaceTemporaryEventIdentifiers(
+                                (Collection<Serializable>) element,
+                                permanentIdsForTemporaryIds));
+            } else {
+                newCollection.add(element);
+            }
+        }
+        return newCollection;
+    }
+
+    /**
+     * Get the visual features list from the specified raw specifier, if any is
+     * included.
+     * 
+     * @param rawSpecifier
+     *            Raw specifier from which to fetch the visual features list.
+     * @return Visual features list, or <code>null</code> if none is found
+     *         within the raw specifier.
+     * @throws IllegalArgumentException
+     *             If <code>rawSpecifier</code> does not hold a valid
+     *             specification.
+     */
+    private VisualFeaturesList getVisualFeaturesFromRawSpecifier(
+            Map<String, ?> rawSpecifier) {
+        VisualFeaturesList visualFeaturesList = null;
+        try {
+            visualFeaturesList = (VisualFeaturesList) rawSpecifier
+                    .get(HazardConstants.VISUAL_FEATURES_KEY);
+            if ((visualFeaturesList != null) && visualFeaturesList.isEmpty()) {
+                visualFeaturesList = null;
+            }
+            return visualFeaturesList;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("invalid visual features list",
+                    e);
+        }
+    }
+
+    /**
+     * Determine whether or not the specified tool execution identifier is
+     * currently relevant, that is, it identifiers the specific execution of a
+     * recommender that is currently in process, if any.
+     * 
+     * @return <code>true</code> if this identifier is relevant,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isRelevant(ToolExecutionIdentifier identifier) {
+        synchronized (pendingRecommenderExecutionRequests) {
+            return (identifier.getToolIdentifier()
+                    .equals(runningRecommenderIdentifier)
+                    && identifier.getContext().equals(runningContext));
+        }
     }
 }

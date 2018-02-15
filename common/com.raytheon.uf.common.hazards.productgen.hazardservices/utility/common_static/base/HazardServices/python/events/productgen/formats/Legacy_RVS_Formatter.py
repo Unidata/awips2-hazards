@@ -1,20 +1,6 @@
 '''
-    Description: Legacy formatter for FFW products
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Feb 20, 2015    5109    Chris.Cody  Initial creation
-    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
-    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
-    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
-                                        empty string.
-    Jun 03, 2015    8530    Robert.Blum Added method for initials productPart.
-    Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
-    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
-    Aug 09, 2016   17067    Robert.Blum Fixed RVS products.
+    Description: Legacy formatter for RVS products
 '''
-
 
 import datetime, collections
 
@@ -24,29 +10,15 @@ import Legacy_Hydro_Formatter
 
 class Format(Legacy_Hydro_Formatter.Format):
 
-    def initialize(self, editableEntries) :
-        self.initProductPartMethodMapping()
+    def initialize(self, editableEntries):
         super(Format, self).initialize(editableEntries)
 
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-            'setUp_segment': self._setUp_segment,
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'productHeader': self._productHeader,
-            'headlineStatement': self._headlineStatement,
-            'narrativeInformation': self._narrativeInformation,
-            'floodPointTable': self._floodPointTable,
-            'initials': self._initials,
-        }
-
-    def execute(self, productDict, editableEntries, overrideProductText):
-        self.overrideProductText = overrideProductText
+    def execute(self, productDict, editableEntries):
         self.productDict = productDict
         self.initialize(editableEntries)
         self.timezones = productDict['timezones']
         legacyText = self._createTextProduct()
-        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
+        return [ProductUtils.wrapLegacy(legacyText)], self.editableParts
 
     ######################################################
     #  Product Part Methods 
@@ -54,18 +26,12 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Product Level
 
-    def _headlineStatement(self, productDict):
-        # Get saved value from productText table if available
-        statement = self._getVal('headlineStatement', productDict)
-        if statement is None:
-            statement = self._tpc.getValueOrFramedText('headlineStatement', productDict, 'Enter Headline Statement')
-        self._setVal('headlineStatement', statement, productDict, 'Headline Statement')
-        return statement + '\n'
+    def headlineStatement(self, productDict, productPart):
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText("|* Enter Headline Statement *|")
+        return self.getFormattedText(productPart, endText='\n')
 
-    def _narrativeInformation(self, productDict):
-        # Get saved value from productText table if available
-        narrative = self._getVal('narrativeInformation', productDict)
-        if narrative is None:
-            narrative = self._tpc.getValueOrFramedText('narrativeInformation', productDict, 'Enter Narrative Information')
-        self._setVal('narrativeInformation', narrative, productDict, 'Narrative Information')
-        return self._getFormattedText(narrative, endText='\n')
+    def narrativeInformation(self, productDict, productPart):
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText("|* Enter Narrative Information *|")
+        return self.getFormattedText(productPart, endText='\n')

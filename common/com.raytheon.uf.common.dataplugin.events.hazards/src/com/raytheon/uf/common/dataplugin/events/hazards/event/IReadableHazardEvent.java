@@ -15,7 +15,6 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.message.WsId;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -37,6 +36,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * ------------ ---------- ------------ --------------------------
  * Dec 11, 2017   20739    Chris.Golden Initial creation.
  * Jan 26, 2018   33428    Chris.Golden Added issuance count.
+ * Mar 23, 2018   11864    Chris.Golden Added getExpirationTime().
  * </pre>
  *
  * @author golden
@@ -61,6 +61,8 @@ public interface IReadableHazardEvent extends IEvent {
 
     public String getSiteID();
 
+    public String getIssueSiteID();
+
     public String getEventID();
 
     public String getDisplayEventID();
@@ -83,9 +85,9 @@ public interface IReadableHazardEvent extends IEvent {
 
     public Date getInsertTime();
 
-    public WsId getWsId();
+    public Date getExpirationTime();
 
-    public ProductClass getHazardMode();
+    public WsId getWsId();
 
     public Source getSource();
 

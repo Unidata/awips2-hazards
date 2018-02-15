@@ -104,7 +104,7 @@ class Recommender(RecommenderTemplate.Recommender):
         outDict = {}
         
         issuedTime = datetime.datetime.utcfromtimestamp(probHazardEvents.getAttributes().get("currentTime")/1000).strftime('%m%d%Y_%H%M')
-        caveMode = probHazardEvents.getAttributes().get('hazardMode', 'PRACTICE').upper()
+        caveMode = probHazardEvents.getAttributes().get('runMode', 'PRACTICE').upper()
         practice = True
         if caveMode == 'OPERATIONAL':
             practice = False

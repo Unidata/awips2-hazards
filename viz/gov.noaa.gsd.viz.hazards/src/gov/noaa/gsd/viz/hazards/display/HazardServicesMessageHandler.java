@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -31,11 +32,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -204,12 +202,16 @@ import net.engio.mbassy.listener.Handler;
  *                                            closes, as this is already being done in dispose().
  * Oct 20, 2016 23137      mduff              Check for errors before opening the Product Editor.
  * Jan 09, 2017 21504      Robert.Blum        Corrections now lock hazards.
+ * Jan 27, 2017 22308      Robert.Blum        Removed code that is no longer needed.
  * Feb 01, 2017 15556      Chris.Golden       Removed obsolete code that was refactored out of
  *                                            relevance in the ongoing quest to shrink this class
  *                                            down to nothing. Also moved some code into the
  *                                            HazardServicesAppBuilder and presenters, as
  *                                            appropriate.
  * Feb 13, 2017 28892      Chris.Golden       Removed unneeded code.
+ * Feb 24, 2017 29170      Robert.Blum        Ensure generationID is set when doing corrections.
+ * Mar 21, 2017 29996      Robert.Blum        Removed un-needed parameter.
+ * Apr 14, 2017 32733      Robert.Blum        Code clean up.
  * Apr 27, 2017 11853      Chris.Golden       Removed reset of preview-ongoing flag when closing
  *                                            the product editor, as this is now done by the
  *                                            latter's presenter.
@@ -224,6 +226,8 @@ import net.engio.mbassy.listener.Handler;
  * Dec 17, 2017 20739      Chris.Golden       Refactored away access to directly mutable session
  *                                            events.
  * May 04, 2018 50032      Chris.Golden       Removed unneeded notifyModelChanged() call.
+ * May 22, 2018  3782      Chris.Golden       Refactored tool dialog so that is closer to the MVP
+ *                                            design guidelines.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -310,7 +314,6 @@ public final class HazardServicesMessageHandler {
              * see if the Product(s) should be displayed in the editor or the
              * viewer.
              */
-            boolean viewOnly = false;
             List<GeneratedProductList> list = productGenerationComplete
                     .getGeneratedProducts();
             List<String> errorList = new ArrayList<>();
@@ -324,8 +327,6 @@ public final class HazardServicesMessageHandler {
                     }
                 }
                 GeneratedProductList productList = list.get(0);
-                viewOnly = productList.isViewOnly();
-
             }
 
             if (!errorList.isEmpty()) {
@@ -338,11 +339,7 @@ public final class HazardServicesMessageHandler {
                 sessionManager.setIssueOngoing(false);
                 sessionManager.setPreviewOngoing(false);
             } else {
-                if (viewOnly) {
-                    appBuilder.showProductViewer(list);
-                } else {
-                    appBuilder.showProductEditorView(list);
-                }
+                appBuilder.showProductEditorView(list);
             }
         }
     }
@@ -430,31 +427,8 @@ public final class HazardServicesMessageHandler {
         switch (action.getHazardAction()) {
         case ISSUE:
             if (appBuilder.shouldContinueIfThereAreHazardConflicts()) {
-
-                // Check for Non Hazard Generator types
-                ProductGeneratorTable pgTable = sessionManager
-                        .getConfigurationManager().getProductGeneratorTable();
-
-                boolean nonHazardGeneratorType = false;
-                for (GeneratedProductList genProdList : action
-                        .getGeneratedProductsList()) {
-                    ProductGeneratorEntry pgEntry = pgTable
-                            .get(genProdList.getProductInfo());
-                    ToolType generatorType = pgEntry.getGeneratorType();
-                    if (generatorType == ToolType.NON_HAZARD_PRODUCT_GENERATOR) {
-                        nonHazardGeneratorType = true;
-                        break;
-                    }
-                }
-
-                if (nonHazardGeneratorType) {
-                    sessionProductManager
-                            .createProductsFromGeneratedProductList(true,
-                                    action.getGeneratedProductsList());
-                } else {
-                    sessionProductManager.createProductsFromHazardEventSets(
-                            true, action.getGeneratedProductsList());
-                }
+                sessionProductManager.setupForRunningFinalProductGen(
+                        action.getGeneratedProductsList());
             } else {
                 sessionManager.setIssueOngoing(false);
             }
@@ -463,6 +437,8 @@ public final class HazardServicesMessageHandler {
             for (GeneratedProductList products : action
                     .getGeneratedProductsList()) {
                 ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
+                productGeneratorInformation
+                        .setGenerationID(UUID.randomUUID().toString());
                 productGeneratorInformation
                         .setProductGeneratorName(products.getProductInfo());
                 ProductFormats productFormats = sessionConfigurationManager
@@ -550,19 +526,6 @@ public final class HazardServicesMessageHandler {
             preview();
             break;
 
-        case VIEW:
-
-            /*
-             * TODO: Move to presenter for product viewer selection dialog when
-             * the latter is refactored for MVP.
-             */
-            Map<String, Serializable> params = productAction.getParameters();
-            ArrayList<ProductData> viewableProductData = (ArrayList<ProductData>) params
-                    .get(HazardConstants.PRODUCT_DATA_PARAM);
-            sessionProductManager.generateProductFromProductData(
-                    viewableProductData, false, true);
-            break;
-
         case REVIEW:
             Map<String, Serializable> parameters = productAction
                     .getParameters();
@@ -580,8 +543,8 @@ public final class HazardServicesMessageHandler {
                                 + "product(s). Product correction has been cancelled.");
                 return;
             }
-            sessionProductManager.generateProductFromProductData(productData,
-                    true, false);
+            sessionProductManager.generateProductsForCorrection(productData);
+
             break;
 
         default:
@@ -689,15 +652,6 @@ public final class HazardServicesMessageHandler {
             case RUN_RECOMMENDER:
                 sessionRecommenderManager.runRecommender(
                         toolAction.getToolName(), toolAction.getContext());
-                break;
-
-            case RUN_RECOMMENDER_WITH_PARAMETERS:
-                appBuilder.receiveRecommenderDialogParameters(
-                        toolAction.getAuxiliaryDetails());
-                break;
-
-            case RECOMMENDER_RESULTS_DISPLAY_COMPLETE:
-                appBuilder.notifyRecommenderResultsDisplayComplete();
                 break;
 
             case ENABLE_EVENT_DRIVEN_TOOLS:

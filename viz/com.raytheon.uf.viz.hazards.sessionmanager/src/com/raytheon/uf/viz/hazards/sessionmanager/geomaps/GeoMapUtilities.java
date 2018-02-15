@@ -51,6 +51,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.CountyUGCBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.FireWXZoneUGCBuilder;
@@ -143,6 +144,20 @@ import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
  *                                      belongs. Also cleaned up public vs. private
  *                                      methods, making methods private as appropriate,
  *                                      and added comments.
+ * Jan 04, 2017 26746      Kevin.Bisanz Warn that no UGCs meet inclusion thresholds.
+ * Jan 09, 2017 26746      Kevin.Bisanz Remove GUI warning that no UGCs meet inclusion
+ *                                      thresholds. (leaving log message).
+ * Jan 31, 2017 28492      Kevin.Bisanz Reduce warn log message that no UGCs meet inclusion
+ *                                      thresholds to info message for a Point.
+ * Feb 16, 2017 28492      Kevin.Bisanz Do not log that no UGCs meet inclusion thresholds
+ *                                      for a Point.
+ * Feb 16, 2017 29677      Kevin.Bisanz Do not log that no UGCs meet inclusion
+ *                                      thresholds if thresholds are 0
+ * Apr 12, 2018 30477      Kevin.Bisanz Adjust warning level of inclusion
+ *                                      threshold message based on
+ *                                      HazardTypes.py
+ * May 15, 2017 30068      Kevin.Bisanz Test for Geometry envelope intersects before full
+ *                                      intersection in testInclusion(..).
  * Jul 11, 2017 15561      Chris.Golden Added code to allow hazard types that require
  *                                      neither fraction- nor area-based inclusion testing
  *                                      to automatically be considered to include UGCs that
@@ -257,11 +272,18 @@ public class GeoMapUtilities {
 
     private Geometry cwaGeometry;
 
+    /**
+     * Interface through which the user can be notified.
+     */
+    private IMessenger messenger;
+
     // Public Constructors
 
     public GeoMapUtilities(
-            ISessionConfigurationManager<ObservedSettings> configManager) {
-        this.configManager = configManager;
+            ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager,
+            IMessenger messenger) {
+        this.configManager = sessionConfigurationManager;
+        this.messenger = messenger;
     }
 
     // Public Methods
@@ -1071,8 +1093,38 @@ public class GeoMapUtilities {
         /*
          * By policy, warned areas are recalculated without thresholding if none
          * meet the thresholds. This finds small polygons counties/zones.
+         *
+         * WarnGen behavior is to silently recompute hatching with no
+         * thresholds. See tickets: #26746, #4959, #6323. We will warn the user.
          */
         if (result.isEmpty()) {
+            if ((inclusionFractionTest && (inclusionFraction > 0))
+                    || (inclusionAreaTest && (inclusionAreaInSqKm > 0))) {
+
+                /*
+                 * Some river gages don't have a polygon in the locarea table,
+                 * but that is not a problem; only log for non-point hazards.
+                 */
+                if (AdvancedGeometryUtilities
+                        .isSinglePoint(hazardEvent.getGeometry()) == false) {
+                    String eventId = hazardEvent.getEventID();
+                    if ((eventId == null) || (eventId.length() == 0)) {
+                        eventId = "<Unknown event Id>";
+                    }
+                    String msg = String.format(
+                            "No intersection of UGCs and hazard polygon found for %s: "
+                                    + "inclusionFraction(enabled=%b, %f) inclusionArea(enabled=%b, %f). "
+                                    + "Intersection will be recomputed without thresholds.",
+                            eventId, inclusionFractionTest, inclusionFraction,
+                            inclusionAreaTest, inclusionAreaInSqKm);
+                    if (hazardTypeEntry.isInclusionThresholdWarning()) {
+                        statusHandler.warn(msg);
+                    } else {
+                        statusHandler.debug(msg);
+                    }
+                }
+            }
+
             result = getIntersectingMapGeometries(false, hazardEvent,
                     geometryData, inclusionFractionTest, inclusionFraction,
                     inclusionAreaTest, inclusionAreaInSqKm);
@@ -1360,6 +1412,17 @@ public class GeoMapUtilities {
     private boolean testInclusion(Geometry mapGeometry, Geometry hazardGeometry,
             boolean inclusionFractionTest, double inclusionFraction,
             boolean inclusionAreaTest, double inclusionAreaInSqKm) {
+
+        /*
+         * Determine if the envelope (bounding box) of each geometry intersects
+         * before computing the full intersection.
+         */
+        Geometry e1 = mapGeometry.getEnvelope();
+        Geometry e2 = hazardGeometry.getEnvelope();
+        boolean envelopeIntersects = e1.intersects(e2);
+        if (envelopeIntersects == false) {
+            return false;
+        }
 
         /*
          * Iterate through the leaf geometries of the provided hazard geometry,

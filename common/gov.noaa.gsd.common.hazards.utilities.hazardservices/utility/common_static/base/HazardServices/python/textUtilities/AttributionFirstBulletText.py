@@ -7,52 +7,6 @@
     For the attribution and firstBullet, there are methods for each VTEC code.  
     These methods could be further broken down if needed as more is learned about Focal Point overrides 
     and as more hazard types are incorporated.
-     
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Feb 2015       4375    Tracy Hansen      Initial creation
-    Feb 2015       4937    Robert.Blum       Check if proximity is None
-    Feb 2015       6599    Robert.Blum       Changed to new style class
-    Apr 2015       7375    Robert.Blum       Fixed first bullet to include hazard type
-                                             for FFA area-EXT hazards.
-    Apr 2015       7579    Robert.Blum       Removed some '\n', they are added in the
-                                             formatter now.
-    Apr 2015       7140    Tracy Hansen      Adding FA.W / FA.Y / FL.Y /  logic 
-    Apr 2015       7579    Robert.Blum       Changes for multiple hazards per section.
-    May 2015       7376    Robert.Blum       Fixed burnscar error.
-    May 2015       7959    Robert.Blum       Consolidated the Dam/Levee name into one attribute.
-    May 2015       8181    Robert.Blum       Minor changes to listOfCities.
-    Jun 2015       8530    Robert.Blum       Corrected first bullet for FF.W products.
-    Jun 05, 2015   8531    Chris.Cody        Changes to conform to WarnGen/RiverPro outputs
-    Jun 2015       8530    Robert.Blum       Changes to conform to WarnGen outputs.
-    Jun 2015       8532    Robert.Blum       Changes to conform to GFE/WarnGen output.
-    Aug 2015       9641    Robert.Blum       Fixed duplicate "for" in first bullets.
-    Aug 2015       9627    Robert.Blum       Removed canceling wording from replacements.
-    Sep 2015       9590    Robert.Blum       Removed metadata from the product dictionary.
-    Oct 2015       11832   Robert.Blum       Fixed commented out code that is no longer correct.
-    Nov 2015       7532    Robert.Blum       Fixed spelling of cancelled.
-    Dec 2015       12479   Robert.Blum       Fixed bug that was preventing the "for..." from being
-                                             added to the first line of the first bullet.
-    Jan 2016       12768   Kevin.Bisanz      Fix FF.W dam validation issue.
-                                             Added dm_river_qualifiers().
-    Mar 2016       16055   Kevin.Bisanz      Fixed call to self.tpc.getTimingPhrase(...)
-                                             when expiring a product.
-    Mar 2016       16039   Thomas.Gurney     Fix first line of segment in FL.* CON products
-    Apr 2016       15252   Kevin.Bisanz      Add 'rain' key in hydrologicCauseMapping(...)
-    May 2016       16046   Kevin.Bisanz      Referenced replacing event in firstBullet_CAN if event is replaced.
-    May 2016       19080   David.Gillingham  Renamed initialize to __init__.
-    Jun 2016       14069   David.Gillingham  Fix wording for FA.Y events.
-    Jul 2016       19926   Kevin.Bisanz      Title cased typeOfFlooding text for
-                                             FF.W, FA.W, and FA.Y in
-                                             qualifiers(..);  Fixed validation
-                                             error with FA.Y EXT.
-    Jul 2016       19214   Kevin.Bisanz      Refactored part of getAreaPhraseBullet() into
-                                             TextProductCommon.makeUGCInformation(..)
-    Aug 2016       20654   Kevin.Bisanz      Update getAreaPhraseBullet to handle
-                                             independent cities
-    Oct 2016       21656   Mark.Fegan        Corrected wording in FA.W/FA.Y replacement.
-    Oct 2017       21647   Sara Stewart      Modified RS text
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -61,6 +15,8 @@
 import abc
 import calendar
 import datetime
+import sys
+import traceback
 
 from dateutil import tz
 
@@ -155,7 +111,7 @@ class AttributionFirstBulletText(object):
         self.damOrLeveeName = self.hazardEventDict.get('damOrLeveeName')
         self.riverName = None
         if self.damOrLeveeName:
-            damInfo = self._damInfo().get(self.damOrLeveeName)
+            damInfo = self._damInfo(self.damOrLeveeName)
             if damInfo:
                 self.riverName = damInfo.get('riverName')
         if not self.riverName:
@@ -334,7 +290,7 @@ class AttributionFirstBulletText(object):
         if not proximity:
             proximity = 'near'
         return 'the {} {} {}'.format(
-                                     hazardEventDict.get('riverName_GroupName', ''), 
+                                     hazardEventDict.get('groupName', ''), 
                                      proximity, 
                                      hazardEventDict.get('riverPointName', ''))
 
@@ -404,15 +360,20 @@ class AttributionFirstBulletText(object):
     def _dm_river_qualifiers(self):
         qualifiers = ''
 
+        hycType = None
+        damInfo = self._damInfo(self.damOrLeveeName)
+        if damInfo:
+            hycType = damInfo.get("hycType")
+        if hycType == None :
+            hycType = 'the '+self.riverName + ' below ' + self.damOrLeveeName
+            
         # Add the type of flooding to the string if available
         if self.typeOfFlooding:
             typeOfFloodingCap = self.typeOfFlooding.capitalize()
             qualifiers += typeOfFloodingCap + ' on '
-            qualifiers += 'the '
+            qualifiers += hycType
         else:
-            qualifiers += 'The '
-
-        qualifiers += self.riverName + ' below ' + self.damOrLeveeName
+            qualifiers += hycType[0].upper()+hycType[1:]
 
         return qualifiers
 
@@ -469,12 +430,9 @@ class AttributionFirstBulletText(object):
                               "UU":"Unknown" }
         immediateCauseText = immediateCauseDict.get(immediateCauseCode, '')
         return immediateCauseText
-            
-    def _damInfo(self):
-        from MapsDatabaseAccessor import MapsDatabaseAccessor
-        mapsAccessor = MapsDatabaseAccessor()
-        damInfoDict = mapsAccessor.getAllDamInundationMetadata()
-        return damInfoDict
+
+    def _damInfo(self, damOrLeveeName):
+        return self.tpc.damInfoFor(self, damOrLeveeName)
 
     def _headlineExpireTimePhrase(self, expireTime, duration, timeZones):
         expireTime = expireTime.replace(tzinfo=tz.tzutc())

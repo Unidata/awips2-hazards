@@ -46,14 +46,17 @@ import com.google.common.collect.ImmutableSet;
  *                                           MUTABLE_PROPERTY_NAMES.
  * Aug 12, 2015   4123     Chris.Golden      Changed to work with latest version
  *                                           of megawidget manager listener.
+ * May 22, 2018  15561     Chris.Golden      Fixed bug in handling single-state
+ *                                           megawidgets that may have maps as
+ *                                           their states.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see StatefulMegawidgetSpecifier
  */
-public abstract class StatefulMegawidget extends Megawidget implements
-        IStateful {
+public abstract class StatefulMegawidget extends Megawidget
+        implements IStateful {
 
     // Protected Static Constants
 
@@ -118,11 +121,13 @@ public abstract class StatefulMegawidget extends Megawidget implements
                 try {
                     return getState(stateIdentifiers.get(0));
                 } catch (MegawidgetStateException e) {
-                    throw new MegawidgetPropertyException(getSpecifier()
-                            .getIdentifier(), name, getSpecifier().getType(),
-                            null, "querying valid state identifier \""
+                    throw new MegawidgetPropertyException(
+                            getSpecifier().getIdentifier(), name,
+                            getSpecifier().getType(), null,
+                            "querying valid state identifier \""
                                     + stateIdentifiers.get(0)
-                                    + "\" caused internal error", e);
+                                    + "\" caused internal error",
+                            e);
                 }
             }
             Map<String, Object> map = new HashMap<>();
@@ -130,8 +135,9 @@ public abstract class StatefulMegawidget extends Megawidget implements
                 try {
                     map.put(identifier, getState(identifier));
                 } catch (MegawidgetStateException e) {
-                    throw new MegawidgetPropertyException(getSpecifier()
-                            .getIdentifier(), name, getSpecifier().getType(),
+                    throw new MegawidgetPropertyException(
+                            getSpecifier().getIdentifier(), name,
+                            getSpecifier().getType(),
                             null, "querying valid state identifier \""
                                     + identifier + "\" caused internal error",
                             e);
@@ -149,13 +155,15 @@ public abstract class StatefulMegawidget extends Megawidget implements
         if (name.equals(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
 
             /*
-             * Ensure that the value is a map of state identifiers to their
-             * values; if not, and if there is only one state identifier, assume
-             * it is a state value.
+             * If the megawidget has only one state identifier, and either the
+             * value is not a map, or it is a map but has more than entry, then
+             * treat it as a value for that single state. Otherwise, it is
+             * assumed to be a map of state identifiers to their values.
              */
             StatefulMegawidgetSpecifier specifier = (StatefulMegawidgetSpecifier) getSpecifier();
             if ((specifier.getStateIdentifiers().size() == 1)
-                    && ((value instanceof Map) == false)) {
+                    && ((value instanceof Map == false)
+                            || (((Map<?, ?>) value).size() > 1))) {
                 try {
                     setState(specifier.getIdentifier(), value);
                 } catch (MegawidgetStateException e) {
@@ -172,9 +180,10 @@ public abstract class StatefulMegawidget extends Megawidget implements
                         throw new NullPointerException();
                     }
                 } catch (Exception e) {
-                    throw new MegawidgetPropertyException(getSpecifier()
-                            .getIdentifier(), name, getSpecifier().getType(),
-                            value, "bad map of values", e);
+                    throw new MegawidgetPropertyException(
+                            getSpecifier().getIdentifier(), name,
+                            getSpecifier().getType(), value,
+                            "bad map of values", e);
                 }
 
                 /*
@@ -225,9 +234,8 @@ public abstract class StatefulMegawidget extends Megawidget implements
          * Compare with the old state; if they are the same, do nothing more.
          */
         Object oldState = doGetState(identifier);
-        if ((oldState == state)
-                || ((oldState != null) && (state != null) && state
-                        .equals(oldState))) {
+        if ((oldState == state) || ((oldState != null) && (state != null)
+                && state.equals(oldState))) {
             return;
         }
 
@@ -353,8 +361,8 @@ public abstract class StatefulMegawidget extends Megawidget implements
             try {
                 setState(identifier, states.get(identifier));
             } catch (MegawidgetStateException e) {
-                throw new MegawidgetPropertyException(getSpecifier()
-                        .getIdentifier(),
+                throw new MegawidgetPropertyException(
+                        getSpecifier().getIdentifier(),
                         StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES,
                         getSpecifier().getType(), states, "bad map of values",
                         e);

@@ -42,18 +42,13 @@ import com.raytheon.uf.common.util.Pair;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * May 09, 2016 17514      Robert.Blum Added forecastFallBelowActionStageTime member variable.
+ * Feb 08, 2017 28335      Robert.Blum Fixed several javaDocs and removed code that exists in parent class.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 
 public class RiverForecastPoint extends FpInfo {
-
-    /**
-     * Primary Physical Element (PE) as queried from the RiverStat (River
-     * Station) table value.
-     */
-    private String primaryPE;
 
     /**
      * Current Hydrograph observation
@@ -326,12 +321,6 @@ public class RiverForecastPoint extends FpInfo {
      */
     private HydroGraphTrend trend;
 
-    /**
-     * Whether or not this forecast point needs to be included in the hazard
-     * recommendation
-     */
-    private boolean includedInRecommendation;
-
     private List<CrestHistory> flowCrestHistoryList;
 
     private List<CrestHistory> stageCrestHistoryList;
@@ -363,27 +352,6 @@ public class RiverForecastPoint extends FpInfo {
         this.hydrographObserved = null;
         this.hydrographForecast = null;
         this.fullTimeSeriesLoadedTime = null;
-    }
-
-    /**
-     * Set the Primary Physical Element (PE) as queried from the RiverStat
-     * (River Station) table (RiverStat.PRIMARY_PE) for this LID value.
-     * 
-     * @param primaryPE
-     *            RiverStat.primary_pe value
-     */
-    public void setPrimaryPE(String primaryPE) {
-        this.primaryPE = primaryPE;
-    }
-
-    /**
-     * Get the Primary Physical Element (PE) as queried from the RiverStat
-     * (River Station) table (RiverStat.PRIMARY_PE) for this LID value.
-     * 
-     * @return primaryPE RiverStat.primary_pe value
-     */
-    public String getPrimaryPE() {
-        return (this.primaryPE);
     }
 
     /**
@@ -632,27 +600,6 @@ public class RiverForecastPoint extends FpInfo {
     }
 
     /**
-     * Sets if this forecast point should be included in a hazard
-     * recommendation.
-     * 
-     * @param includedInRecommendation
-     *            whether or not to include this point in hazard recommendation
-     */
-    @Override
-    public void setIncludedInRecommendation(boolean includedInRecommendation) {
-        this.includedInRecommendation = includedInRecommendation;
-    }
-
-    /**
-     * @return whether or not this forecast point should be included in a
-     *         recommendation
-     */
-    @Override
-    public boolean isIncludedInRecommendation() {
-        return this.includedInRecommendation;
-    }
-
-    /**
      * Set the fall below flood stage time
      * 
      * @param fallBelowTime
@@ -726,7 +673,8 @@ public class RiverForecastPoint extends FpInfo {
      * 
      * @param maximumObservedForecastTime
      */
-    public void setMaximumObservedForecastTime(Date maximumObservedForecastTime) {
+    public void setMaximumObservedForecastTime(
+            Date maximumObservedForecastTime) {
         this.maximumObservedForecastTime = maximumObservedForecastTime;
     }
 
@@ -803,7 +751,7 @@ public class RiverForecastPoint extends FpInfo {
     }
 
     /**
-     * Get the the forecast hydrograph trend
+     * Get the forecast hydrograph trend
      * 
      * @return forecastRiseOrFall
      */
@@ -853,9 +801,10 @@ public class RiverForecastPoint extends FpInfo {
      * 
      * Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
      *       load_variable_value.c -  load_stage_ofp_variable_value()
-     *  
-     *  @return: The maximum observed stage for the last 24 hours and Shef Quality Code pair
      * </pre>
+     * 
+     * @return: The maximum observed stage for the last 24 hours and Shef
+     *          Quality Code pair
      */
     public Pair<Double, String> getMaximum24HourObservedStage() {
         String shefQualCode = RiverHydroConstants.MISSING_SHEF_QUALITY_CODE;
@@ -880,7 +829,7 @@ public class RiverForecastPoint extends FpInfo {
     }
 
     /**
-     * @return the index of the maximu 6 hour observation
+     * @return the index of the maximum 6 hour observation
      */
     public int getObservedMax06Index() {
         return this.observedMax06Index;
@@ -892,10 +841,10 @@ public class RiverForecastPoint extends FpInfo {
      *  e.g. 35
      *  Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
      *             load_variable_value.c -  load_stage_ofp_variable_value()
-     * @return: The maximum observed stage for the last 6 hours  and Shef Quality Code pair.
      * </pre>
      * 
-     * .
+     * @return: The maximum observed stage for the last 6 hours and Shef Quality
+     *          Code pair.
      */
     public Pair<Double, String> getMaximum6HourObservedStage() {
         String shefQualCode = RiverHydroConstants.MISSING_SHEF_QUALITY_CODE;
@@ -1023,7 +972,7 @@ public class RiverForecastPoint extends FpInfo {
     }
 
     /**
-     * Set flood Crest Type Source
+     * Get flood Crest Type Source
      * 
      * @return the crestTypeSource
      */
@@ -1071,9 +1020,9 @@ public class RiverForecastPoint extends FpInfo {
      * e.g. 35
      * Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
      *         load_variable_value.c -  load_stage_ofp_variable_value()
+     * </pre>
      * 
      * @return: The current observed river stage and Shef Quality Code pair.
-     * </pre>
      */
     public Pair<Double, String> getObservedCurrentStage() {
         String shefQualCode = RiverHydroConstants.MISSING_SHEF_QUALITY_CODE;
@@ -1130,9 +1079,10 @@ public class RiverForecastPoint extends FpInfo {
      * 
      * Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
      *       load_variable_value.c -  load_stage_ofp_variable_value()
-     *  
-     *  @return: The maximum observed stage for the last 24 hours and Shef Quality Code pair
      * </pre>
+     * 
+     * @return: The maximum observed stage for the last 24 hours and Shef
+     *          Quality Code pair
      */
     public Pair<Double, String> getMaximumForecastStage() {
         String shefQualCode = RiverHydroConstants.MISSING_SHEF_QUALITY_CODE;
@@ -1153,9 +1103,10 @@ public class RiverForecastPoint extends FpInfo {
      * 
      * Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
      *       load_variable_value.c -  load_stage_ofp_variable_value()
-     *  
-     *  @return: The maximum observed stage for the last 24 hours and Shef Quality Code pair
      * </pre>
+     * 
+     * @return: The maximum observed stage for the last 24 hours and Shef
+     *          Quality Code pair
      */
     public long getMaximumForecastTime() {
         long forecastTime = RiverHydroConstants.MISSING_VALUE;
@@ -1173,9 +1124,10 @@ public class RiverForecastPoint extends FpInfo {
      * 
      * Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
      *       load_variable_value.c -  load_stage_ofp_variable_value()
-     *  
-     *  @return: The maximum observed stage for the last 24 hours and Shef Quality Code pair
      * </pre>
+     * 
+     * @return: The maximum observed stage for the last 24 hours and Shef
+     *          Quality Code pair
      */
     public double getMaximumForecastValue() {
         double forecastValue = RiverHydroConstants.MISSING_VALUE_DOUBLE;
@@ -1306,7 +1258,8 @@ public class RiverForecastPoint extends FpInfo {
      * 
      * @param flowCrestHistoryList
      */
-    public void setFlowCrestHistoryList(List<CrestHistory> flowCrestHistoryList) {
+    public void setFlowCrestHistoryList(
+            List<CrestHistory> flowCrestHistoryList) {
         this.flowCrestHistoryList = flowCrestHistoryList;
     }
 
@@ -1367,8 +1320,8 @@ public class RiverForecastPoint extends FpInfo {
      */
     public List<Pair<Double, Date>> getStageCrestHistory() {
         List<Pair<Double, Date>> outputStageCrestHistory = null;
-        if ((this.stageCrestHistoryList != null && this.stageCrestHistoryList
-                .isEmpty() == false)) {
+        if ((this.stageCrestHistoryList != null
+                && this.stageCrestHistoryList.isEmpty() == false)) {
 
             outputStageCrestHistory = Lists
                     .newArrayListWithExpectedSize(stageCrestHistoryList.size());
@@ -1398,14 +1351,15 @@ public class RiverForecastPoint extends FpInfo {
 
     public List<Pair<Integer, Date>> getFlowCrestHistory() {
         List<Pair<Integer, Date>> outputFlowCrestHistory = null;
-        if ((this.flowCrestHistoryList != null && this.flowCrestHistoryList
-                .isEmpty() == false)) {
+        if ((this.flowCrestHistoryList != null
+                && this.flowCrestHistoryList.isEmpty() == false)) {
 
             outputFlowCrestHistory = Lists
                     .newArrayListWithExpectedSize(flowCrestHistoryList.size());
             for (CrestHistory flowCrestHistory : flowCrestHistoryList) {
                 Integer q = flowCrestHistory.getQ();
-                Date datcrst = new java.util.Date(flowCrestHistory.getDatCrst());
+                Date datcrst = new java.util.Date(
+                        flowCrestHistory.getDatCrst());
                 Pair<Integer, Date> pair = new Pair<>(q, datcrst);
                 outputFlowCrestHistory.add(pair);
             }
@@ -1441,16 +1395,19 @@ public class RiverForecastPoint extends FpInfo {
             this.setPreviousMaxFcstCTime(new Date(maxForecastCTime));
             Integer previousMaxObservedForecastCategory = (Integer) previousEventDict
                     .get("maxObservedForecastCategory");
-            this.setPreviousMaxObservedForecastCategory(previousMaxObservedForecastCategory);
+            this.setPreviousMaxObservedForecastCategory(
+                    previousMaxObservedForecastCategory);
         } else {
             this.setPreviousProductAvailable(false);
-            this.setPreviousCurObsValue(RiverHydroConstants.MISSING_VALUE_DOUBLE);
+            this.setPreviousCurObsValue(
+                    RiverHydroConstants.MISSING_VALUE_DOUBLE);
             this.setPreviousCurrentObsTime(null);
-            this.setPreviousMaxFcstValue(RiverHydroConstants.MISSING_VALUE_DOUBLE);
+            this.setPreviousMaxFcstValue(
+                    RiverHydroConstants.MISSING_VALUE_DOUBLE);
             this.setPreviousMaxFcstTime(null);
             this.setPreviousMaxFcstCTime(null);
-            this.setPreviousMaxObservedForecastCategory(HydroFloodCategories.NULL_CATEGORY
-                    .getRank());
+            this.setPreviousMaxObservedForecastCategory(
+                    HydroFloodCategories.NULL_CATEGORY.getRank());
         }
     }
 

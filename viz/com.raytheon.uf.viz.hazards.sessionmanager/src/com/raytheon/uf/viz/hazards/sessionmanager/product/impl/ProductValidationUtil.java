@@ -52,6 +52,9 @@ public class ProductValidationUtil {
      *         empty List of none was found.
      */
     public static List<String> checkForFramedText(String product) {
+        if (product == null) {
+            product = "";
+        }
         Matcher matcher = pat.matcher(product);
 
         List<String> framedValues = new ArrayList<String>();

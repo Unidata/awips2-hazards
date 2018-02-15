@@ -37,6 +37,11 @@ import java.util.Map;
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
  * Feb 19, 2016 15014      Robert.Blum Fix Zone and County Num queries.
+ * Jan 12, 2016 28034      mduff               Added queryHydrologicServiceAreaForGageId.
+ * Jan 13, 2017 28014      bkowal      Added {@link #queryRankedTypeSources(String, String, int, String)}.
+ * Feb 10, 2017 28946      mduff       Added queryRiverMetadata method.
+ * Mar 13, 2017 29675      Kevin.Bisanz Return value and time from queryPhysicalElementValue(..).
+ * Jul 10, 2017 35819      Robert.Blum Reducing the number of conversion done with hydro data.
  * 
  * </pre>
  * 
@@ -259,7 +264,8 @@ public interface IFloodDAO {
      * @return The List of records in the RIVERSTAT for the specified river
      *         point lid values
      */
-    public List<RiverStationInfo> queryRiverStationInfoList(List<String> lidList);
+    public List<RiverStationInfo> queryRiverStationInfoList(
+            List<String> lidList);
 
     /**
      * Query for a List of LID (River Forecast Point Id) values for a State,
@@ -459,6 +465,23 @@ public interface IFloodDAO {
             int duration, String extremum);
 
     /**
+     * Get a {@link List} of ranked type sources in descending order given a
+     * primary physical element.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param primary_pe
+     *            The SHEF physical element code
+     * @param duration
+     * @param extremum
+     *            e.g. Z, X
+     * @return a {@link List} of the type sources that were found ordered by
+     *         rank in descending order
+     */
+    public List<String> queryRankedTypeSources(String lid, String primary_pe,
+            int duration, String extremum);
+
+    /**
      * Retrieves the given physical element value for a river forecast point.
      * 
      * @param lid
@@ -482,16 +505,14 @@ public interface IFloodDAO {
      *            "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
      *            1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
      *            "2011-02-08 15:15:10" });
-     * @param timeFlag
-     *            -- if True return a time string for requested value, otherwise
-     *            return requested value
      * @param currentTime_ms
-     *            -- current time in milliseconds
-     * 
+     *            Current time in milliseconds
+     *
+     * @return Map containing the value and time associated with it
      */
-    public String queryPhysicalElementValue(String lid, String physicalElement,
-            int duration, String typeSource, String extremum, String timeArg,
-            boolean timeFlag, long currentTime_ms);
+    public Map<String, Object> queryPhysicalElementValue(String lid,
+            String physicalElement, int duration, String typeSource,
+            String extremum, String timeArg, long currentTime_ms);
 
     /**
      * Query for a Map of LID values to their inundation Lat Lon coordinates
@@ -599,4 +620,23 @@ public interface IFloodDAO {
     public Map<String, List<CountyStateData>> queryLidToCountyDataMap(
             List<String> lidList);
 
+    /**
+     * Query for the HSA of the provided LID.
+     * 
+     * @param lid
+     * 
+     * @return HSA
+     */
+    public String queryHydrologicServiceAreaForGageId(String lid);
+
+    /**
+     * Query for the river group name/id and the forecast point metadata along
+     * each river.
+     * 
+     * @param the
+     *            HSA id to query for
+     * 
+     * @return List of RiverMetadata objects
+     */
+    public List<RiverMetadata> queryRiverMetadata(String hsa);
 }

@@ -52,6 +52,7 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                      geometries.
  * Nov 17, 2016   26313    Chris.Golden Moved method to union polygonal elements
  *                                      of a geometry into this class.
+ * Jan 31, 2017   28492    Kevin.Bisanz Add {@link #isSinglePoint(IAdvancedGeometry)}.
  * Jan 17, 2018   33428    Chris.Golden Changed method for getting union of
  *                                      polygonal elements to be more general,
  *                                      and made another version that works with
@@ -60,6 +61,8 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                      and gets the smallest sub-geometry of the
  *                                      first of them that intersects with the
  *                                      second of them.
+ * Jun 04, 2018   15561    Chris.Golden Performance improvement in unioning
+ *                                      geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -577,20 +580,11 @@ public class AdvancedGeometryUtilities {
      */
     public static Geometry getUnionOfGeometryElements(Geometry geometry,
             GeometryTypesForUnion typesToInclude) {
-        Geometry result = null;
-        boolean polygonal = (typesToInclude == GeometryTypesForUnion.POLYGONAL);
+        Geometry[] geometries = new Geometry[geometry.getNumGeometries()];
         for (int j = 0; j < geometry.getNumGeometries(); j++) {
-            Geometry subGeometry = geometry.getGeometryN(j);
-            if ((typesToInclude == GeometryTypesForUnion.ALL)
-                    || (subGeometry instanceof Polygonal == polygonal)) {
-                if (result == null) {
-                    result = subGeometry;
-                } else {
-                    result = result.union(subGeometry);
-                }
-            }
+            geometries[j] = geometry.getGeometryN(j);
         }
-        return result;
+        return getUnionOfGeometryElements(geometries, typesToInclude);
     }
 
     /**
@@ -606,19 +600,51 @@ public class AdvancedGeometryUtilities {
      */
     public static Geometry getUnionOfGeometryElements(List<Geometry> geometries,
             GeometryTypesForUnion typesToInclude) {
-        Geometry result = null;
+        return getUnionOfGeometryElements(
+                geometries.toArray(new Geometry[geometries.size()]),
+                typesToInclude);
+    }
+
+    /**
+     * Given the specified list of geometries, create a union of any polygons
+     * and/or multipolygons that comprise part or all of the array.
+     * 
+     * @param geometries
+     *            Array of geometries to have its elements unioned.
+     * @param typesToInclude
+     *            Types of geometries to include.
+     * @return Union of any elements of the list that were requested; may be
+     *         <code>null</code> if there are no such elements.
+     */
+    public static Geometry getUnionOfGeometryElements(Geometry[] geometries,
+            GeometryTypesForUnion typesToInclude) {
+
+        /*
+         * Filter the geometries to only include those with the correct type(s).
+         */
         boolean polygonal = (typesToInclude == GeometryTypesForUnion.POLYGONAL);
+        List<Geometry> filteredGeometries = new ArrayList<>(geometries.length);
         for (Geometry geometry : geometries) {
             if ((typesToInclude == GeometryTypesForUnion.ALL)
                     || (geometry instanceof Polygonal == polygonal)) {
-                if (result == null) {
-                    result = geometry;
-                } else {
-                    result = result.union(geometry);
-                }
+                filteredGeometries.add(geometry);
             }
         }
-        return result;
+
+        /*
+         * Shortcut things if zero or one geometry(s) has been found, otherwise,
+         * union them in the way that is generally fastest with JTS.
+         */
+        if (filteredGeometries.isEmpty()) {
+            return null;
+        } else if (filteredGeometries.size() == 1) {
+            return filteredGeometries.get(0);
+        } else {
+            return GEOMETRY_FACTORY.get()
+                    .createGeometryCollection(filteredGeometries
+                            .toArray(new Geometry[filteredGeometries.size()]))
+                    .buffer(0);
+        }
     }
 
     /**
@@ -642,6 +668,39 @@ public class AdvancedGeometryUtilities {
                     .createGeometryCollection(new Geometry[] { geometry });
         }
         return geometry;
+    }
+
+    /**
+     * Determine whether or not the specified geometry is a single point.
+     * 
+     * @param advancedGeometry
+     *            Geometry to be checked.
+     * @return <code>true</code> if the geometry is a point or an arbitrarily
+     *         nested set of collections that in the end only contain a single
+     *         point, otherwise <code>false</code>.
+     */
+    public static boolean isSinglePoint(IAdvancedGeometry advancedGeometry) {
+        if ((advancedGeometry == null)
+                || (advancedGeometry instanceof Ellipse)) {
+            return false;
+        }
+        if (advancedGeometry instanceof AdvancedGeometryCollection) {
+            List<IAdvancedGeometry> children = ((AdvancedGeometryCollection) advancedGeometry)
+                    .getChildren();
+            if (children.size() == 1) {
+                return isSinglePoint(children.get(0));
+            }
+        }
+        if (advancedGeometry instanceof GeometryWrapper) {
+            Geometry geometry = ((GeometryWrapper) advancedGeometry)
+                    .getGeometry();
+            if ((geometry instanceof Puntal)
+                    || ((geometry.getNumGeometries() == 1
+                            && geometry.getGeometryN(0) instanceof Puntal))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -758,10 +817,6 @@ public class AdvancedGeometryUtilities {
             IAdvancedGeometry... advancedGeometries) {
         return createCollection(Lists.newArrayList(advancedGeometries));
     }
-
-    /**
-     * Get a list of geometries f
-     */
 
     // Private Static Methods
 

@@ -65,6 +65,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
  * Mar 14, 2016 16534    mduff         Update for new AESEncryptor.
  * May 06, 2016 18202    Robert.Blum   Changes for operational mode.
+ * May 09, 2017 33779    Roger.Ferrel  Log message to server when initialization of registry fails.
  * </pre>
  * 
  * @author bphillip
@@ -75,15 +76,6 @@ public class AbstractHazardEventServicesSoapClient extends Service {
     /** The logger */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(AbstractHazardEventServicesSoapClient.class);
-
-    static {
-        try {
-            initializeRegistryInfo();
-        } catch (HazardEventServiceException e) {
-            throw new RuntimeException(
-                    "Error retrieving Registry connection information!", e);
-        }
-    }
 
     /** TLS constant string */
     private static final String TLS = "TLS";
@@ -108,6 +100,12 @@ public class AbstractHazardEventServicesSoapClient extends Service {
 
     /** The local trust store password private static String */
     private static String TRUST_STORE_PASSWORD;
+
+    /** Flag indicating if initialization has already taken place. */
+    private static boolean initialized = false;
+
+    /** Lock to prevent initialization race condition */
+    private static Object initializeLock = new Object();
 
     /**
      * Creates a new web service client
@@ -137,6 +135,9 @@ public class AbstractHazardEventServicesSoapClient extends Service {
      */
     private static URL getWsdl(String path, boolean practice) {
         try {
+            // Initialize to set variables used below.
+            initializeRegistryInfo();
+
             if (practice) {
                 return new URL(REGISTRY_BASE_PATH + path + "/practice?wsdl");
             } else {
@@ -156,35 +157,43 @@ public class AbstractHazardEventServicesSoapClient extends Service {
      */
     private static void initializeRegistryInfo()
             throws HazardEventServiceException {
-        try {
-            Map<String, String> properties = HazardEventRequestServices
-                    .getServices(false).getRegistryConnectionInfo();
-            getTrustStore();
-            REGISTRY_BASE_PATH = properties
-                    .get(GetRegistryInfoRequest.REGISTRY_URL_KEY);
-            REGISTRY_USER = properties
-                    .get(GetRegistryInfoRequest.REGISTRY_USER_KEY);
-            REGISTRY_USER_PASSWORD = properties
-                    .get(GetRegistryInfoRequest.REGISTRY_USER_PASSWORD_KEY);
+        synchronized (initializeLock) {
+            if (initialized) {
+                return;
+            }
+            try {
+                Map<String, String> properties = HazardEventRequestServices
+                        .getServices(false).getRegistryConnectionInfo();
+                getTrustStore();
+                REGISTRY_BASE_PATH = properties
+                        .get(GetRegistryInfoRequest.REGISTRY_URL_KEY);
+                REGISTRY_USER = properties
+                        .get(GetRegistryInfoRequest.REGISTRY_USER_KEY);
+                REGISTRY_USER_PASSWORD = properties
+                        .get(GetRegistryInfoRequest.REGISTRY_USER_PASSWORD_KEY);
 
-            // Set the trust store system properties
-            System.setProperty("javax.net.ssl.trustStore", TRUST_STORE_PATH);
-            System.setProperty("javax.net.ssl.trustStorePassword",
-                    TRUST_STORE_PASSWORD);
+                // Set the trust store system properties
+                System.setProperty("javax.net.ssl.trustStore",
+                        TRUST_STORE_PATH);
+                System.setProperty("javax.net.ssl.trustStorePassword",
+                        TRUST_STORE_PASSWORD);
 
-            // Assign the default authena ticator to use for web service
-            // requests
-            Authenticator.setDefault(new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(REGISTRY_USER,
-                            REGISTRY_USER_PASSWORD.toCharArray());
-                }
-            });
-            importCertificates();
-        } catch (Exception e) {
-            throw new HazardEventServiceException(
-                    "Error initializing registry info!", e);
+                // Assign the default authena ticator to use for web service
+                // requests
+                Authenticator.setDefault(new Authenticator() {
+                    @Override
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(REGISTRY_USER,
+                                REGISTRY_USER_PASSWORD.toCharArray());
+                    }
+                });
+                importCertificates();
+
+                initialized = true;
+            } catch (Exception e) {
+                throw new HazardEventServiceException(
+                        "Error initializing registry info!", e);
+            }
         }
     }
 
@@ -246,11 +255,11 @@ public class AbstractHazardEventServicesSoapClient extends Service {
         File file = new File(TRUST_STORE_PATH);
         statusHandler.info("Loading KeyStore " + file + "...");
 
-        InputStream in = new FileInputStream(file);
-        ks = KeyStore.getInstance(KeyStore.getDefaultType());
-        ks.load(in, System.getProperty("javax.net.ssl.trustStorePassword")
-                .toCharArray());
-        in.close();
+        try (InputStream in = new FileInputStream(file)) {
+            ks = KeyStore.getInstance(KeyStore.getDefaultType());
+            ks.load(in, System.getProperty("javax.net.ssl.trustStorePassword")
+                    .toCharArray());
+        }
         statusHandler.info("Initializing Truststore...");
         TrustManagerFactory tmf = TrustManagerFactory
                 .getInstance(TrustManagerFactory.getDefaultAlgorithm());
@@ -266,12 +275,10 @@ public class AbstractHazardEventServicesSoapClient extends Service {
         SSLSocketFactory factory = context.getSocketFactory();
         statusHandler
                 .info("Opening connection to " + host + ":" + port + "...");
-        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-        socket.setSoTimeout(10000);
-        try {
+        try (SSLSocket socket = (SSLSocket) factory.createSocket(host, port)) {
+            socket.setSoTimeout(10000);
             statusHandler.info("Starting SSL handshake ...");
             socket.startHandshake();
-            socket.close();
             statusHandler.info("No errors, certificate is already trusted\n");
         } catch (SSLException exc) {
             statusHandler.info("Handshake complete");
@@ -303,20 +310,14 @@ public class AbstractHazardEventServicesSoapClient extends Service {
             md5.update(cert.getEncoded());
 
             statusHandler.info("Adding certificate for host " + host + "...");
-            OutputStream out = null;
-            try {
+            try (OutputStream out = new BufferedOutputStream(
+                    new FileOutputStream(TRUST_STORE_PATH))) {
                 ks.setCertificateEntry(host, cert);
-                out = new BufferedOutputStream(
-                        new FileOutputStream(TRUST_STORE_PATH));
                 ks.store(out,
                         System.getProperty("javax.net.ssl.trustStorePassword")
                                 .toCharArray());
             } catch (Exception e) {
                 statusHandler.error("Error adding certificate to keystore!", e);
-            } finally {
-                if (out != null) {
-                    out.close();
-                }
             }
             statusHandler.info("Added certificate to keystore!");
         }
@@ -327,7 +328,7 @@ public class AbstractHazardEventServicesSoapClient extends Service {
 
         private X509Certificate[] chain;
 
-        SavingTrustManager(X509TrustManager tm) {
+        public SavingTrustManager(X509TrustManager tm) {
             this.tm = tm;
         }
 

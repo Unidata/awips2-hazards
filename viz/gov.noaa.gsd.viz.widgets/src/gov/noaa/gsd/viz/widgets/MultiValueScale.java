@@ -22,9 +22,12 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * Multi-value scale widget, allowing the display and manipulation of one or
@@ -68,6 +71,11 @@ import org.eclipse.swt.widgets.Display;
  *                                           intervals are locked. Also
  *                                           changed to better inline comment
  *                                           style.
+ * Apr 19, 2018   33787    Chris.Golden      Changed multi-value scale widgets
+ *                                           to cache the images they use for
+ *                                           representing themselves visually,
+ *                                           and to reuse said images across
+ *                                           instances of the widgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -184,11 +192,23 @@ public class MultiValueScale extends MultiValueLinearControl {
      * Initialize the colors.
      */
     static {
-        Color color = Display.getCurrent().getSystemColor(
-                SWT.COLOR_LIST_BACKGROUND);
+        Color color = Display.getCurrent()
+                .getSystemColor(SWT.COLOR_LIST_BACKGROUND);
         BACKGROUND_COLOR = new java.awt.Color(color.getRed(), color.getGreen(),
                 color.getBlue());
     }
+
+    /**
+     * Cache used by all instances of this class to store thumb images.
+     */
+    private static final WidgetResourceCache<ThumbImageParameters, Image> THUMB_IMAGE_CACHE = new WidgetResourceCache<>();
+
+    /**
+     * Cache used by all instances of this class to store thumb images. The pair
+     * used as the key holds the track tile thickness and the components of the
+     * color of the track, respectively.
+     */
+    private static final WidgetResourceCache<Pair<Integer, RGB>, Image> TRACK_TILE_IMAGE_CACHE = new WidgetResourceCache<>();
 
     // Private Enumerated Types
 
@@ -198,6 +218,86 @@ public class MultiValueScale extends MultiValueLinearControl {
     private enum ThumbState {
         DISABLED, NORMAL, ACTIVE
     };
+
+    // Private Static Classes
+
+    /**
+     * Parameters of a thumb image that differentiate it from other thumb
+     * images.
+     */
+    private static class ThumbImageParameters {
+
+        // Private Variables
+
+        /**
+         * Longitudinal dimension of the thumb in pixels.
+         */
+        private final int longitudinalDimension;
+
+        /**
+         * Lateral dimension of the thumb in pixels.
+         */
+        private final int lateralDimension;
+
+        /**
+         * Arc size for each corner of the thumb in pixels.
+         */
+        private final int cornerArcSize;
+
+        /**
+         * State of the thumb that the associated image is to represent.
+         */
+        private final ThumbState state;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param longitudinalDimension
+         *            Longitudinal dimension of the thumb in pixels.
+         * @param lateralDimension
+         *            Lateral dimension of the thumb in pixels.
+         * @param cornerArcSize
+         *            Arc size for each corner of the thumb in pixels.
+         * @param state
+         *            State of the thumb that the associated image is to
+         *            represent.
+         */
+        public ThumbImageParameters(int longitudinalDimension,
+                int lateralDimension, int cornerArcSize, ThumbState state) {
+            this.longitudinalDimension = longitudinalDimension;
+            this.lateralDimension = lateralDimension;
+            this.cornerArcSize = cornerArcSize;
+            this.state = state;
+        }
+
+        // Public Methods
+
+        @Override
+        public boolean equals(Object other) {
+            if ((other == null)
+                    || (other instanceof ThumbImageParameters == false)) {
+                return false;
+            }
+            ThumbImageParameters otherParams = (ThumbImageParameters) other;
+            return ((longitudinalDimension == otherParams.longitudinalDimension)
+                    && (lateralDimension == otherParams.lateralDimension)
+                    && (cornerArcSize == otherParams.cornerArcSize)
+                    && (state == otherParams.state));
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + longitudinalDimension;
+            result = prime * result + lateralDimension;
+            result = prime * result + cornerArcSize;
+            result = prime * result + (state == null ? 0 : state.hashCode());
+            return result;
+        }
+    }
 
     // Private Constants
 
@@ -302,6 +402,17 @@ public class MultiValueScale extends MultiValueLinearControl {
      * Disabled thumb image.
      */
     private Image disabledThumbImage = null;
+
+    // Public Static Methods
+
+    /**
+     * Dispose of any unused images created by instances of this class but not
+     * removed.
+     */
+    public static void purgeUnusedResources() {
+        THUMB_IMAGE_CACHE.prune();
+        TRACK_TILE_IMAGE_CACHE.prune();
+    }
 
     // Public Constructors
 
@@ -422,7 +533,8 @@ public class MultiValueScale extends MultiValueLinearControl {
         /*
          * Remember the new component dimensions.
          */
-        boolean thumbChanged = ((this.baseThumbLongitudinalDimension != thumbLongitudinal) || (this.baseThumbLateralDimension != thumbLateral));
+        boolean thumbChanged = ((this.baseThumbLongitudinalDimension != thumbLongitudinal)
+                || (this.baseThumbLateralDimension != thumbLateral));
         this.baseThumbLongitudinalDimension = thumbLongitudinal;
         this.baseThumbLateralDimension = thumbLateral;
         boolean trackChanged = (this.baseTrackThickness != trackThickness);
@@ -440,12 +552,15 @@ public class MultiValueScale extends MultiValueLinearControl {
         if (trackChanged) {
             for (int j = 0; j < trackTileImages.size(); j++) {
                 if (trackTileImages.get(j) != null) {
-                    trackTileImages.get(j).dispose();
+                    TRACK_TILE_IMAGE_CACHE.release(trackTileImages.get(j));
                 }
                 trackTileImages.set(j,
-                        createTrackTileImage(getConstrainedThumbRangeColor(j)));
+                        getTrackTileImage(getConstrainedThumbRangeColor(j)));
             }
-            disabledTrackTileImage = createTrackTileImage(null);
+            if (disabledTrackTileImage != null) {
+                TRACK_TILE_IMAGE_CACHE.release(disabledTrackTileImage);
+            }
+            disabledTrackTileImage = getTrackTileImage(null);
         }
 
         /*
@@ -455,17 +570,17 @@ public class MultiValueScale extends MultiValueLinearControl {
         if (thumbChanged) {
             calculateThumbCornerArcSize();
             if (thumbImage != null) {
-                thumbImage.dispose();
+                THUMB_IMAGE_CACHE.release(thumbImage);
             }
-            thumbImage = createThumbImage(ThumbState.NORMAL);
+            thumbImage = getThumbImage(ThumbState.NORMAL);
             if (activeThumbImage != null) {
-                activeThumbImage.dispose();
+                THUMB_IMAGE_CACHE.release(activeThumbImage);
             }
-            activeThumbImage = createThumbImage(ThumbState.ACTIVE);
+            activeThumbImage = getThumbImage(ThumbState.ACTIVE);
             if (disabledThumbImage != null) {
-                disabledThumbImage.dispose();
+                THUMB_IMAGE_CACHE.release(disabledThumbImage);
             }
-            disabledThumbImage = createThumbImage(ThumbState.DISABLED);
+            disabledThumbImage = getThumbImage(ThumbState.DISABLED);
         }
 
         /*
@@ -515,8 +630,9 @@ public class MultiValueScale extends MultiValueLinearControl {
          * if being forced to do it regardless of previous computations.
          */
         if (force || (getPreferredWidth() == 0)) {
-            int preferredWidth = (thumbLongitudinalDimension * getConstrainedThumbValueCount())
-                    + getLeftInset() + getRightInset();
+            int preferredWidth = (thumbLongitudinalDimension
+                    * getConstrainedThumbValueCount()) + getLeftInset()
+                    + getRightInset();
             int preferredHeight = thumbLateralDimension + 2 + getTopInset()
                     + getBottomInset();
             setPreferredSize(preferredWidth, preferredHeight);
@@ -558,8 +674,8 @@ public class MultiValueScale extends MultiValueLinearControl {
          * only in the client area and the vertical padding area above and below
          * the client area.
          */
-        e.gc.setClipping(clientArea.x, 0, clientArea.width, getTopInset()
-                + clientArea.height + getBottomInset());
+        e.gc.setClipping(clientArea.x, 0, clientArea.width,
+                getTopInset() + clientArea.height + getBottomInset());
 
         /*
          * Iterate through the constrained marked value indicators, drawing the
@@ -567,15 +683,17 @@ public class MultiValueScale extends MultiValueLinearControl {
          */
         int lastMarkedValueX = mapValueToPixel(getMinimumAllowableValue()) - 1;
         for (int j = 0; j <= getConstrainedMarkedValueCount(); j++) {
-            int markedValueX = mapValueToPixel(j == getConstrainedMarkedValueCount() ? getMaximumAllowableValue()
-                    : getConstrainedMarkedValue(j))
+            int markedValueX = mapValueToPixel(
+                    j == getConstrainedMarkedValueCount()
+                            ? getMaximumAllowableValue()
+                            : getConstrainedMarkedValue(j))
                     + (j == getConstrainedMarkedValueCount() ? 1 : 0);
             Color color = getConstrainedMarkedRangeColor(j);
             if (color != null) {
                 e.gc.setBackground(color);
-                e.gc.fillRectangle(lastMarkedValueX + 1, 0, markedValueX
-                        - lastMarkedValueX, getTopInset() + clientArea.height
-                        + getBottomInset());
+                e.gc.fillRectangle(lastMarkedValueX + 1, 0,
+                        markedValueX - lastMarkedValueX,
+                        getTopInset() + clientArea.height + getBottomInset());
             }
             lastMarkedValueX = markedValueX;
         }
@@ -596,8 +714,8 @@ public class MultiValueScale extends MultiValueLinearControl {
          * will be in order to make it look more three-dimensional.
          */
         e.gc.setForeground(TRACK_BORDER_SHADOW_COLOR);
-        e.gc.drawLine(getLeftInset() - 1, yTrack - 2, getLeftInset()
-                + clientArea.width, yTrack - 2);
+        e.gc.drawLine(getLeftInset() - 1, yTrack - 2,
+                getLeftInset() + clientArea.width, yTrack - 2);
         e.gc.setForeground(TRACK_BORDER_HIGHLIGHT_COLOR);
         e.gc.drawLine(getLeftInset() - 1, yTrack + trackThickness - 1,
                 getLeftInset() + clientArea.width, yTrack + trackThickness - 1);
@@ -609,14 +727,16 @@ public class MultiValueScale extends MultiValueLinearControl {
          */
         e.gc.setAntialias(SWT.ON);
         for (ValueType type : getMarkTypeDrawingOrder()) {
-            int numValues = (type == ValueType.CONSTRAINED ? getConstrainedMarkedValueCount()
+            int numValues = (type == ValueType.CONSTRAINED
+                    ? getConstrainedMarkedValueCount()
                     : getFreeMarkedValueCount());
             for (int j = 0; j < numValues; j++) {
-                int markedValueX = mapValueToPixel(type == ValueType.CONSTRAINED ? getConstrainedMarkedValue(j)
-                        : getFreeMarkedValue(j));
+                int markedValueX = mapValueToPixel(type == ValueType.CONSTRAINED
+                        ? getConstrainedMarkedValue(j) : getFreeMarkedValue(j));
                 if ((markedValueX >= clientArea.x)
                         && (markedValueX < clientArea.x + clientArea.width)) {
-                    Color color = (type == ValueType.CONSTRAINED ? getConstrainedMarkedValueColor(j)
+                    Color color = (type == ValueType.CONSTRAINED
+                            ? getConstrainedMarkedValueColor(j)
                             : getFreeMarkedValueColor(j));
                     e.gc.setForeground(color == null ? foreground : color);
                     e.gc.drawLine(markedValueX, -1, markedValueX, getTopInset()
@@ -641,7 +761,7 @@ public class MultiValueScale extends MultiValueLinearControl {
         int numValues = getConstrainedThumbValueCount();
         int lastX = mapValueToPixel(getMinimumAllowableValue());
         if (disabledTrackTileImage == null) {
-            disabledTrackTileImage = createTrackTileImage(null);
+            disabledTrackTileImage = getTrackTileImage(null);
         }
         for (int j = 0; j <= numValues; j++) {
 
@@ -659,8 +779,8 @@ public class MultiValueScale extends MultiValueLinearControl {
              * this section.
              */
             int startX = lastX;
-            int endX = mapValueToPixel(j == numValues ? getMaximumAllowableValue()
-                    : getConstrainedThumbValue(j));
+            int endX = mapValueToPixel(j == numValues
+                    ? getMaximumAllowableValue() : getConstrainedThumbValue(j));
             lastX = endX;
             if ((startX >= getLeftInset() + getClientAreaWidth() - 2)
                     || (endX < getLeftInset() + 1)) {
@@ -682,9 +802,11 @@ public class MultiValueScale extends MultiValueLinearControl {
              * Stretch the track tile image horizontally to cover the entire
              * track area, using the disabled image if the widget is disabled.
              */
-            e.gc.drawImage((isEnabled() ? trackTileImages.get(j)
-                    : disabledTrackTileImage), 0, 0, 1, trackThickness - 2,
-                    startX, yTrack, endX + 1 - startX, trackThickness - 2);
+            e.gc.drawImage(
+                    (isEnabled() ? trackTileImages.get(j)
+                            : disabledTrackTileImage),
+                    0, 0, 1, trackThickness - 2, startX, yTrack,
+                    endX + 1 - startX, trackThickness - 2);
         }
 
         /*
@@ -708,20 +830,19 @@ public class MultiValueScale extends MultiValueLinearControl {
         ThumbSpecifier activeThumb = getActiveThumb();
         ThumbSpecifier draggingThumb = getDraggingThumb();
         for (ValueType type : getThumbTypeDrawingOrder()) {
-            numValues = (type == ValueType.CONSTRAINED ? getConstrainedThumbValueCount()
+            numValues = (type == ValueType.CONSTRAINED
+                    ? getConstrainedThumbValueCount()
                     : getFreeThumbValueCount());
             for (int j = 0; j < numValues; j++) {
                 if ((draggingThumb != null) && (draggingThumb.type == type)
                         && (draggingThumb.index == j)) {
                     continue;
                 }
-                paintThumb(
-                        type,
-                        j,
-                        (isEnabled() ? (isVisuallyActive(activeThumb, type, j)
-                                || isVisuallyActive(draggingThumb, type, j) ? ThumbState.ACTIVE
-                                : ThumbState.NORMAL)
-                                : ThumbState.DISABLED), e.gc);
+                paintThumb(type, j, (isEnabled()
+                        ? (isVisuallyActive(activeThumb, type, j)
+                                || isVisuallyActive(draggingThumb, type, j)
+                                        ? ThumbState.ACTIVE : ThumbState.NORMAL)
+                        : ThumbState.DISABLED), e.gc);
             }
         }
         if (draggingThumb != null) {
@@ -737,7 +858,8 @@ public class MultiValueScale extends MultiValueLinearControl {
     }
 
     @Override
-    protected final ThumbSpecifier getEditableThumbForCoordinates(int x, int y) {
+    protected final ThumbSpecifier getEditableThumbForCoordinates(int x,
+            int y) {
 
         /*
          * If the cursor is inside the client area, check to see if it is over
@@ -748,17 +870,19 @@ public class MultiValueScale extends MultiValueLinearControl {
          */
         if ((x >= 0)
                 && (x < getClientAreaWidth() + getLeftInset() + getRightInset())
-                && (y >= 0)
-                && (y < getClientAreaHeight() + getTopInset()
+                && (y >= 0) && (y < getClientAreaHeight() + getTopInset()
                         + getBottomInset())) {
             for (ValueType type : getThumbTypeHitTestOrder()) {
-                for (int j = 0; j < (type == ValueType.CONSTRAINED ? getConstrainedThumbValueCount()
+                for (int j = 0; j < (type == ValueType.CONSTRAINED
+                        ? getConstrainedThumbValueCount()
                         : getFreeThumbValueCount()); j++) {
-                    if ((type == ValueType.CONSTRAINED ? isConstrainedThumbEditable(j)
+                    if ((type == ValueType.CONSTRAINED
+                            ? isConstrainedThumbEditable(j)
                             : isFreeThumbEditable(j)) == false) {
                         continue;
                     }
-                    int thumbX = mapValueToPixel(type == ValueType.CONSTRAINED ? getConstrainedThumbValue(j)
+                    int thumbX = mapValueToPixel(type == ValueType.CONSTRAINED
+                            ? getConstrainedThumbValue(j)
                             : getFreeThumbValue(j));
                     if ((x >= thumbX - thumbLongitudinalDimension / 2)
                             && (x < thumbX + thumbLongitudinalDimension
@@ -788,20 +912,20 @@ public class MultiValueScale extends MultiValueLinearControl {
     protected final void widgetDisposed(DisposeEvent e) {
         for (Image image : trackTileImages) {
             if (image != null) {
-                image.dispose();
+                TRACK_TILE_IMAGE_CACHE.release(image);
             }
         }
         if (disabledTrackTileImage != null) {
-            disabledTrackTileImage.dispose();
+            TRACK_TILE_IMAGE_CACHE.release(disabledTrackTileImage);
         }
         if (thumbImage != null) {
-            thumbImage.dispose();
+            THUMB_IMAGE_CACHE.release(thumbImage);
         }
         if (activeThumbImage != null) {
-            activeThumbImage.dispose();
+            THUMB_IMAGE_CACHE.release(activeThumbImage);
         }
         if (disabledThumbImage != null) {
-            disabledThumbImage.dispose();
+            THUMB_IMAGE_CACHE.release(disabledThumbImage);
         }
         TRACK_BORDER_COLOR.dispose();
         TRACK_BORDER_SHADOW_COLOR.dispose();
@@ -812,7 +936,10 @@ public class MultiValueScale extends MultiValueLinearControl {
     protected final void constrainedThumbRangeColorChanged(int index,
             Color color) {
         while (trackTileImages.size() > index) {
-            trackTileImages.remove(index);
+            Image image = trackTileImages.remove(index);
+            if (image != null) {
+                TRACK_TILE_IMAGE_CACHE.release(image);
+            }
         }
     }
 
@@ -832,9 +959,9 @@ public class MultiValueScale extends MultiValueLinearControl {
          * Initialize the member data and the thumb images as well.
          */
         calculateThumbCornerArcSize();
-        thumbImage = createThumbImage(ThumbState.NORMAL);
-        activeThumbImage = createThumbImage(ThumbState.ACTIVE);
-        disabledThumbImage = createThumbImage(ThumbState.DISABLED);
+        thumbImage = getThumbImage(ThumbState.NORMAL);
+        activeThumbImage = getThumbImage(ThumbState.ACTIVE);
+        disabledThumbImage = getThumbImage(ThumbState.DISABLED);
     }
 
     /**
@@ -882,7 +1009,9 @@ public class MultiValueScale extends MultiValueLinearControl {
      */
     private boolean isVisuallyActive(ThumbSpecifier thumb, ValueType type,
             int index) {
-        return ((thumb != null) && (thumb.type == type) && ((thumb.index == index) || ((type == ValueType.CONSTRAINED) && isConstrainedThumbIntervalLocked())));
+        return ((thumb != null) && (thumb.type == type)
+                && ((thumb.index == index) || ((type == ValueType.CONSTRAINED)
+                        && isConstrainedThumbIntervalLocked())));
     }
 
     /**
@@ -898,29 +1027,45 @@ public class MultiValueScale extends MultiValueLinearControl {
      * @param gc
      *            Graphics context in which to draw the thumb.
      */
-    private void paintThumb(ValueType type, int index, ThumbState state, GC gc) {
-        int xThumb = mapValueToPixel(type == ValueType.CONSTRAINED ? getConstrainedThumbValue(index)
-                : getFreeThumbValue(index));
+    private void paintThumb(ValueType type, int index, ThumbState state,
+            GC gc) {
+        int xThumb = mapValueToPixel(type == ValueType.CONSTRAINED
+                ? getConstrainedThumbValue(index) : getFreeThumbValue(index));
         if ((xThumb >= getLeftInset())
                 && (xThumb <= getLeftInset() + getClientAreaWidth())) {
-            gc.drawImage((state == ThumbState.ACTIVE ? activeThumbImage
-                    : (state == ThumbState.DISABLED ? disabledThumbImage
-                            : thumbImage)), xThumb
-                    - (thumbLongitudinalDimension / 2), getTopInset() + 1);
+            gc.drawImage(
+                    (state == ThumbState.ACTIVE ? activeThumbImage
+                            : (state == ThumbState.DISABLED ? disabledThumbImage
+                                    : thumbImage)),
+                    xThumb - (thumbLongitudinalDimension / 2),
+                    getTopInset() + 1);
         }
     }
 
     /**
-     * Create a image to be used for drawing the thumb(s).
+     * Get an image to be used for drawing the thumb(s) in the specified state.
      * 
      * @param state
-     *            State of the thumb to be created.
-     * @return Image that was created.
+     *            State of the thumb image to be fetched.
+     * @return Thumb image.
      */
-    private Image createThumbImage(ThumbState state) {
+    private Image getThumbImage(ThumbState state) {
 
         /*
-         * Create an AWT image, since such an image can be created with
+         * See if the cache has the image; if so, just use it instead of
+         * creating one.
+         */
+        ThumbImageParameters parameters = new ThumbImageParameters(
+                thumbLongitudinalDimension, thumbLateralDimension,
+                thumbCornerArcSize, state);
+        Image image = THUMB_IMAGE_CACHE.acquire(parameters);
+        if (image != null) {
+            return image;
+        }
+
+        /*
+         * Since the cache did not have the image, it must be created. First,
+         * create an AWT image, since such an image can be created with
          * transparency and painted onto with varying alpha levels. Then get its
          * graphics object and configure the latter.
          */
@@ -962,9 +1107,10 @@ public class MultiValueScale extends MultiValueLinearControl {
          * Draw the gradient fill for the thumb background.
          */
         if (disabled == false) {
-            paintGradient(graphics, (active ? java.awt.Color.WHITE
-                    : BORDER_COLOR), (active ? 0.75f : 0.05f), (active ? 0.10f
-                    : 0.14f), 1, thumbLongitudinalDimension - 2, 1,
+            paintGradient(graphics,
+                    (active ? java.awt.Color.WHITE : BORDER_COLOR),
+                    (active ? 0.75f : 0.05f), (active ? 0.10f : 0.14f), 1,
+                    thumbLongitudinalDimension - 2, 1,
                     thumbLateralDimension - 2, thumbCornerArcSize / 2);
         }
 
@@ -974,7 +1120,8 @@ public class MultiValueScale extends MultiValueLinearControl {
          */
         graphics.setColor(active ? DETAIL_SELECTION_COLOR : DETAIL_COLOR);
         if (thumbLongitudinalDimension + 2 <= thumbLateralDimension) {
-            int indent = (thumbCornerArcSize - (thumbLateralDimension - thumbLongitudinalDimension)) / 2;
+            int indent = (thumbCornerArcSize
+                    - (thumbLateralDimension - thumbLongitudinalDimension)) / 2;
             if (indent < 0) {
                 indent = 0;
             }
@@ -989,7 +1136,8 @@ public class MultiValueScale extends MultiValueLinearControl {
                     ((thumbLateralDimension - thumbLongitudinalDimension) / 2)
                             + thumbLongitudinalDimension - 1);
         } else if (thumbLongitudinalDimension - 2 >= thumbLateralDimension) {
-            int indent = (thumbCornerArcSize - (thumbLongitudinalDimension - thumbLateralDimension)) / 2;
+            int indent = (thumbCornerArcSize
+                    - (thumbLongitudinalDimension - thumbLateralDimension)) / 2;
             if (indent < 0) {
                 indent = 0;
             }
@@ -1000,44 +1148,38 @@ public class MultiValueScale extends MultiValueLinearControl {
                     thumbLateralDimension - (1 + indent));
             graphics.drawLine(
                     ((thumbLongitudinalDimension - thumbLateralDimension) / 2)
-                            + thumbLateralDimension - 1, indent,
+                            + thumbLateralDimension - 1,
+                    indent,
                     ((thumbLongitudinalDimension - thumbLateralDimension) / 2)
-                            + thumbLateralDimension - 1, thumbLateralDimension
-                            - (1 + indent));
+                            + thumbLateralDimension - 1,
+                    thumbLateralDimension - (1 + indent));
         }
 
         /*
          * Draw the background for the center of the thumb.
          */
-        graphics.setColor(disabled ? BACKGROUND_DISABLED_CENTER_COLOR
-                : BACKGROUND_COLOR);
-        int xOffset = (thumbLongitudinalDimension > thumbLateralDimension ? (thumbLongitudinalDimension - thumbLateralDimension) / 2
-                : 0) + 1;
+        graphics.setColor(
+                disabled ? BACKGROUND_DISABLED_CENTER_COLOR : BACKGROUND_COLOR);
+        int xOffset = (thumbLongitudinalDimension > thumbLateralDimension
+                ? (thumbLongitudinalDimension - thumbLateralDimension) / 2 : 0)
+                + 1;
         int yOffset = (thumbLongitudinalDimension > thumbLateralDimension ? 0
                 : (thumbLateralDimension - thumbLongitudinalDimension) / 2) + 1;
-        graphics.fillRect(
-                xOffset,
-                yOffset,
+        graphics.fillRect(xOffset, yOffset,
                 Math.min(thumbLongitudinalDimension, thumbLateralDimension) - 2,
-                Math.min(thumbLongitudinalDimension, thumbLateralDimension) - 2);
+                Math.min(thumbLongitudinalDimension, thumbLateralDimension)
+                        - 2);
 
         /*
          * Draw the gradient fill for the center of the thumb.
          */
         if (disabled == false) {
-            paintGradient(
-                    graphics,
-                    BORDER_COLOR,
-                    0.04f,
-                    0.25f,
-                    xOffset,
-                    xOffset
-                            + Math.min(thumbLongitudinalDimension,
-                                    thumbLateralDimension) - 3,
-                    yOffset,
-                    yOffset
-                            + Math.min(thumbLongitudinalDimension,
-                                    thumbLateralDimension) - 3, 0);
+            paintGradient(graphics, BORDER_COLOR, 0.04f, 0.25f, xOffset,
+                    xOffset + Math.min(thumbLongitudinalDimension,
+                            thumbLateralDimension) - 3,
+                    yOffset, yOffset + Math.min(thumbLongitudinalDimension,
+                            thumbLateralDimension) - 3,
+                    0);
         }
 
         /*
@@ -1045,10 +1187,14 @@ public class MultiValueScale extends MultiValueLinearControl {
          */
         if (thumbLongitudinalDimension < thumbLateralDimension) {
             int pipOffset = ((thumbLongitudinalDimension - 2) % 3) / 2;
-            for (int y = ((thumbLateralDimension - thumbLongitudinalDimension) / 2)
-                    + 1 + pipOffset; y < ((thumbLateralDimension - thumbLongitudinalDimension) / 2)
-                    + thumbLongitudinalDimension - 2; y += 3) {
-                for (int x = 1 + pipOffset; x < thumbLongitudinalDimension - 2; x += 3) {
+            for (int y = ((thumbLateralDimension - thumbLongitudinalDimension)
+                    / 2)
+                    + 1
+                    + pipOffset; y < ((thumbLateralDimension
+                            - thumbLongitudinalDimension) / 2)
+                            + thumbLongitudinalDimension - 2; y += 3) {
+                for (int x = 1 + pipOffset; x < thumbLongitudinalDimension
+                        - 2; x += 3) {
                     graphics.setColor(BACKGROUND_COLOR);
                     graphics.fillRect(x + 1, y + 1, 2, 2);
                     graphics.setColor(DETAIL_COLOR);
@@ -1058,9 +1204,12 @@ public class MultiValueScale extends MultiValueLinearControl {
         } else {
             int pipOffset = ((thumbLateralDimension - 2) % 3) / 2;
             for (int y = 1 + pipOffset; y < thumbLateralDimension - 2; y += 3) {
-                for (int x = ((thumbLongitudinalDimension - thumbLateralDimension) / 2)
-                        + 1 + pipOffset; x < ((thumbLongitudinalDimension - thumbLateralDimension) / 2)
-                        + thumbLateralDimension - 2; x += 3) {
+                for (int x = ((thumbLongitudinalDimension
+                        - thumbLateralDimension) / 2)
+                        + 1
+                        + pipOffset; x < ((thumbLongitudinalDimension
+                                - thumbLateralDimension) / 2)
+                                + thumbLateralDimension - 2; x += 3) {
                     graphics.setColor(BACKGROUND_COLOR);
                     graphics.fillRect(x + 1, y + 1, 2, 2);
                     graphics.setColor(DETAIL_COLOR);
@@ -1084,23 +1233,40 @@ public class MultiValueScale extends MultiValueLinearControl {
         graphics.dispose();
 
         /*
-         * Convert the image to an SWT image and return it.
+         * Convert the image to an SWT image, add it to the cache, and return
+         * it.
          */
-        return ImageUtilities.convertAwtImageToSwt(awtImage);
+        image = ImageUtilities.convertAwtImageToSwt(awtImage);
+        THUMB_IMAGE_CACHE.add(parameters, image);
+        return image;
     }
 
     /**
-     * Create image to be used for painting the track area by tiling it.
+     * Get the image to be used for painting the track area by tiling it.
      * 
      * @param color
      *            Color to be used for the track area image, or
      *            <code>null</code> if the image should use the default color.
-     * @return Image that was created.
+     * @return Track tile image.
      */
-    private Image createTrackTileImage(Color color) {
+    private Image getTrackTileImage(Color color) {
 
         /*
-         * Make note of whether the default image or a specifically colored
+         * See if the cache has the image; if so, just use it instead of
+         * creating one.
+         */
+        Pair<Integer, RGB> parameters = new Pair<>(trackThickness,
+                (color == null ? null
+                        : new RGB(color.getRed(), color.getGreen(),
+                                color.getBlue())));
+        Image image = TRACK_TILE_IMAGE_CACHE.acquire(parameters);
+        if (image != null) {
+            return image;
+        }
+
+        /*
+         * Since the cache does not have the image, it has to be created. First,
+         * make note of whether the default image or a specifically colored
          * image is to be created, and get the color ready if the latter.
          */
         java.awt.Color awtColor = (color == null ? BORDER_COLOR
@@ -1126,7 +1292,8 @@ public class MultiValueScale extends MultiValueLinearControl {
          * Paint the gradient fill overlay.
          */
         paintGradient(graphics, awtColor, (color == null ? 0.4f : 0.8f),
-                (color == null ? 0.23f : 0.25f), 0, 1, 0, trackThickness - 2, 0);
+                (color == null ? 0.23f : 0.25f), 0, 1, 0, trackThickness - 2,
+                0);
 
         /*
          * Finish up with the graphics object.
@@ -1134,9 +1301,12 @@ public class MultiValueScale extends MultiValueLinearControl {
         graphics.dispose();
 
         /*
-         * Convert the image to an SWT image and return it.
+         * Convert the image to an SWT image, add it to the cache, and return
+         * it.
          */
-        return ImageUtilities.convertAwtImageToSwt(awtImage);
+        image = ImageUtilities.convertAwtImageToSwt(awtImage);
+        TRACK_TILE_IMAGE_CACHE.add(parameters, image);
+        return image;
     }
 
     /**
@@ -1173,8 +1343,8 @@ public class MultiValueScale extends MultiValueLinearControl {
         int yHalfway = ((yEnd + 1 - yStart) / 2) + yStart;
         for (int y = yStart; y <= yEnd; y++) {
             graphics.setColor(new java.awt.Color(rgbComponents[0],
-                    rgbComponents[1], rgbComponents[2], alphaStart
-                            + (alphaOffset * (y - yStart))));
+                    rgbComponents[1], rgbComponents[2],
+                    alphaStart + (alphaOffset * (y - yStart))));
             int xOffset = (cornerIndent)
                     - ((y >= yHalfway ? yEnd + 1 - y : y) + 1);
             if (xOffset < 0) {
@@ -1206,15 +1376,15 @@ public class MultiValueScale extends MultiValueLinearControl {
      */
     private void updateTrackTileImage(int index, Color color) {
         while (trackTileImages.size() < index) {
-            trackTileImages.add(createTrackTileImage(null));
+            trackTileImages.add(getTrackTileImage(null));
         }
         if (trackTileImages.size() == index) {
-            trackTileImages.add(createTrackTileImage(color));
+            trackTileImages.add(getTrackTileImage(color));
         } else {
             if (trackTileImages.get(index) != null) {
-                trackTileImages.get(index).dispose();
+                TRACK_TILE_IMAGE_CACHE.release(trackTileImages.get(index));
             }
-            trackTileImages.set(index, createTrackTileImage(color));
+            trackTileImages.set(index, getTrackTileImage(color));
         }
     }
 }

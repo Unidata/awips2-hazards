@@ -20,7 +20,7 @@
 package com.raytheon.uf.common.hazards.productgen.editable;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -45,6 +45,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jun 18, 2014 3519      jsanchez  Made eventID an array list.
  * Aug 03, 2015 8836      Chris.Cody Changes for a configurable Event Id
  * Nov 04, 2016 22119     Kevin.Bisanz Changes to export product text by officeID
+ * Apr 27, 2017 29776     Kevin.Bisanz Add insertTime
+ * Jun 12, 2017  35022    Kevin.Bisanz Remove productID, add mode, change eventIDs from list to single eventID.
+ * Jun 19, 2017  35022    Kevin.Bisanz Add toString().
  * 
  * </pre>
  * 
@@ -66,7 +69,11 @@ public class ProductText extends PersistableDataObject<CustomTextId>
 
     @Column
     @DynamicSerializeElement
-    private Serializable value;
+    private String value;
+
+    @Column
+    @DynamicSerializeElement
+    private Date insertTime;
 
     /**
      * Intended for serialization only.
@@ -77,11 +84,12 @@ public class ProductText extends PersistableDataObject<CustomTextId>
     /**
      * Constructor to construct the necessary elements.
      */
-    public ProductText(String key, String productCategory, String productID,
-            String segment, ArrayList<String> eventIDs, String officeID,
-            Serializable value) {
-        id = new CustomTextId(key, productCategory, productID, segment,
-                eventIDs, officeID);
+    public ProductText(String key, String productCategory, String mode,
+            String segment, String eventID, String officeID, Date insertTime,
+            String value) {
+        id = new CustomTextId(key, productCategory, mode, segment, eventID,
+                officeID);
+        this.insertTime = insertTime;
         this.value = value;
     }
 
@@ -89,7 +97,7 @@ public class ProductText extends PersistableDataObject<CustomTextId>
      * @return the key
      */
     public String getKey() {
-        return id.key;
+        return this.getId().getKey();
     }
 
     /**
@@ -97,23 +105,23 @@ public class ProductText extends PersistableDataObject<CustomTextId>
      *            the key to set
      */
     public void setKey(String key) {
-        this.id.key = key;
+        this.getId().setKey(key);
     }
 
     public String getProductCategory() {
         return this.getId().getProductCategory();
     }
 
-    public String getProductID() {
-        return this.getId().getProductID();
+    public String getMode() {
+        return this.getId().getMode();
     }
 
     public String getSegment() {
         return this.getId().getSegment();
     }
 
-    public ArrayList<String> getEventIDs() {
-        return this.getId().getEventIDs();
+    public String getEventID() {
+        return this.getId().getEventID();
     }
 
     public String getOfficeID() {
@@ -136,9 +144,24 @@ public class ProductText extends PersistableDataObject<CustomTextId>
     }
 
     /**
+     * @return the insertTime
+     */
+    public Date getInsertTime() {
+        return insertTime;
+    }
+
+    /**
+     * @param insertTime
+     *            the insertTime to set
+     */
+    public void setInsertTime(Date insertTime) {
+        this.insertTime = insertTime;
+    }
+
+    /**
      * @return the value
      */
-    public Serializable getValue() {
+    public String getValue() {
         return value;
     }
 
@@ -146,15 +169,19 @@ public class ProductText extends PersistableDataObject<CustomTextId>
      * @param value
      *            the value to set
      */
-    public void setValue(Serializable value) {
+    public void setValue(String value) {
         this.value = value;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#hashCode()
-     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getEventID()).append("/");
+        sb.append(getKey()).append("/");
+        sb.append(getSegment());
+        return sb.toString();
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -163,11 +190,6 @@ public class ProductText extends PersistableDataObject<CustomTextId>
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -176,12 +198,27 @@ public class ProductText extends PersistableDataObject<CustomTextId>
             return false;
         if (getClass() != obj.getClass())
             return false;
+
         ProductText other = (ProductText) obj;
+
         if (id == null) {
             if (other.id != null)
                 return false;
         } else if (!id.equals(other.id))
             return false;
+
+        if (value == null) {
+            if (other.value != null)
+                return false;
+        } else if (!value.equals(other.value))
+            return false;
+
+        if (insertTime == null) {
+            if (other.insertTime != null)
+                return false;
+        } else if (!insertTime.equals(other.insertTime))
+            return false;
+
         return true;
     }
 }

@@ -51,25 +51,27 @@ def getMetaData(javaHazardEvent, javaMetaDict):
     else:
         return MetaDataAndHazardEvent('{"' + METADATA_KEY + '": [] }', None)
 
-def validate(javaHazardEvent):
+def validate(javaHazardEvents):
     """
-    @param javaHazardEvent: Hazard event from Java. 
+    @param javaHazardEvents: Hazard events from Java. 
     @return: Either None if there are no validation problems, or a string describing
     the problem if there is one.
     """
-   
+    errorMsgs = []
     # Fetch the metadata object that may be used for validation.
-    hazardEvent = JUtil.javaObjToPyVal(javaHazardEvent)
-    metaObject, filePath = HazardMetaDataAccessor.getHazardMetaData(HAZARD_METADATA,
-                                                    hazardEvent.getPhenomenon(),
-                                                    hazardEvent.getSignificance(),
-                                                    hazardEvent.getSubType(),
-                                                    None)
-    
-    # Ensure there is a validate() method, and call it, returning the result.
-    if hasattr(metaObject, "validate") and callable(getattr(metaObject, "validate")):
-        errorMsg = metaObject.validate(hazardEvent)
-        return json.dumps(errorMsg)
-    else:
-        return None
-    
+    for javaEvent in javaHazardEvents:
+        hazardEvent = JUtil.javaObjToPyVal(javaEvent)
+        metaObject, filePath = HazardMetaDataAccessor.getHazardMetaData(HAZARD_METADATA,
+                                                        hazardEvent.getPhenomenon(),
+                                                        hazardEvent.getSignificance(),
+                                                        hazardEvent.getSubType(),
+                                                        None)
+
+        # Ensure there is a validate() method, and call it, returning the result.
+        if hasattr(metaObject, "validate") and callable(getattr(metaObject, "validate")):
+            errorMsg = metaObject.validate(hazardEvent)
+            if errorMsg:
+                errorMsgs.append(errorMsg)
+    if errorMsgs:
+        return "\n\n".join(errorMsgs)
+    return None

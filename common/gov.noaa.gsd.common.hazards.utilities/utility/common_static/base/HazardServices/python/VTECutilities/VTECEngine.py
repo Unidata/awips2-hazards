@@ -19,6 +19,7 @@ segments, VTEC codes, HVTEC codes, and vtecRecords.
 #    Aug  6, 2014    2826        jsanchez         Added boolean flags for issuing and operational mode
 #                                                 instead of hardcoded value.
 #    12/09/14        2826          dgilling       Revert previous changes.
+#    Oct 29, 2015    11864        Robert.Blum     WarnGen endTime/ExpirationTime changes.
 #    Mar 08, 2016    15016        Kevin.Bisanz    Verify VTEC of FL.A has
 #                                                 floodSeverity=0 in
 #                                                 _convertEventsToVTECrecords(...)
@@ -1253,23 +1254,32 @@ class VTECEngine(VTECTableUtil):
 
                 d['hvtec'] = hvtec
 
-                # mktime works since TZ is explicitly set to GMTO
-                d['startTime'] = float(time.mktime(hazardEvent.getStartTime().timetuple()))
-
-                # mktime works since TZ is explicitly set to GMTO
-                d['endTime'] = float(time.mktime(hazardEvent.getEndTime().timetuple()))
-
                 d['act'] = '???'   #Determined after merges
                 d['etn'] = hazardEvent.get('forceEtn', '???')
                 d['seg'] = hazardEvent.get('forceSeg', 0)
                 d['phen'] = phen    #form XX.Y where XX is phen
                 d['sig'] = sig   #form XX.Y where Y is sig
-                d['phensig'] = phen+'.'+sig
+                phensig = phen + '.' + sig
+                d['phensig'] = phensig
                 d['subtype'] = subtype
                 d['hdln'] = self._vtecDef.hazards[key]['headline']
                 d['ufn'] = hazardEvent.get('ufn', 0)
                 if geoType == 'point':
                     d['pointID'] = hazardEvent.get('pointID')
+
+                startTime = time.mktime(hazardEvent.getStartTime().timetuple())
+                startTime = ((int(startTime) / 60) * 60)
+                d['startTime'] = startTime
+
+                endTime = None
+                if phensig in ['FF.W', 'FA.W', 'FA.Y']:
+                    # WarnGen Hazard
+                    endTime = hazardEvent.getExpirationTime()
+                if not endTime:
+                    endTime = hazardEvent.getEndTime()
+                endTime = time.mktime(endTime.timetuple())
+                endTime = ((int(endTime) / 60) * 60)
+                d['endTime'] = endTime
 
                 rval.append(d)
                 

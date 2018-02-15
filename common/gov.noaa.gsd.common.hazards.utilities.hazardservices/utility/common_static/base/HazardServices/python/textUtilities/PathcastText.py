@@ -82,11 +82,16 @@ class PathcastText(object):
                     tpTime = tpTime.replace(tzinfo=tz.tzutc())
                     localTime = tpTime.astimezone(self.localTimeZone)
                     localTime = self.tpc.round(localTime, roundMinute=5)
-                    pathcastString = pathcastString + " around " +  localTime.strftime("%I%M %p %Z") + ".\n"
+                    fmtTime = localTime.strftime("%I%M %p %Z")
+                    if fmtTime[0] == '0' :
+                        fmtTime = fmtTime[1:]
+                    pathcastString = pathcastString + " around " + fmtTime + ".\n"
             ###NOW SEARCH FOR OTHER POINTS (PRESUMABLY 3s) AND LIST THEM HERE
             numOtherPoints = len(self.otherPoints)
             if numOtherPoints > 0:
-                pathcastString += "\nOther locations impacted by " + otherLead.capitalize() + " include "
+                # Focal points assert that otherLead will never be proper noun, so add .lower()
+                # in case of inadvertant use of all upper case.
+                pathcastString += "\nOther locations impacted by " + otherLead.lower() + " include "
                 strippedLocs = [loc.strip() for loc in self.otherPoints]
                 pathcastString += self.tpc.formatDelimitedList(strippedLocs, ', ')
                 pathcastString += '.'

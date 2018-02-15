@@ -16,8 +16,11 @@ import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.FilterIcons;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -53,6 +56,7 @@ import net.engio.mbassy.listener.Handler;
  *                                           would necessitate the recreation of the
  *                                           dialog.
  * Nov 17, 2015 11776      Roger.Ferrel      Use the {@link ISaveAs} interface.
+ * May 11, 2016 16374      mpduff            Add filter indicator toolbar buttons.
  * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
  *                                           mutable session events.
  * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
@@ -102,16 +106,29 @@ public class SettingsPresenter
     }
 
     /**
-     * Respond to a new settings object being loaded.
+     * Receive notification of session event modifications.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void settingsLoaded(SettingsLoaded change) {
+    public void sessionEventsModified(SessionEventsModified change) {
+        updateFilters();
+    }
+
+    /**
+     * Respond to a settings object being modified.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void settingsModified(SettingsModified change) {
         getView().setFilterFields(
                 getModel().getConfigurationManager().getFilterConfig());
-        if (getView().isSettingDetailExisting()) {
+        updateFilters();
+        if ((change instanceof SettingsLoaded)
+                && getView().isSettingDetailExisting()) {
             getView().deleteSettingDetail();
             showSettingDetail(new ISaveAs() {
 
@@ -157,10 +174,12 @@ public class SettingsPresenter
     protected void initialize(ISettingsView<?, ?, ?> view) {
         ObservedSettings settings = getModel().getConfigurationManager()
                 .getSettings();
+        FilterIcons filterIconList = getModel().getConfigurationManager()
+                .getFilterIcons();
         view.initialize(this,
                 getModel().getConfigurationManager().getAvailableSettings(),
                 getModel().getConfigurationManager().getFilterConfig(),
-                settings);
+                settings, filterIconList);
     }
 
     @Override
@@ -193,5 +212,13 @@ public class SettingsPresenter
         }
         params[2] = 1.0 / display.getZoom();
         return params;
+    }
+
+    /**
+     * Update the filter indicators.
+     */
+    private void updateFilters() {
+        getView().updateFilterSettings(
+                getModel().getEventManager().getFilteredEvents());
     }
 }

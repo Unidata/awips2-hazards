@@ -14,7 +14,6 @@ import java.util.Date;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.message.WsId;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -33,6 +32,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * ------------ ---------- ------------ --------------------------
  * Dec 11, 2017   20739    Chris.Golden Initial creation.
  * Jan 26, 2018   33428    Chris.Golden Added issuance count.
+ * Mar 23, 2018   11864    Chris.Golden Added getExpirationTime().
+ * May 14, 2018   15561    Chris.Golden Added toString().
  * </pre>
  *
  * @author golden
@@ -106,6 +107,11 @@ public class HazardEventView implements IHazardEventView {
     }
 
     @Override
+    public String getIssueSiteID() {
+        return event.getIssueSiteID();
+    }
+
+    @Override
     public String getEventID() {
         return event.getEventID();
     }
@@ -161,13 +167,13 @@ public class HazardEventView implements IHazardEventView {
     }
 
     @Override
-    public WsId getWsId() {
-        return event.getWsId();
+    public Date getExpirationTime() {
+        return event.getExpirationTime();
     }
 
     @Override
-    public ProductClass getHazardMode() {
-        return event.getHazardMode();
+    public WsId getWsId() {
+        return event.getWsId();
     }
 
     @Override
@@ -183,5 +189,10 @@ public class HazardEventView implements IHazardEventView {
     @Override
     public Serializable getHazardAttribute(String key) {
         return event.getHazardAttribute(key);
+    }
+
+    @Override
+    public String toString() {
+        return event.toString();
     }
 }

@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,8 +64,10 @@ import com.google.common.collect.ImmutableSet;
  *                                           children when it is disabled.
  * Jun 24, 2014    4010    Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
- * Oct 22, 2014   5050     Chris.Golden      Minor change: Fixed building of
+ * Oct 22, 2014    5050    Chris.Golden      Minor change: Fixed building of
  *                                           MUTABLE_PROPERTY_NAMES.
+ * Mar 28, 2017   32461    Roger.Ferrel      Keep selection (state) list in same
+ *                                           order as checked boxes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -109,6 +112,12 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * Map pairing possible state values (that is, the values of each of the
+     * checkboxes) with their ordinals.
+     */
+    private final Map<String, Integer> ordinalsForStateValues;
+
     // Protected Constructors
 
     /**
@@ -144,19 +153,40 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
                 Button checkBox = (Button) e.widget;
                 String choice = ((ChoiceButtonComponent) checkBox.getData())
                         .getChoice();
+
+                /*
+                 * If something is to be added to the state, insert it at the
+                 * appropriate point in the list of existing choices, since the
+                 * choices should be ordered in the same way they were specified
+                 * as checkboxes. Otherwise, remove it from the list of existing
+                 * choices.
+                 */
                 if (checkBox.getSelection()) {
-                    state.add(choice);
+                    int ordinal = ordinalsForStateValues.get(choice);
+                    int index = 0;
+                    for (String oldChoice : state) {
+                        if (ordinalsForStateValues.get(oldChoice) > ordinal) {
+                            break;
+                        }
+                    }
+                    state.add(index, choice);
                 } else {
                     state.remove(choice);
                 }
-                notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(
-                        state));
+                notifyListener(getSpecifier().getIdentifier(),
+                        new ArrayList<>(state));
             }
         };
-        this.childManager = (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new BoundedChoicesDetailChildrenManager(
-                listener, paramMap) : null);
+        this.childManager = (specifier.getChildMegawidgetSpecifiers().size() > 0
+                ? new BoundedChoicesDetailChildrenManager(listener, paramMap)
+                : null);
         this.checkBoxes = UiBuilder.buildChoiceButtons(panel, specifier,
                 SWT.CHECK, childManager, listener);
+        this.ordinalsForStateValues = new HashMap<>(checkBoxes.size(), 1.0f);
+        int index = 0;
+        for (ChoiceButtonComponent checkBox : this.checkBoxes) {
+            this.ordinalsForStateValues.put(checkBox.getChoice(), index++);
+        }
 
         /*
          * Make the widgets read-only if the megawidget is not editable.

@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.hazards.productgen.editable;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -46,6 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 03, 2015 8836       Chris.Cody  Changes for a configurable Event Id
  * Sep 23, 2016 21734      mark.fegan Change segment type to "text"
  * Nov 04, 2016 22119      Kevin.Bisanz Add officeID.
+ * Jun 12, 2017 35022      Kevin.Bisanz Remove productID, add mode, eventIDs is now eventID (String)
  * 
  * </pre>
  * 
@@ -59,7 +59,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
-    String key;
+    private String key;
 
     @Column
     @DynamicSerializeElement
@@ -67,7 +67,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
-    private String productID;
+    private String mode;
 
     @Column(columnDefinition = "text")
     @DynamicSerializeElement
@@ -75,7 +75,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
-    private ArrayList<String> eventIDs;
+    private String eventID;
 
     @Column
     @DynamicSerializeElement
@@ -87,13 +87,13 @@ public class CustomTextId implements ISerializableObject, Serializable {
     public CustomTextId() {
     }
 
-    public CustomTextId(String key, String productCategory, String productID,
-            String segment, ArrayList<String> eventIDs, String officeID) {
+    public CustomTextId(String key, String productCategory, String mode,
+            String segment, String eventID, String officeID) {
         this.key = key;
         this.productCategory = productCategory;
-        this.productID = productID;
+        this.mode = mode;
         this.segment = segment;
-        this.eventIDs = eventIDs;
+        this.eventID = eventID;
         this.officeID = officeID;
     }
 
@@ -128,18 +128,18 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     /**
-     * @return the productID
+     * @return the mode
      */
-    public String getProductID() {
-        return productID;
+    public String getMode() {
+        return mode;
     }
 
     /**
-     * @param productID
-     *            the productID to set
+     * @param mode
+     *            the mode to set
      */
-    public void setProductID(String productID) {
-        this.productID = productID;
+    public void setMode(String mode) {
+        this.mode = mode;
     }
 
     /**
@@ -158,18 +158,18 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     /**
-     * @return the eventIDs
+     * @return the eventID
      */
-    public ArrayList<String> getEventIDs() {
-        return eventIDs;
+    public String getEventID() {
+        return eventID;
     }
 
     /**
-     * @param eventIDs
-     *            the eventIDs to set
+     * @param eventID
+     *            the eventID to set
      */
-    public void setEventIDs(ArrayList<String> eventIDs) {
-        this.eventIDs = eventIDs;
+    public void setEventID(String eventID) {
+        this.eventID = eventID;
     }
 
     /**
@@ -191,13 +191,11 @@ public class CustomTextId implements ISerializableObject, Serializable {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result
-                + ((eventIDs == null) ? 0 : eventIDs.hashCode());
+        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
         result = prime * result
                 + ((productCategory == null) ? 0 : productCategory.hashCode());
-        result = prime * result
-                + ((productID == null) ? 0 : productID.hashCode());
+        result = prime * result + ((mode == null) ? 0 : mode.hashCode());
         result = prime * result + ((segment == null) ? 0 : segment.hashCode());
         result = prime * result
                 + ((officeID == null) ? 0 : officeID.hashCode());
@@ -213,10 +211,10 @@ public class CustomTextId implements ISerializableObject, Serializable {
         if (getClass() != obj.getClass())
             return false;
         CustomTextId other = (CustomTextId) obj;
-        if (eventIDs == null) {
-            if (other.eventIDs != null)
+        if (eventID == null) {
+            if (other.eventID != null)
                 return false;
-        } else if (!eventIDs.equals(other.eventIDs))
+        } else if (!eventID.equals(other.eventID))
             return false;
         if (key == null) {
             if (other.key != null)
@@ -228,10 +226,10 @@ public class CustomTextId implements ISerializableObject, Serializable {
                 return false;
         } else if (!productCategory.equals(other.productCategory))
             return false;
-        if (productID == null) {
-            if (other.productID != null)
+        if (mode == null) {
+            if (other.mode != null)
                 return false;
-        } else if (!productID.equals(other.productID))
+        } else if (!mode.equals(other.mode))
             return false;
         if (segment == null) {
             if (other.segment != null)

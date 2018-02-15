@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.recommenders;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +31,11 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonInterpreterFactory;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.executors.EntireRecommenderExecutor;
+import com.raytheon.uf.common.recommenders.executors.MutablePropertiesAndVisualFeatures;
+import com.raytheon.uf.common.recommenders.executors.RecommenderCheckSpatialInfoExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderDialogInfoExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderExecutor;
+import com.raytheon.uf.common.recommenders.executors.RecommenderHandleDialogParameterChangeExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderInventoryExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderLoaderInventoryExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderMetadataExecutor;
@@ -64,9 +68,15 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      return a single recommender.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Dec 16, 2015 14019      Robert.Blum  Updates for new PythonJobCoordinator API.
  * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
  * Oct 20, 2016 22519      Kevin.Bisanz Set coordinator to null in shutdownEngine().
+ * May 22, 2018  3782      Chris.Golden Changed recommender parameter gathering to be
+ *                                      much more flexible, allowing the user to change
+ *                                      dialog parameters together with visual features,
+ *                                      and allowing visual feature changes to be made
+ *                                      multiple times before the execution proceeds.
  * </pre>
  * 
  * @author mnash
@@ -166,6 +176,51 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
 
     /**
      * This method may do different things depending on the implementation.
+     * Subclasses answer based upon what the recommender requests, or possibly
+     * read from a configuration file, etc.
+     * 
+     * @param recommenderName
+     *            Name of the recommender.
+     * @param eventSet
+     *            Event set providing context for this request.
+     * @param triggeringDialogIdentifiers
+     *            Set of identifiers of megawidgets within the dialog that have
+     *            been invoked or experienced a state change, if any.
+     * @param mutableDialogProperties
+     *            Mutable properties of the megawidgets within the dialog.
+     * @param triggeringVisualFeatureIdentifiers
+     *            List of identifiers of visual features that have experienced a
+     *            state change, if any.
+     * @param visualFeatures
+     *            Visual features to be passed in, if any.
+     * @param collecting
+     *            Flag indicating whether or not the visual features to be
+     *            generated are to be used for collecting information.
+     * @return <code>true</code> if the specified spatial info is complete,
+     *         <code>false</code> otherwise.
+     */
+    public MutablePropertiesAndVisualFeatures handleDialogParameterChange(
+            String recommenderName, EventSet<IEvent> eventSet,
+            Collection<String> triggeringDialogIdentifiers,
+            Map<String, Map<String, Object>> mutableDialogProperties,
+            Collection<String> triggeringVisualFeatureIdentifiers,
+            VisualFeaturesList visualFeatures, boolean collecting) {
+        IPythonExecutor<P, MutablePropertiesAndVisualFeatures> executor = new RecommenderHandleDialogParameterChangeExecutor<P>(
+                recommenderName, eventSet, triggeringDialogIdentifiers,
+                mutableDialogProperties, triggeringVisualFeatureIdentifiers,
+                visualFeatures, collecting);
+        try {
+            return getCoordinator().submitJob(executor).get();
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to submit job to check spatial information completeness",
+                    e);
+        }
+        return new MutablePropertiesAndVisualFeatures();
+    }
+
+    /**
+     * This method may do different things depending on the implementation.
      * Subclasses create visual features based upon what the recommender
      * requests, or possibly read from a file.
      * 
@@ -173,13 +228,21 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      *            Name of the recommender.
      * @param eventSet
      *            Event set providing context for this request.
+     * @param visualFeatures
+     *            Visual features to be passed in, if any.
+     * @param collecting
+     *            Flag to be passed in indicating whether the user is to be
+     *            asked for information (<code>true</code>) or simply shown
+     *            information (<code>false</code>). If <code>null</code>, no
+     *            flag is to be passed.
      * @return List of visual features to be used to get spatial input from the
-     *         user; if empty, no spatial input is needed.
+     *         user, if any.
      */
     public VisualFeaturesList getSpatialInfo(String recommenderName,
-            EventSet<IEvent> eventSet) {
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
+            boolean collecting) {
         IPythonExecutor<P, VisualFeaturesList> executor = new RecommenderSpatialInfoExecutor<P>(
-                recommenderName, eventSet);
+                recommenderName, eventSet, visualFeatures, collecting);
         try {
             return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
@@ -187,6 +250,34 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
                     "Unable to submit job to get spatial information", e);
         }
         return null;
+    }
+
+    /**
+     * This method may do different things depending on the implementation.
+     * Subclasses answer based upon what the recommender requests, or possibly
+     * read from a configuration file, etc.
+     * 
+     * @param recommenderName
+     *            Name of the recommender.
+     * @param eventSet
+     *            Event set providing context for this request.
+     * @param visualFeatures
+     *            Visual features to be passed in, if any.
+     * @return <code>true</code> if the specified spatial info is complete,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isSpatialInfoComplete(String recommenderName,
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures) {
+        IPythonExecutor<P, Boolean> executor = new RecommenderCheckSpatialInfoExecutor<P>(
+                recommenderName, eventSet, visualFeatures);
+        try {
+            return getCoordinator().submitJob(executor).get();
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to submit job to check spatial information completeness",
+                    e);
+        }
+        return true;
     }
 
     /**

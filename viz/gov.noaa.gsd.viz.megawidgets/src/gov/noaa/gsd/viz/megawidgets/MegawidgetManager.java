@@ -476,7 +476,7 @@ public class MegawidgetManager {
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener)
-                    throws MegawidgetException {
+            throws MegawidgetException {
         this(parent, specifiers, state, managerListener, null);
     }
 
@@ -554,7 +554,7 @@ public class MegawidgetManager {
             MegawidgetSpecifierManager specifierManager,
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener)
-                    throws MegawidgetException {
+            throws MegawidgetException {
         baseMegawidgets = construct(parent, IMenu.class, specifierManager,
                 state, managerListener, null, 0L, 0L);
     }
@@ -606,7 +606,7 @@ public class MegawidgetManager {
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener, long minVisibleTime,
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
-                    throws MegawidgetException {
+            throws MegawidgetException {
         this(parent, specifiers, state, managerListener, minVisibleTime,
                 maxVisibleTime, currentTimeProvider, null, null);
     }
@@ -666,7 +666,7 @@ public class MegawidgetManager {
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
             ISideEffectsApplier sideEffectsApplier,
             ISideEffectsProcessor sideEffectsProcessor)
-                    throws MegawidgetException {
+            throws MegawidgetException {
         this(parent,
                 new MegawidgetSpecifierManager(specifiers,
                         IControlSpecifier.class, currentTimeProvider,
@@ -907,7 +907,7 @@ public class MegawidgetManager {
      */
     public final void setMutableProperties(
             Map<String, Map<String, Object>> mutableProperties)
-                    throws MegawidgetPropertyException {
+            throws MegawidgetPropertyException {
 
         /*
          * Set the mutable properties, finding out what states changed in the

@@ -24,19 +24,19 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.L
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.message.WsId;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -69,15 +69,22 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance)
  *                                      where appropriate.
+ * Jan 27, 2017 22308      Robert.Blum  Added parseETNsToIntegers().
  * Feb 16, 2017 29138      Chris.Golden Changed to work with new version of the
  *                                      hazard event manager.
+ * Feb 16, 2017 28708      mduff        Removed unused methods.
  * Mar 06, 2017 21504      Robert.Blum  Added compareWsIds() to compare two such
  *                                      objects ignoring their thread identifiers.
+ * Mar 13, 2017 28708      mduff        Added SiteId.
  * Apr 13, 2017 33142      Chris.Golden Added method to construct a string
  *                                      holding a hazard type given an array of
  *                                      strings giving the phen, sig, etc.
+ * May 18, 2017 34031      mduff        Added getElapsedTime.
+ * May 24, 2017 34069      mduff        Elapse time now based on end time.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
  *                                      mutable session events.
+ * May 01, 2018 15561      Chris.Golden Fixed getPhenSig() to return null if no
+ *                                      phenomenon is present.
  * </pre>
  * 
  * @author bsteffen
@@ -275,6 +282,13 @@ public class HazardEventUtilities {
         HAZARD_PARAMETER_DESCRIBERS_FOR_NAMES = ImmutableMap.copyOf(map);
     }
 
+    // Private Static Variables
+
+    /**
+     * Site identifier.
+     */
+    private static String siteIdentifier;
+
     // Public Static Methods
 
     /**
@@ -342,8 +356,12 @@ public class HazardEventUtilities {
      * @return Phen-sig.
      */
     public static String getHazardPhenSig(IReadableHazardEvent event) {
+        String phen = event.getPhenomenon();
+        if (phen == null) {
+            return null;
+        }
         String sig = event.getSignificance();
-        return event.getPhenomenon() + (sig != null ? "." + sig : "");
+        return phen + (sig != null ? "." + sig : "");
     }
 
     /**
@@ -502,36 +520,13 @@ public class HazardEventUtilities {
         return parsed;
     }
 
-    public static String determineEtn(String site, String action, String etn,
-            IHazardEventManager manager) throws Exception {
-        // make a request for the hazard event id from the cluster task
-        // table
-        String value = "";
-        boolean createNew = false;
-        if (HazardConstants.NEW_ACTION.equals(action) == false) {
-            Map<String, HazardHistoryList> map = manager
-                    .getHistoryBySiteID(site, true);
-            for (Entry<String, HazardHistoryList> entry : map.entrySet()) {
-                HazardHistoryList list = entry.getValue();
-                for (IHazardEvent ev : list) {
-                    List<String> hazEtns = HazardEventUtilities
-                            .parseEtns(String.valueOf(ev
-                                    .getHazardAttribute(HazardConstants.ETNS)));
-                    List<String> recEtn = HazardEventUtilities.parseEtns(etn);
-                    if (compareEtns(hazEtns, recEtn)) {
-                        value = ev.getEventID();
-                        break;
-                    }
-                }
-            }
-            if ("".equals(value)) {
-                createNew = true;
-            }
+    public static List<Integer> parseEtnsToIntegers(String etns) {
+        List<String> entStrList = parseEtns(etns);
+        List<Integer> etnList = new ArrayList<>(entStrList.size());
+        for (String etn : entStrList) {
+            etnList.add(Integer.parseInt(etn.trim()));
         }
-        if ("NEW".equals(action) || createNew) {
-            value = HazardServicesEventIdUtil.getNewEventID();
-        }
-        return value;
+        return etnList;
     }
 
     public static Geometry getProductGeometry(IHazardEvent hazardEvent) {
@@ -568,33 +563,50 @@ public class HazardEventUtilities {
         return true;
     }
 
-    // Private Static Methods.
-
     /**
-     * Compare the two specified lists of ETNS to determine whether any of those
-     * in the first list are also in the second list. The lists may be different
-     * lengths.
+     * Get the site identifier.
      * 
-     * @param etns1
-     *            First list of ETNs.
-     * @param etns2
-     *            Second list of ETNs.
-     * @return False if there is at least one ETN is found in both lists.
+     * @return Site identifier.
      */
-    private static boolean compareEtns(List<String> etns1, List<String> etns2) {
-        for (String etn1 : etns1) {
-            if (etn1 != null && etn1.isEmpty() == false) {
-                for (String etn2 : etns2) {
-                    if (etn2 != null && etn2.isEmpty() == false) {
-                        if (Integer.valueOf(etn1)
-                                .equals(Integer.valueOf(etn2))) {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-        return true;
+    public static String getSiteIdentifier() {
+        return siteIdentifier;
     }
 
+    /**
+     * Set the site identifier.
+     * 
+     * @param siteIdentifier
+     *            Site identifier.
+     */
+    public static void setSiteIdentifier(String siteIdentifier) {
+        HazardEventUtilities.siteIdentifier = siteIdentifier;
+    }
+
+    /**
+     * Return the time that the provided event will become elapsed.
+     * 
+     * @param event
+     *            The hazard event to check
+     * @param hazardTypeEntry
+     *            The {@link HazardTypeEntry} of the event
+     * @return The time the event elapses
+     */
+    public static Date getElapseTime(IReadableHazardEvent event,
+            HazardTypeEntry hazardTypeEntry) {
+
+        if (event == null) {
+            throw new IllegalArgumentException(
+                    "Unable to determine elapse time for null event.");
+        }
+        Date endTime = event.getEndTime();
+        Calendar endCal = TimeUtil.newGmtCalendar(endTime);
+        if (hazardTypeEntry != null) {
+            int[] expirationTime = hazardTypeEntry.getExpirationTime();
+            if (expirationTime != null && expirationTime.length == 2) {
+                endCal.add(Calendar.MINUTE, expirationTime[1]);
+            }
+        }
+
+        return endCal.getTime();
+    }
 }

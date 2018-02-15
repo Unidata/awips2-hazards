@@ -72,6 +72,7 @@ import com.raytheon.uf.edex.site.SiteAwareRegistry;
  * Jan 28, 2015   2826     dgilling     Initial creation
  * Aug 20, 2015   6895     Ben.Phillippe Routing registry requests through
  *                                       request server
+ * Oct 29, 2015  11864     Robert.Blum  Changed to use new expirationTime field.
  * May 06, 2016  18202     Robert.Blum  Changes for operational mode.
  * Feb 16, 2017  29138     Chris.Golden Changed to work with new hazard
  *                                      event manager.
@@ -205,16 +206,16 @@ public abstract class AbstractLegacyAppInteropSrv {
                                     activeTableRecord);
                     interopDao.create(interopRecord);
                 }
-                HazardEventServicesSoapClient.getServices(practice).store(
-                        hazardEvent);
+                HazardEventServicesSoapClient.getServices(practice)
+                        .store(hazardEvent);
             } else if (activeTableRecordsFound == interopRecordsFound) {
                 for (ActiveTableRecord activeTableRecord : activeTableRecords) {
                     ActiveTableKey activeTableId = activeTableRecord.getKey();
                     boolean found = false;
                     for (HazardInteroperabilityRecord interopRecord : interopRecords) {
                         // FIXME: activeTableId is no longer an integer
-                        if (activeTableId.equals(interopRecord
-                                .getActiveTableEventID())) {
+                        if (activeTableId.equals(
+                                interopRecord.getActiveTableEventID())) {
                             found = true;
                             break;
                         }
@@ -396,7 +397,7 @@ public abstract class AbstractLegacyAppInteropSrv {
             final AbstractWarningRecord warningRecord)
             throws HazardsInteroperabilityException {
 
-        HazardEvent event = new HazardEvent();
+        HazardEvent event = new HazardEvent(practice);
         String value;
         try {
             value = determineEtn(practice, warningRecord.getXxxid(),
@@ -411,17 +412,14 @@ public abstract class AbstractLegacyAppInteropSrv {
         event.setStartTime(warningRecord.getStartTime().getTime());
         event.setEndTime(warningRecord.getEndTime().getTime());
         event.setCreationTime(warningRecord.getIssueTime().getTime());
+        event.setExpirationTime(warningRecord.getPurgeTime().getTime());
         event.setPhenomenon(warningRecord.getPhen());
         event.setSignificance(warningRecord.getSig());
         event.setSiteID(warningRecord.getXxxid());
-        event.setHazardMode(HazardConstants
-                .productClassFromAbbreviation(warningRecord.getProductClass()));
-        event.setStatus(HazardEventUtilities.stateBasedOnAction(warningRecord
-                .getAct()));
-        attrs.put(HazardConstants.ISSUE_TIME, warningRecord.getIssueTime()
-                .getTime().getTime());
-        attrs.put(HazardConstants.EXPIRATION_TIME, warningRecord.getPurgeTime()
-                .getTime().getTime());
+        event.setStatus(HazardEventUtilities
+                .stateBasedOnAction(warningRecord.getAct()));
+        attrs.put(HazardConstants.ISSUE_TIME,
+                warningRecord.getIssueTime().getTime().getTime());
         attrs.put(HazardConstants.ETNS,
                 buildSerializableCollection(warningRecord.getEtn()));
         attrs.put(HazardConstants.VTEC_CODES,
@@ -461,8 +459,8 @@ public abstract class AbstractLegacyAppInteropSrv {
             attrs.put(HazardConstants.FLOOD_IMMEDIATE_CAUSE, immediateCause);
         }
 
-        attrs.put(HazardConstants.HAZARD_SOURCE_APP, this
-                .getInteroperabilityType().toString());
+        attrs.put(HazardConstants.HAZARD_SOURCE_APP,
+                this.getInteroperabilityType().toString());
 
         try {
             addAppSpecificHazardAttributes(event, warningRecord, attrs);
@@ -485,8 +483,9 @@ public abstract class AbstractLegacyAppInteropSrv {
         if (HazardConstants.NEW_ACTION.equals(action)) {
             value = eventServices.requestEventId(site);
         } else {
-            List<HazardEvent> events = eventServices.retrieveByParams(
-                    HazardConstants.SITE_ID, site).getEvents();
+            List<HazardEvent> events = eventServices
+                    .retrieveByParams(HazardConstants.SITE_ID, site)
+                    .getEvents();
             for (IHazardEvent ev : events) {
                 List<String> hazEtns = HazardEventUtilities.parseEtns(String
                         .valueOf(ev.getHazardAttribute(HazardConstants.ETNS)));
@@ -518,7 +517,8 @@ public abstract class AbstractLegacyAppInteropSrv {
             if (etn1 != null && etn1.isEmpty() == false) {
                 for (String etn2 : etns2) {
                     if (etn2 != null && etn2.isEmpty() == false) {
-                        if (Integer.valueOf(etn1).equals(Integer.valueOf(etn2))) {
+                        if (Integer.valueOf(etn1)
+                                .equals(Integer.valueOf(etn2))) {
                             return false;
                         }
                     }

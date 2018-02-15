@@ -32,8 +32,6 @@ import java.util.regex.Pattern;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
@@ -44,13 +42,16 @@ import com.raytheon.uf.common.activetable.SendPracticeProductRequest;
 import com.raytheon.uf.common.dataplugin.text.AfosWmoIdDataContainer;
 import com.raytheon.uf.common.dataplugin.text.db.AfosToAwips;
 import com.raytheon.uf.common.dataplugin.text.request.GetAfosIdRequest;
+import com.raytheon.uf.common.dataplugin.text.request.InsertStdTextProductRequest;
 import com.raytheon.uf.common.dissemination.OUPRequest;
 import com.raytheon.uf.common.dissemination.OfficialUserProduct;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.raytheon.uf.common.site.SiteMap;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.wmo.AFOSProductId;
 
 /**
  * Utility class to help display generated products.
@@ -76,6 +77,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Mar 09, 2016 14035      Kevin.Bisanz Fix wrapping/indenting to handle case
  *                                      of bullet containing newline.
  * Apr 27, 2016 17742      Roger.Ferrel Added {@link #getDataElement(Map, String[])}.
+ * Jun 01, 2017 33735      Kevin.Bisanz Save product text to practicestdtextproducts table in fxatext DB.
  * </pre>
  * 
  * @author jsanchez
@@ -94,16 +96,16 @@ public class ProductUtils {
 
     private static final String BULLET_START = "* ";
 
-    private static final Pattern wrapUgcPtrn = Pattern.compile("(\\S{1,"
-            + (MAX_WIDTH - 1) + "}-)");
+    private static final Pattern wrapUgcPtrn = Pattern
+            .compile("(\\S{1," + (MAX_WIDTH - 1) + "}-)");
 
-    private static final Pattern wrapListOfNamesPtrn = Pattern.compile("(.{1,"
-            + (MAX_WIDTH - 4) + "} \\w{2}-)");
+    private static final Pattern wrapListOfNamesPtrn = Pattern
+            .compile("(.{1," + (MAX_WIDTH - 4) + "} \\w{2}-)");
 
     // Locations in 4th bullet or locations paragraph of followup
     // ex: ellipsis, spaces, period
-    private static final Pattern wrapDefaultPtrn = Pattern
-            .compile("(\\w{1,}\\.\\.\\.)|(AND \\w+\\.\\.\\.)|(\\w+\\.\\.\\.\\s{1,2})|\\S+\\.\\.\\.|"
+    private static final Pattern wrapDefaultPtrn = Pattern.compile(
+            "(\\w{1,}\\.\\.\\.)|(AND \\w+\\.\\.\\.)|(\\w+\\.\\.\\.\\s{1,2})|\\S+\\.\\.\\.|"
                     + "(\\s*\\S+\\s+)|(.+\\.)|(\\S+$)");
 
     // ugc pattern
@@ -114,7 +116,7 @@ public class ProductUtils {
     private static final Pattern listOfAreaNamePtrn = Pattern
             .compile("^((((\\w+\\s{1})+\\w{2}-)*((\\w+\\s{1})+\\w{2}-)))");
 
-    private static Pattern wmoHeaderPattern = Pattern
+    private static final Pattern wmoHeaderPattern = Pattern
             .compile("(\\w{4}\\d{2}) (\\w{4})");
 
     /**
@@ -123,8 +125,6 @@ public class ProductUtils {
      * 
      * @param xml
      * @return
-     * @throws TransformerConfigurationException
-     * @throws TransformerException
      */
     public static String prettyXML(String xml, boolean includeVersion) {
 
@@ -279,11 +279,17 @@ public class ProductUtils {
     /**
      * Disseminates the text product via the OUPRequest.
      * 
+     * @param pil
+     *            PIL of this product
+     * @param site3
+     *            Three letter site ID issuing this product
      * @param product
+     *            Full text of the product
      * @param operational
+     *            Flag indicating operational mode
      */
-    public static void disseminate(String product, boolean operational) {
-
+    public static void disseminate(String pil, String site3, String product,
+            boolean operational) {
         try {
             if (operational) {
                 String awipsWanPil = null;
@@ -306,8 +312,8 @@ public class ProductUtils {
 
                 SimpleDateFormat formatter = new SimpleDateFormat("ddHHmm");
                 formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-                String userDateTimeStamp = formatter.format(SimulatedTime
-                        .getSystemTime().getTime());
+                String userDateTimeStamp = formatter
+                        .format(SimulatedTime.getSystemTime().getTime());
 
                 OfficialUserProduct oup = new OfficialUserProduct();
                 oup.setAwipsWanPil(awipsWanPil);
@@ -316,8 +322,8 @@ public class ProductUtils {
                 oup.setSource("HazardServices");
                 oup.setWmoType("");
                 oup.setUserDateTimeStamp(userDateTimeStamp);
-                oup.setFilename(awipsID + ".wan"
-                        + (System.currentTimeMillis() / 1000));
+                oup.setFilename(
+                        awipsID + ".wan" + (System.currentTimeMillis() / 1000));
                 oup.setAddress("ALL");
 
                 OUPRequest req = new OUPRequest();
@@ -332,16 +338,53 @@ public class ProductUtils {
                     DateFormat dateFormatter = new SimpleDateFormat(
                             "yyyyMMdd_HHmm");
                     dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-                    req.setDrtString(dateFormatter.format(SimulatedTime
-                            .getSystemTime().getTime()));
+                    req.setDrtString(dateFormatter
+                            .format(SimulatedTime.getSystemTime().getTime()));
                 }
 
                 RequestRouter.route(req);
+
+                storePracticeProductText(pil, site3, product);
             }
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Error transmitting text product", e);
         }
+    }
+
+    /**
+     * Store a practice product to the practicestdtextproducts table in the
+     * fxatext database.
+     *
+     * Operational products should not be stored with this method because they
+     * are stored to stdtextproducts when they are handled by
+     * com.raytheon.uf.edex.dissemination.OUPHandler and
+     * com.raytheon.uf.edex.plugin.text.TextDecoder.
+     *
+     * @param pil
+     *            PIL of this product
+     * @param site3
+     *            Three letter site ID issuing this product
+     * @param productText
+     *            Full text of the product
+     * @throws Exception
+     */
+    protected static void storePracticeProductText(String pil, String site3,
+            final String productText) throws Exception {
+        final String functionName = "storePracticeProductText()";
+
+        String nnnId = pil;
+        String xxxId = site3;
+        String cccId = SiteMap.getInstance().getCCCFromXXXCode(xxxId);
+        AFOSProductId afosId = new AFOSProductId(cccId, nnnId, xxxId);
+
+        InsertStdTextProductRequest req = new InsertStdTextProductRequest(
+                afosId.toString(), productText);
+        req.setNotifyAlarmAlert(false);
+        req.setNotifySubscriptions(false);
+        req.setOperationalMode(false);
+
+        RequestRouter.route(req);
     }
 
     /**

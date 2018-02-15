@@ -44,6 +44,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 23, 2013            mnash        Initial creation.
+ * Dec 16, 2015   14019    Robert.Blum  Updates for new PythonJobCoordinator API.
  * Mar 31, 2016    8837    Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for
  *                                      spatial info gathering.

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,18 +16,35 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.swt.graphics.Point;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.TabbedCompositeSpecifier;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.SelectableMultiPageScrollSettings;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 
@@ -77,6 +95,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
  *                                           config manager.
  * Feb 24, 2016  13929     Robert.Blum       Remove first part of staging dialog.
  * Feb 01, 2017  15556     Chris.Golden      Changed to work with new selection manager.
+ * Mar 21, 2017 29996      Robert.Blum       Updates for refreshing staging dialog.
+ * Jun 05, 2017 29996      Robert.Blum       Update hazard events when staging data changes.
  * Dec 17, 2017  20739     Chris.Golden      Refactored away access to directly mutable
  *                                           session events.
  * Jan 17, 2018  33428     Chris.Golden      Changed to work with new, more flexible
@@ -102,6 +122,11 @@ public class ProductStagingPresenter
         CANCEL, CONTINUE
     };
 
+    // Private Static Constants
+
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(ProductStagingPresenter.class);
+
     // Private Variables
 
     /**
@@ -118,6 +143,10 @@ public class ProductStagingPresenter
      */
     private final Map<String, Map<String, Serializable>> metadataMapsForProductGeneratorNames = new HashMap<>();
 
+    private final Map<String, ProductGeneratorInformation> infoForProductGeneratorNames = new HashMap<>();
+
+    private final Map<String, Map<String, Map<String, Object>>> visiblePagesForProductGeneratorNames = new HashMap<>();
+
     /**
      * Associated events state change handler.
      */
@@ -126,17 +155,81 @@ public class ProductStagingPresenter
         @Override
         public void stateChanged(String qualifier, String identifier,
                 Object value) {
+            Set<IReadableHazardEvent> productEvents = infoForProductGeneratorNames
+                    .get(qualifier).getProductEvents();
+            for (IReadableHazardEvent event : productEvents) {
+                getModel().getEventManager().changeEventProperty(
+                        event.getEventID(),
+                        ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                        new Pair<String, Serializable>(identifier,
+                                (Serializable) value));
+            }
+
+            Set<IReadableHazardEvent> possibleEvents = infoForProductGeneratorNames
+                    .get(qualifier).getPossibleProductEvents();
+            for (IReadableHazardEvent event : possibleEvents) {
+                getModel().getEventManager().changeEventProperty(
+                        event.getEventID(),
+                        ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                        new Pair<String, Serializable>(identifier,
+                                (Serializable) value));
+            }
+
             metadataMapsForProductGeneratorNames.get(qualifier).put(identifier,
                     (Serializable) value);
+            ProductGeneratorInformation info = infoForProductGeneratorNames
+                    .get(qualifier);
+            if (info.getMetadataReloadIdentifiers().contains(identifier)) {
+                storeVisiblePages(qualifier);
+                getView().refreshStagingMetadata(qualifier,
+                        createMegawidgetSpecifierManager(qualifier, info),
+                        visiblePagesForProductGeneratorNames.get(qualifier));
+            }
         }
 
         @Override
         public void statesChanged(String qualifier,
                 Map<String, Object> valuesForIdentifiers) {
+            boolean refreshMetadata = false;
+            Map<String, Serializable> serializableValuesForIdentifiers = new HashMap<>(
+                    valuesForIdentifiers.size(), 1.0f);
+            for (Map.Entry<String, Object> entry : valuesForIdentifiers
+                    .entrySet()) {
+                serializableValuesForIdentifiers.put(entry.getKey(),
+                        (Serializable) entry.getValue());
+            }
+            Set<IReadableHazardEvent> productEvents = infoForProductGeneratorNames
+                    .get(qualifier).getProductEvents();
+            for (IReadableHazardEvent event : productEvents) {
+                getModel().getEventManager().changeEventProperty(
+                        event.getEventID(),
+                        ISessionEventManager.ADD_EVENT_ATTRIBUTES,
+                        serializableValuesForIdentifiers);
+            }
+            Set<IReadableHazardEvent> possibleEvents = infoForProductGeneratorNames
+                    .get(qualifier).getPossibleProductEvents();
+            for (IReadableHazardEvent event : possibleEvents) {
+                getModel().getEventManager().changeEventProperty(
+                        event.getEventID(),
+                        ISessionEventManager.ADD_EVENT_ATTRIBUTES,
+                        serializableValuesForIdentifiers);
+            }
             for (Map.Entry<String, Object> entry : valuesForIdentifiers
                     .entrySet()) {
                 metadataMapsForProductGeneratorNames.get(qualifier)
                         .put(entry.getKey(), (Serializable) entry.getValue());
+                if (infoForProductGeneratorNames.get(qualifier)
+                        .getMetadataReloadIdentifiers()
+                        .contains(entry.getKey())) {
+                    refreshMetadata = true;
+                }
+            }
+            if (refreshMetadata) {
+                storeVisiblePages(qualifier);
+                getView().refreshStagingMetadata(qualifier,
+                        createMegawidgetSpecifierManager(qualifier,
+                                infoForProductGeneratorNames.get(qualifier)),
+                        visiblePagesForProductGeneratorNames.get(qualifier));
             }
         }
     };
@@ -212,6 +305,7 @@ public class ProductStagingPresenter
          * information-gathering megawidgets.
          */
         metadataMapsForProductGeneratorNames.clear();
+        infoForProductGeneratorNames.clear();
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = getModel()
                 .getProductManager()
                 .getAllProductGeneratorInformationForSelectedHazards(issue);
@@ -228,6 +322,7 @@ public class ProductStagingPresenter
              * associate an empty metadata map with it.
              */
             String name = info.getProductGeneratorName();
+            infoForProductGeneratorNames.put(name, info);
             MegawidgetSpecifierManager specifierManager = info
                     .getStagingDialogMegawidgetSpecifierManager();
             if (specifierManager == null) {
@@ -296,6 +391,60 @@ public class ProductStagingPresenter
     // Private Methods
 
     /**
+     * Store the visible pages for the specified product.
+     * 
+     * @param productName
+     *            Product name.
+     */
+    private void storeVisiblePages(String productName) {
+        MegawidgetManager manager = getView().getMegawidgetManager(productName);
+
+        /*
+         * FIXME: The below code is a complete hack to store off the currently
+         * visible tabs of TabbedCompositeMegawidgets. This is needed because
+         * when "refreshMetadata" is triggered the Megawidgets are disposed and
+         * new ones are created. Without this code they will default back to the
+         * original tab every time.
+         */
+        Map<String, Map<String, Object>> mutablePropertiesMap = new HashMap<>();
+        for (Map.Entry<String, IDisplaySettings> entry : manager
+                .getDisplaySettings().entrySet()) {
+            if (entry.getValue() instanceof SelectableMultiPageScrollSettings) {
+                @SuppressWarnings("unchecked")
+                SelectableMultiPageScrollSettings<Point, Integer> pageSettings = (SelectableMultiPageScrollSettings<Point, Integer>) entry
+                        .getValue();
+
+                /*
+                 * The Display settings above have the Integer value of the
+                 * selected page. However to set the mutable property on the
+                 * Megawidget we need to the String name of the page. The below
+                 * code gets the name from the Specifier Manager.
+                 */
+                for (ISpecifier specifier : manager.getSpecifierManager()
+                        .getSpecifiers()) {
+                    if (specifier.getIdentifier().equals(entry.getKey())) {
+                        if (specifier instanceof TabbedCompositeSpecifier) {
+                            TabbedCompositeSpecifier tabbedSpec = (TabbedCompositeSpecifier) specifier;
+
+                            String pageName = tabbedSpec.getPageNames()
+                                    .get(pageSettings.getSelection());
+                            Map<String, Object> visiblePageMap = new HashMap<>();
+                            visiblePageMap.put("visiblePage", pageName);
+                            mutablePropertiesMap.put(entry.getKey(),
+                                    visiblePageMap);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (mutablePropertiesMap.isEmpty() == false) {
+            visiblePagesForProductGeneratorNames.put(productName,
+                    mutablePropertiesMap);
+        }
+    }
+
+    /**
      * Hide the detail view and unset preview or issue ongoing, as appropriate.
      */
     private void hideAndUnsetPreviewOrIssueOngoing() {
@@ -314,5 +463,47 @@ public class ProductStagingPresenter
     private void bind() {
         getView().setProductMetadataChangeHandler(productMetadataChangeHandler);
         getView().setButtonInvocationHandler(buttonInvocationHandler);
+    }
+
+    /**
+     * Create a megawidget specifier manager for the specified product
+     * generator.
+     * 
+     * @param name
+     *            Name of the product generator.
+     * @param info
+     *            Information about the generator.
+     * @return Megawidget specifier manager.
+     */
+    private MegawidgetSpecifierManager createMegawidgetSpecifierManager(
+            String name, ProductGeneratorInformation info) {
+        List<Map<String, Object>> rawSpecifiers = getModel().getProductManager()
+                .getStagingDialogMetadata(info, issue,
+                        metadataMapsForProductGeneratorNames.get(name));
+
+        /*
+         * Get the side effects applier, if any.
+         */
+        ISideEffectsApplier sideEffectsApplier = null;
+        File scriptFile = getModel().getConfigurationManager()
+                .getScriptFile(info.getProductGeneratorName());
+        if (PythonSideEffectsApplier
+                .containsSideEffectsEntryPointFunction(scriptFile)) {
+            sideEffectsApplier = new PythonSideEffectsApplier(scriptFile);
+        }
+
+        /*
+         * Create the megawidget specifier manager.
+         */
+        try {
+            return new MegawidgetSpecifierManager(rawSpecifiers,
+                    IControlSpecifier.class,
+                    getModel().getTimeManager().getCurrentTimeProvider(),
+                    sideEffectsApplier);
+        } catch (MegawidgetSpecificationException e) {
+            statusHandler.error("Could not get product staging megawidgets for "
+                    + info.getProductGeneratorName() + ": " + e, e);
+        }
+        return null;
     }
 }

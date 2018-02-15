@@ -30,7 +30,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -47,6 +47,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ------------ --------------------------
  * Jul 29, 2015 9681       Robert.Blum  Initial creation
  * Jan 26, 2016 11860      Robert.Blum  Product Editor is now modal.
+ * Feb 23, 2017 29170      Robert.Blum  Refactor Product Editor.
+ * Jun 05, 2017 29996      Robert.Blum  Updates for previous text design.
  * </pre>
  * 
  * @author Robert.Blum
@@ -109,9 +111,9 @@ public abstract class AbstractProductDialog extends CaveSWTDialog {
     @Override
     protected void initializeComponents(Shell shell) {
 
-        shell.setMinimumSize(600, 800);
+        shell.setMinimumSize(640, 800);
         shell.setLayout(new GridLayout(1, false));
-        shell.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false));
+        shell.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
         initializeShellForSubClass(shell);
 
         /*
@@ -159,13 +161,13 @@ public abstract class AbstractProductDialog extends CaveSWTDialog {
             List<GeneratedProductList> generatedProductListStorage);
 
     /**
-     * Regenerates the product data for the generated products already
+     * Regenerates the product text for the generated products already
      * associated with this ProductDialog
      * 
-     * @param keyInfo
+     * @param productParts
      * 
      */
-    protected abstract void regenerate(KeyInfo keyInfo);
+    protected abstract void regenerate(List<ProductPart> productParts);
 
     /**
      * Updates the state of the buttons on the product dialog.

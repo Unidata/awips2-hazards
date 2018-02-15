@@ -1,27 +1,10 @@
 '''
     Description: Product Generator for the FFA product.
     
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-
-    Jan 26, 2015   4936      Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
-    Jan 31, 2015   4937      Robert.Blum General cleanup along with moving some stuff to the formatter.
-    Mar 23, 2015   7165      Robert.Blum Code consolidation - removed _prepareSection().
-    Apr 16, 2015   7579      Robert.Blum Updates for amended Product Editor.
-    Nov 09, 2015   7532      Robert.Blum Sorting the vtecRecords so that the product parts for sections
-                                         are in the correct order.
-    Jun 08, 2016   9620      Robert.Blum Changed self._purgeHours to a float since purge hours can
-                                         include minutes (15min intervals).
-    Jul 06, 2016  18257      Kevin.Bisanz Added eventSet parameter to executeFrom(..)
-    Oct 21, 2016  22489      Robert.Blum  Removed unused flags.
-                                         
-    
     @author Chris.Cody
     @version 1.0
     '''
 import os, types, copy, collections
-from KeyInfo import KeyInfo
 import HydroGenerator
 
 # Bring in the interdependencies script from the metadata file.
@@ -62,14 +45,13 @@ class Product(HydroGenerator.Product):
         @return: dialog definition to solicit user input before running tool
         '''
         productSegmentGroups = self._previewProductSegmentGroups(eventSet)
-        cancel_dict = self._checkForCancel(self._inputHazardEvents, productSegmentGroups)
-        dialogDict = self._organizeByProductLabel(self._productLevelMetaData_dict, cancel_dict, 'FFA_tabs')
+        dialogDict = self._organizeByProductLabel(self._productLevelMetaData_dict, 'FFA_tabs')
 
         return dialogDict
 
-    def executeFrom(self, dataList, eventSet, keyInfo=None):
-        if keyInfo is not None:
-            dataList = self.correctProduct(dataList, eventSet, keyInfo, False)
+    def executeFrom(self, dataList, eventSet, productParts=None):
+        if isinstance(productParts, list) and len(productParts) > 0:
+            dataList = self.correctProduct(dataList, eventSet, productParts, False)
         else:
             self.updateExpireTimes(dataList)
         return dataList
@@ -125,9 +107,11 @@ class Product(HydroGenerator.Product):
             vtecRecords = productSegment.vtecRecords
             vtecRecords.sort(self._tpc.regularSortHazardAlg)
         if geoType == 'area':
-            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_area(productSegments))
+            productPartsDict = self._hydroProductParts.productParts_FFA_FLW_FLS_area(productSegments)
         elif geoType == 'point':
-            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_point(productSegments))
+            productPartsDict = self._hydroProductParts.productParts_FFA_FLW_FLS_point(productSegments)
+        productParts = self.createProductParts(productPartsDict)
+        productSegmentGroup.setProductParts(productParts)
 
 # Allow interdependencies for the dialog's megawidgets to work.     
 def applyInterdependencies(triggerIdentifiers, mutableProperties):

@@ -75,6 +75,7 @@ def preparePathCastData(hazardEvent):
     if stormMotion:
         speed = stormMotion.get("speed")
         bearing = stormMotion.get("bearing")
+    startID = time.mktime(hazardEvent.getStartTime().timetuple()) * 1000
 
     trackPoints = list(hazardEvent.get("trackPoints", []))
     if stormMotion: # Storm Track Recommender was ran
@@ -108,7 +109,7 @@ def preparePathCastData(hazardEvent):
         bufferedPathCastArea = hazardEvent.getProductGeometry()
         trackPoint = {"pointType": "tracking",
                       "shapeType": "point",
-                      "pointID": time.mktime(hazardEvent.getStartTime().timetuple()) * 1000,
+                      "pointID": startID,
                       "point": hazardEvent.getProductGeometry().centroid,
                       }
         trackPoints.append(trackPoint)
@@ -118,6 +119,11 @@ def preparePathCastData(hazardEvent):
     areaFeaturesDicts = SpatialQuery.executeConfiguredQuery(bufferedPathCastArea, hazardEvent.getSiteID(), "PathcastAreas")
 
     for trackPoint in trackPoints:
+        tpId = trackPoint.get("pointID", None)
+        if tpId != None :
+            if long(tpId)<long(startID) :
+                continue
+
         tpPoint = trackPoint.get("point", None)
         if tpPoint:
             tpPoint = GeometryFactory.createPoint(tpPoint)
@@ -150,6 +156,8 @@ def preparePathCastData(hazardEvent):
     for i in range(0, len(trackPoints)):
         tp = trackPoints[i]
         points = tp.get("closestPoints")
+        if points == None :
+            continue
         for cp in list(points):
             for j in range(i+1, len(trackPoints)):
                 tp2 = trackPoints[j]

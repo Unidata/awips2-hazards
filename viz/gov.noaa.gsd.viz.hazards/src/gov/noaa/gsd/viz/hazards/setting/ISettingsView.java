@@ -10,8 +10,11 @@
 package gov.noaa.gsd.viz.hazards.setting;
 
 import java.util.List;
+import java.util.Set;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.FilterIcons;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -33,6 +36,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  *                                           from public method.
  * Nov 17, 2015   11776    Roger.Ferrel      Add {@link ISaveAs} argument to
  *                                           showSettingsDetail.
+ * May 11, 2016   16374    mpduff            Add filter indicator toolbar buttons.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
  * May 04, 2018   50032    Chris.Golden      Added additional filters to settings.
@@ -55,6 +59,11 @@ public interface ISettingsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      */
     public static final String FILTERS_PULLDOWN_IDENTIFIER = "filtersPulldown";
 
+    /**
+     * Filter indicators identifier.
+     */
+    public static final String FILTER_INDICATORS_IDENTIFIER = "filterIndicators";
+
     // Public Methods
 
     /**
@@ -65,9 +74,11 @@ public interface ISettingsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      * @param settings
      * @param fields
      * @param currentSettings
+     * @param filterIcons
      */
     public void initialize(SettingsPresenter presenter, List<Settings> settings,
-            Field[] fields, ObservedSettings currentSettings);
+            Field[] fields, ObservedSettings currentSettings,
+            FilterIcons filterIcons);
 
     /**
      * Show the settings detail subview.
@@ -110,4 +121,13 @@ public interface ISettingsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      *            Fields defining the filters.
      */
     public void setFilterFields(Field[] fields);
+
+    /**
+     * Update the filter indicators.
+     * 
+     * @param filteredEvents
+     *            Events that have been filtered.
+     */
+    public void updateFilterSettings(
+            Set<? extends IReadableHazardEvent> filteredEvents);
 }

@@ -16,8 +16,8 @@ import gov.noaa.gsd.common.utilities.IMergeable;
 import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
- * Modification of the origin (user name, workstation, site identifier, mode,
- * source) of an event.
+ * Modification of the origin (user name, workstation, site identifier, issue
+ * site identifier, source) of an event.
  * 
  * <pre>
  *
@@ -39,6 +39,7 @@ public class EventOriginModification implements IEventModification {
     public void apply(IHazardEventView sourceEvent, IHazardEvent targetEvent) {
         targetEvent.setWsId(sourceEvent.getWsId());
         targetEvent.setSiteID(sourceEvent.getSiteID());
+        targetEvent.setIssueSiteID(sourceEvent.getIssueSiteID());
         targetEvent.setSource(sourceEvent.getSource());
     }
 

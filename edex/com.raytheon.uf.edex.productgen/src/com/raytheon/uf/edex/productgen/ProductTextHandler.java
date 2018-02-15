@@ -24,12 +24,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.hibernate.Criteria;
 import org.hibernate.criterion.Restrictions;
 
-import com.raytheon.uf.common.hazards.productgen.editable.CustomTextId;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductText;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextRequest;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextResponse;
@@ -52,6 +53,9 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
  * Nov 10, 2016 22119      Kevin.Bisanz Changes to export product text by officeID
+ * Apr 27, 2017 29776      Kevin.Bisanz Add insertTime on ProductText
+ * Jun 12, 2017 35022      Kevin.Bisanz Changes to save a ProductText row for each event and part.
+ * Jun 20, 2017 35022      Kevin.Bisanz Handle case of event id list being empty but not null.
  * 
  * </pre>
  * 
@@ -81,34 +85,42 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
     public Object handleRequest(ProductTextRequest request) throws Exception {
         CoreDao dao = new CoreDao(DaoConfig.DEFAULT);
         ProductTextResponse response = new ProductTextResponse();
+        List<ProductText> productTexts = createProductText(request);
         statusHandler.info(request.getType().name() + " : "
-                + prettyPrintKey(request.getProductText()) + " : "
-                + request.getPath());
+                + prettyPrintRequest(request) + " : " + request.getPath());
         switch (request.getType()) {
         case CREATE:
             try {
-                dao.create(request.getProductText());
+                for (ProductText productText : productTexts) {
+                    dao.create(productText);
+                }
             } catch (RuntimeException e) {
                 response.setExceptions(e);
             }
             break;
         case UPDATE:
             try {
-                dao.update(request.getProductText());
+                for (ProductText productText : productTexts) {
+                    dao.update(productText);
+                }
             } catch (RuntimeException e) {
                 response.setExceptions(e);
             }
             break;
         case DELETE:
+            for (ProductText productText : productTexts) {
+                dao.delete(productText);
+            }
             try {
-                dao.delete(request.getProductText());
             } catch (RuntimeException e) {
                 response.setExceptions(e);
             }
             break;
         case SAVE_OR_UPDATE:
             try {
-                dao.saveOrUpdate(request.getProductText());
+                for (ProductText productText : productTexts) {
+                    dao.saveOrUpdate(productText);
+                }
             } catch (RuntimeException e) {
                 response.setExceptions(e);
             }
@@ -126,6 +138,21 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
             break;
         }
         return response;
+    }
+
+    private List<ProductText> createProductText(ProductTextRequest request) {
+        List<String> eventIds = request.getEventIDs();
+        List<ProductText> productTexts = Collections.EMPTY_LIST;
+        if (eventIds != null) {
+            productTexts = new ArrayList<>(eventIds.size());
+            for (String eventId : eventIds) {
+                productTexts.add(new ProductText(request.getKey(),
+                        request.getProductCategory(), request.getMode(),
+                        request.getSegment(), eventId, request.getOfficeID(),
+                        request.getInsertTime(), request.getValue()));
+            }
+        }
+        return productTexts;
     }
 
     /**
@@ -192,50 +219,62 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
      */
     private List<ProductText> retrieve(ProductTextRequest request,
             CoreDao dao) {
-        ProductText pText = request.getProductText();
         Criteria criteria = dao.getSessionFactory().openSession()
                 .createCriteria(ProductText.class);
-        if (pText.getKey() != null) {
-            criteria.add(Restrictions.eq("id.key", pText.getKey()));
+        if (request.getKey() != null) {
+            criteria.add(Restrictions.eq("id.key", request.getKey()));
         }
-        if (pText.getProductCategory() != null) {
+        if (request.getProductCategory() != null) {
             criteria.add(Restrictions.eq("id.productCategory",
-                    pText.getProductCategory()));
+                    request.getProductCategory()));
         }
-        if (pText.getProductID() != null) {
-            criteria.add(Restrictions.eq("id.productID", pText.getProductID()));
+        if (request.getMode() != null) {
+            criteria.add(Restrictions.eq("id.mode", request.getMode()));
         }
-        if (pText.getSegment() != null) {
-            criteria.add(Restrictions.eq("id.segment", pText.getSegment()));
+        if (request.getSegment() != null) {
+            criteria.add(Restrictions.eq("id.segment", request.getSegment()));
         }
-        if (pText.getEventIDs() != null) {
-            criteria.add(Restrictions.eq("id.eventIDs", pText.getEventIDs()));
+        if (request.getEventIDs() != null) {
+            if (request.getEventIDs().isEmpty()) {
+                /*
+                 * Using Restrictions.isNull() instead of Restrictions.in()
+                 * prevents an error in which Hibernate would generate incorrect
+                 * SQL of: "... this_.eventID in ()". The issue is that the
+                 * parenthesis require something between them.
+                 */
+                criteria.add(Restrictions.isNull("id.eventID"));
+                statusHandler.warn("Event ID list is empty");
+            } else {
+                criteria.add(
+                        Restrictions.in("id.eventID", request.getEventIDs()));
+            }
         }
-        if (pText.getOfficeID() != null) {
-            criteria.add(Restrictions.eq("id.officeID", pText.getOfficeID()));
+        if (request.getOfficeID() != null) {
+            criteria.add(Restrictions.eq("id.officeID", request.getOfficeID()));
         }
 
         List<ProductText> text = criteria.list();
         return text;
     }
 
-    private String prettyPrintKey(ProductText text) {
+    private String prettyPrintRequest(ProductTextRequest request) {
         StringBuilder builder = new StringBuilder();
-        CustomTextId textId = text.getId();
-        builder.append(textId.getKey());
+        builder.append(request.getKey());
         builder.append("/");
-        builder.append(textId.getEventIDs());
+        builder.append(request.getEventIDs());
         builder.append("/");
-        builder.append(textId.getOfficeID());
+        builder.append(request.getOfficeID());
         builder.append("/");
-        builder.append(textId.getProductCategory());
+        builder.append(request.getProductCategory());
         builder.append("/");
-        builder.append(textId.getProductID());
+        builder.append(request.getMode());
         builder.append("/");
-        builder.append(textId.getSegment());
-        if (text.getValue() != null) {
+        builder.append(request.getSegment());
+        if (request.getValue() != null) {
             builder.append("/");
-            builder.append(text.getValue());
+            builder.append(request.getInsertTime());
+            builder.append("/");
+            builder.append(request.getValue());
         }
         return builder.toString();
     }

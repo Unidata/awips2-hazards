@@ -58,7 +58,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return spatialInfo
     
     def execute(self, eventSet, dialogInputMap, visualFeatures):
-        event = EventFactory.createEvent()
+        event = EventFactory.createEvent(true)
         event.setSiteID("koax")
         event.setHazardStatus("PENDING")
         event.setPhenomenon("FZ")

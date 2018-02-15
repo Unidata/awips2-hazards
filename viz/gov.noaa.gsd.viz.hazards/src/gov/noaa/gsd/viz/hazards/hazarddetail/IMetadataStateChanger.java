@@ -47,6 +47,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
  *                                      cached so that they can be forced to be
  *                                      regenerated whenever a hazard event is
  *                                      reselected.
+ * May 01, 2018   15561    Chris.Golden Removed obsolete method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -80,20 +81,6 @@ public interface IMetadataStateChanger extends
             MegawidgetSpecifierManager specifierManager,
             Map<String, Serializable> metadataStates, boolean editable,
             boolean reinitializeIfUnchanged);
-
-    /**
-     * Change the metadata megawidget mutable properties to include those
-     * specified.
-     * 
-     * @param qualifier
-     *            Event version identifier for which to change the mutable
-     *            properties.
-     * @param mutableProperties
-     *            Mutable properties to be changed.
-     */
-    public void changeMegawidgetMutableProperties(
-            Pair<String, Integer> qualifier,
-            Map<String, Map<String, Object>> mutableProperties);
 
     /**
      * Remove the megawidget specifier manager that is associated with the

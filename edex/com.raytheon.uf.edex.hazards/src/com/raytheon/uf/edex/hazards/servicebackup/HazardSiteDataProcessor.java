@@ -63,6 +63,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Nov 10, 2016 22119       Kevin.Bisanz Changes for product export/import
  * Nov 14, 2016 22119       Kevin.Bisanz Add log file path to export error message.
  * Dec 14, 2016 22119       Kevin.Bisanz Modify options for export system call.
+ * Jun 12, 2017 35022       Kevin.Bisanz Remove productID, add mode for ProductText.
  * 
  * </pre>
  * 
@@ -241,16 +242,15 @@ public class HazardSiteDataProcessor {
     private String exportProductText(String siteId) throws Exception {
         String key = null;
         String productCategory = null;
-        String productID = null;
+        String mode = null;
         String segment = null;
-        ArrayList<String> eventIDs = null;
+        List<String> eventIDs = null;
         String officeID = siteId;
         String filePath = getOutputFileName(siteId,
                 ProductText.class.getSimpleName());
 
         ProductTextResponse response = ProductTextUtil.exportProductText(key,
-                productCategory, productID, segment, eventIDs, officeID,
-                filePath);
+                productCategory, mode, segment, eventIDs, officeID, filePath);
         if (response.getExceptions() != null) {
             throw response.getExceptions();
         }

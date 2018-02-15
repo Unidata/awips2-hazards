@@ -48,6 +48,10 @@ import com.google.common.collect.TreeRangeMap;
  *                                      enclosing a specified time to be
  *                                      retrieved, if there is a property
  *                                      value defined for that time range.
+ * May 22, 2018   15561    Chris.Golden Added ability to determine whether
+ *                                      a property value exists for any
+ *                                      time range at all, and added
+ *                                      implementation of toString().
  * </pre>
  * 
  * @author Chris.Golden
@@ -133,6 +137,19 @@ class TemporallyVariantProperty<P extends Serializable>
         return (property == null ? defaultProperty : property);
     }
 
+    /**
+     * Determine whether or not the property value exists for any time range at
+     * all.
+     * 
+     * @return <code>true</code> if the property value exists for any time range
+     *         at all, <code>false</code> otherwise.
+     */
+    public boolean isPropertyExistingForAnyTimeRange() {
+        return ((defaultProperty != null) || ((propertiesForTimeRanges != null)
+                && (propertiesForTimeRanges.asMapOfRanges()
+                        .isEmpty() == false)));
+    }
+
     @Override
     public boolean equals(Object other) {
 
@@ -196,6 +213,38 @@ class TemporallyVariantProperty<P extends Serializable>
             }
         }
         return (int) (hashCode % Integer.MAX_VALUE);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        Map<Range<Date>, P> valuesForRanges = (propertiesForTimeRanges == null
+                ? Collections.<Range<Date>, P> emptyMap()
+                : propertiesForTimeRanges.asMapOfRanges());
+        if ((defaultProperty == null) && valuesForRanges.isEmpty()) {
+            stringBuilder.append("null");
+        } else {
+            P sampleValue = (defaultProperty != null ? defaultProperty
+                    : valuesForRanges.values().iterator().next());
+            stringBuilder.append(sampleValue.getClass().getSimpleName());
+            stringBuilder.append(": ");
+            if (valuesForRanges.isEmpty()) {
+                stringBuilder.append(defaultProperty);
+            } else {
+                stringBuilder.append("default = ");
+                stringBuilder.append(defaultProperty);
+                stringBuilder.append(", ranges = [ ");
+                for (Map.Entry<Range<Date>, P> entry : valuesForRanges
+                        .entrySet()) {
+                    stringBuilder.append(entry.getKey());
+                    stringBuilder.append(" = ");
+                    stringBuilder.append(entry.getValue());
+                    stringBuilder.append(" ");
+                }
+                stringBuilder.append("]");
+            }
+        }
+        return stringBuilder.toString();
     }
 
     // Package-Private Methods

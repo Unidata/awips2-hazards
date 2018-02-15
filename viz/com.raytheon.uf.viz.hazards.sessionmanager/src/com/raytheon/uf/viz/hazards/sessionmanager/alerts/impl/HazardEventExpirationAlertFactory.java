@@ -16,8 +16,8 @@ import java.util.Set;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.colormap.Color;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert;
@@ -34,15 +34,21 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
  * Jul 19, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
  * Dec  1, 2014 3249       Dan Schaffer Issue #3249.  Fixed problem where stale 
  *                                                    alerts would appear when 
  *                                                    you leave hazard services 
  *                                                    and come back much later.
- * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
- * 
+ * Jun 18, 2015  7307      Chris.Cody    Added Hazard End time for requested
+ *                                       Time Remaining calculation
+ * Oct 29, 2015 11864      Robert.Blum   Expiration time field is now a Date
+ *                                       instead of long.
+ * Feb 16, 2017 28708      Chris.Golden  Changed to use new constructor for
+ *                                       HazardEventExpirationPopupAlert.
+ * May 05, 2017 33738      Robert.Blum   Modified to work with newest version of
+ *                                       HazardEventExpirationAlertStrategy.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -59,7 +65,7 @@ public class HazardEventExpirationAlertFactory {
 
     public List<IHazardEventAlert> createAlerts(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
 
         List<IHazardEventAlert> result = Lists.newArrayList();
 
@@ -95,16 +101,17 @@ public class HazardEventExpirationAlertFactory {
 
     private IHazardEventAlert buildPopupAlert(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         HazardEventExpirationPopUpAlert result = new HazardEventExpirationPopUpAlert(
-                hazardEvent.getEventID(), alertCriterion);
+                hazardEvent.getEventID(), alertCriterion,
+                hazardEvent.getIssueSiteID());
         setAlertTimes(alertCriterion, hazardEvent, result);
         return result;
     }
 
     private IHazardEventAlert buildSpatialAlert(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         HazardEventExpirationSpatialTimer result = new HazardEventExpirationSpatialTimer(
                 hazardEvent.getEventID(), alertCriterion);
         setAlertTimes(alertCriterion, hazardEvent, result);
@@ -112,11 +119,11 @@ public class HazardEventExpirationAlertFactory {
     }
 
     private IHazardEventAlert buildImmediateCountDownTimer(
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         HazardEventExpirationAlertConfigCriterion alertCriterion = new HazardEventExpirationAlertConfigCriterion(
-                "",
-                HazardEventExpirationAlertConfigCriterion.Units.PERCENT,
-                Sets.newHashSet(HazardEventExpirationAlertConfigCriterion.Manifestation.CONSOLE),
+                "", HazardEventExpirationAlertConfigCriterion.Units.PERCENT,
+                Sets.newHashSet(
+                        HazardEventExpirationAlertConfigCriterion.Manifestation.CONSOLE),
                 0L, black(), false, false, false);
         HazardEventExpirationConsoleTimer result = new HazardEventExpirationConsoleTimer(
                 hazardEvent.getEventID(), alertCriterion);
@@ -130,7 +137,7 @@ public class HazardEventExpirationAlertFactory {
 
     private IHazardEventAlert buildConsoleAlert(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         HazardEventExpirationConsoleTimer result = new HazardEventExpirationConsoleTimer(
                 hazardEvent.getEventID(), alertCriterion);
         setAlertTimes(alertCriterion, hazardEvent, result);
@@ -140,12 +147,14 @@ public class HazardEventExpirationAlertFactory {
 
     private void setAlertTimes(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent, HazardEventExpirationAlert result) {
-        Date hazardExpiration = computeExpirationTime(hazardEvent);
+            IReadableHazardEvent hazardEvent,
+            HazardEventExpirationAlert result) {
+        Date hazardExpiration = hazardEvent.getExpirationTime();
         result.setHazardExpiration(hazardExpiration);
-        Date hazardEnd = computeEndTime(hazardEvent);
+        Date hazardEnd = hazardEvent.getEndTime();
         result.setHazardEnd(hazardEnd);
-        Date activationTime = computeActivationTime(alertCriterion, hazardEvent);
+        Date activationTime = computeActivationTime(alertCriterion,
+                hazardExpiration);
         result.setActivationTime(activationTime);
         /**
          * For now, the alert is deactivated when the hazard expires. So,
@@ -160,33 +169,19 @@ public class HazardEventExpirationAlertFactory {
         result.setDeactivationTime(hazardExpiration);
     }
 
-    private Date computeExpirationTime(IHazardEvent hazardEvent) {
-        Date hazardExpiration = new Date(
-                (Long) hazardEvent
-                        .getHazardAttribute(HazardConstants.EXPIRATION_TIME));
-        return hazardExpiration;
-    }
-
-    private Date computeEndTime(IHazardEvent hazardEvent) {
-        return hazardEvent.getEndTime();
-    }
-
     private Date computeActivationTime(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
-
-        Long hazardExpiration = (Long) hazardEvent
-                .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
+            Date hazardExpiration) {
 
         Long activationTimeInMillis;
         if (alertCriterion.getUnits().equals(
                 HazardEventExpirationAlertConfigCriterion.Units.PERCENT)) {
             activationTimeInMillis = activationFromPercentEventCompleted(
-                    alertCriterion, hazardExpiration);
+                    alertCriterion, hazardExpiration.getTime());
         } else {
 
             activationTimeInMillis = activationFromTimeBeforeExpiration(
-                    alertCriterion, hazardExpiration);
+                    alertCriterion, hazardExpiration.getTime());
         }
         return new Date(activationTimeInMillis);
     }
@@ -198,10 +193,10 @@ public class HazardEventExpirationAlertFactory {
     private Long activationFromPercentEventCompleted(
             HazardEventExpirationAlertConfigCriterion alertCriterion,
             Long hazardExpiration) {
-        Long result = (long) (hazardExpiration - percentToFraction(100 - alertCriterion
-                .getExpirationTime())
-                * (hazardExpiration - sessionTimeManager.getCurrentTime()
-                        .getTime()));
+        Long result = (long) (hazardExpiration - percentToFraction(
+                100 - alertCriterion.getExpirationTime())
+                * (hazardExpiration
+                        - sessionTimeManager.getCurrentTime().getTime()));
         return result;
     }
 
@@ -219,7 +214,7 @@ public class HazardEventExpirationAlertFactory {
         return activationTimeInMillis;
     }
 
-    public void addImmediateAlertsAsNecessary(IHazardEvent hazardEvent,
+    public void addImmediateAlertsAsNecessary(IReadableHazardEvent hazardEvent,
             List<IHazardEventAlert> alerts) {
         boolean areConsoleAlertsAfterCurrentTime = false;
         for (IHazardEventAlert alert : alerts) {

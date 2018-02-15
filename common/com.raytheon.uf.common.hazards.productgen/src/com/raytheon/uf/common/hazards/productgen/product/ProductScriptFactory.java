@@ -53,6 +53,7 @@ import jep.JepException;
  * Feb 26, 2015 6306       mduff        Pass site to product script.
  * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices
  *                                      localization dir.
+ * Dec 16, 2015 14019      Robert.Blum  Updates for new PythonJobCoordinator API.
  * Mar 31, 2016  8837      Robert.Blum  Added the site name to the ProductScriptFactory so that
  *                                      PythonJobCoordinator.newInstance() actually creates a
  *                                      new instance when the site is changed for service

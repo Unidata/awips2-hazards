@@ -222,7 +222,7 @@ class Product(ProductTemplate.Product):
            {productLabel: megawidgets to display for cancellations}
         '''
         inputEventIDs = [hazardEvent.getEventID() for hazardEvent in inputHazardEvents]
-        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+        caveMode = self._sessionDict.get('runMode','PRACTICE').upper()
         practice = True
         if caveMode == 'OPERATIONAL':
             practice = False
@@ -1118,7 +1118,7 @@ class Product(ProductTemplate.Product):
                     found = True
             if not found:
                 # Must retrieve this hazard event for automatic cancellation
-                caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+                caveMode = self._sessionDict.get('runMode','PRACTICE').upper()
                 practice = True
                 if caveMode == 'OPERATIONAL':
                     practice = False
@@ -1323,7 +1323,7 @@ class Product(ProductTemplate.Product):
                                 return
 
     def _prepareToCreateHazardEventDictionary(self, hazardEvent, vtecRecord, metaData):
-        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+        caveMode = self._sessionDict.get('runMode','PRACTICE').upper()
         practice = True
         if caveMode == 'OPERATIONAL':
             practice = False

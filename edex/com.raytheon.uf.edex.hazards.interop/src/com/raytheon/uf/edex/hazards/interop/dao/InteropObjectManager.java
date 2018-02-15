@@ -67,7 +67,7 @@ public class InteropObjectManager {
      * @return New HazardEvent
      */
     public HazardEvent createHazardEvent() {
-        return new HazardEvent();
+        return new HazardEvent(false);
     }
 
     /**

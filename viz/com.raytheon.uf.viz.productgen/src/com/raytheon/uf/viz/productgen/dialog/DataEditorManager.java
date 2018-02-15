@@ -47,6 +47,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Jun 05, 2017 29996      Robert.Blum  Updates for previous text design.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
  *                                      events.
  * </pre>
@@ -102,9 +103,9 @@ class DataEditorManager {
      * @return List of DataEditors currently in use by the ProductEditor
      */
     protected List<AbstractDataEditor> getAllEditors() {
-        List<AbstractDataEditor> dataEditors = new ArrayList<AbstractDataEditor>();
+        List<AbstractDataEditor> dataEditors = new ArrayList<>();
         for (ProductEditorContainer container : dataEditorMap.values()) {
-            dataEditors.addAll(container.getAllEditors());
+            dataEditors.add(container.dataEditor);
         }
         return dataEditors;
     }
@@ -205,20 +206,5 @@ class DataEditorManager {
 
         /** Formatted text viewers */
         protected Map<String, FormattedTextViewer> textViewerMap = new HashMap<String, FormattedTextViewer>();
-
-        /**
-         * Gets all editors in this container
-         * 
-         * @return List of all editors in this container
-         */
-        protected List<AbstractDataEditor> getAllEditors() {
-            List<AbstractDataEditor> dataEditors = new ArrayList<AbstractDataEditor>();
-            if (dataEditor != null) {
-                dataEditors.add(dataEditor);
-            }
-
-            dataEditors.addAll(textViewerMap.values());
-            return dataEditors;
-        }
     }
 }

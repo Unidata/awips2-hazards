@@ -28,6 +28,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,11 +53,11 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.locks.LockInfo;
 import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
@@ -66,17 +67,20 @@ import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
+import com.raytheon.uf.common.localization.ILocalizationFile;
+import com.raytheon.uf.common.localization.ILocalizationPathObserver;
+import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -102,6 +106,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.simulatedtime.SimulatedTimeOperations;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Lineal;
@@ -222,9 +227,11 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      raw use of SWT message box with abstract user warning issuance.
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
+ * Oct 29, 2015 11864      Robert.Blum  Changes for new expirationTime field.
  * Nov 23, 2015 13017      Chris.Golden Changed to work with IMessenger changes.
  * Dec 01, 2015 12473      Roger.Ferrel Do not allow issue in operational mode with DRT time.
  * Dec 03, 2015 13609      mduff        Default VTEC mode based on CAVE mode.
+ * Feb 08, 2016 13299      Robert.Blum  Expiration time is reset on previews and issues now.
  * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
  * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of mergeHazardEvents().
@@ -253,17 +260,33 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      with more than one UGC type.
  * Nov 23, 2016 26423      Robert.Blum  Fixed issue with filtered out events.
  * Dec 12, 2016 21504      Robert.Blum  Updates for locking hazards during product generation.
+ * Jan 27, 2017 22308      Robert.Blum  Removed parameter that is no longer needed.
+ * Jan 30, 2017 28013      dgilling     Use SimulatedTimeOperations.
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
  * Feb 17, 2017 21676      Chris.Golden Changed to use session event manager's new merge method.
  * Feb 17, 2017 29138      Chris.Golden Changed to use more efficient query of database hazards.
+ * Feb 23, 2017 29170      Robert.Blum  Product Editor refactor.
  * Mar 15, 2017 29138      Chris.Golden Removed creation of observed hazard event object for
  *                                      merging process, as said type is no longer needed for
  *                                      the parameters to the merge method.
  * Mar 16, 2017 15528      Chris.Golden Removed "checked" as an attribute of hazard events.
+ * Mar 21, 2017 29996      Robert.Blum  Refactored some Staging dialog code to allow refreshMetadata to work.
+ * Mar 23, 2017 30221      Robert.Blum  Fixed Confirmation dialog label from missing events and
+ *                                      duplicates.
+ * Mar 24, 2017 30221      Robert.Blum  Sorted the confirmation dialog events.
  * Mar 30, 2017 15528      Chris.Golden Changed to work with new version of mergeHazardEvents().
+ * Apr 07, 2017 32733      Robert.Blum  Clean up code and improve performance.
+ * Apr 13, 2017 32733      Robert.Blum  Remove redundant calls to getStagingDialogMetadata().
+ * Apr 14, 2017 32733      Robert.Blum  Code clean up.
+ * Apr 28, 2017 33430      Robert.Blum  Removed use of HazardMode.
+ * Jun 01, 2017 33735      Kevin.Bisanz Add args to ProductUtils.disseminate(..) to save practice
+ *                                      product.
+ * Jun 05, 2017 29996      Robert.Blum  Changes for new previous text design.
  * Jun 21, 2017 18375      Chris.Golden Added setting of potential events to pending status when
  *                                      they are previewed or issued.
  * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
+ * Jul 10, 2017 35819      Robert.Blum  Re-instantiating ProductGeneration when localization files
+ *                                      are changed.
  * Sep 27, 2017 38072      Chris.Golden Added use of intra-managerial notifications, and replaced
  *                                      use of event bus with notification sender.
  * Oct 23, 2017 21730      Chris.Golden Adjusted implementations of IIntraNotificationHander to
@@ -272,6 +295,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
  *                                      events.
  * Feb 21, 2018 46736      Chris.Golden Changed call to mergeHazardEvents() to use new signature.
+ * May 08, 2018 15561      Chris.Golden Changed BaseHazardEvent to SessionHazardEvent.
  * </pre>
  * 
  * @author bsteffen
@@ -302,7 +326,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     private final ISessionNotificationSender notificationSender;
 
-    private final ProductGeneration productGen;
+    private ProductGeneration productGen;
 
     /*
      * The messenger for displaying questions and warnings to the user and
@@ -419,6 +443,10 @@ public class SessionProductManager implements ISessionProductManager {
         this.vtecTestMode = false;
         this.productGenerationAuditManager = new HashMap<>();
         this.productGeneratorInformationForSelectedHazardsCache = new HashMap<>();
+        IPathManager pathManager = PathManagerFactory.getPathManager();
+        pathManager.addLocalizationPathObserver("HazardServices",
+                new HazardServicesLocalizationPathObserver());
+
         setDefaultVtecMode();
 
         notificationSender.registerIntraNotificationHandler(SiteChanged.class,
@@ -446,29 +474,6 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     /**
-     * Create all the product generator information appropriate for the
-     * currently selected hazards. This method is shorthand for calling
-     * {@link #getPreliminaryProductGeneratorInformationForSelectedHazards(boolean)}
-     * and then adding any product-specific input the user may provide to each
-     * of the product generator information objects.
-     * 
-     * @param issue
-     *            Flag indicating whether or not the generation that is being
-     *            contemplated is for issuance or preview.
-     * @param generatedProductsList
-     *            List of GeneratedProductList objects used to created the
-     *            ProductGeneratorInformation.
-     * @return All product generator information.
-     */
-    private Collection<ProductGeneratorInformation> createAllProductGeneratorInformationForSelectedHazards(
-            boolean issue, List<GeneratedProductList> generatedProductsList) {
-        Collection<ProductGeneratorInformation> result = getPreliminaryProductGeneratorInformationForGeneratedProductList(
-                issue, generatedProductsList);
-        addFinalProductGeneratorInformationForSelectedHazards(issue, result);
-        return result;
-    }
-
-    /**
      * Get all the preliminary product generator information appropriate for the
      * currently selected hazards. The information so gathered must be augmented
      * by adding any product-specific input the user may provide to each of the
@@ -483,7 +488,7 @@ public class SessionProductManager implements ISessionProductManager {
      *            contemplated is for issuance or preview.
      * @return All preliminary product generator information.
      */
-    private Collection<ProductGeneratorInformation> getPreliminaryProductGeneratorInformationForSelectedHazards(
+    private Collection<ProductGeneratorInformation> getPreliminaryProductGeneratorInformation(
             boolean issue) {
         List<ProductGeneratorInformation> result = new ArrayList<>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
@@ -594,64 +599,6 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     /**
-     * Get all the preliminary product generator information appropriate for the
-     * generatedProductsList. The information so gathered must be augmented by
-     * adding any product-specific input the user may provide to each of the
-     * product generation information objects before it is used for actual
-     * product generation. The preliminary product generator information
-     * includes, for each information object, the generator name, the events to
-     * which it would apply (all of which are selected), and any other possible
-     * events to which it could apply (none of which are currently selected).
-     * 
-     * @param issue
-     *            Flag indicating whether or not the generation that is being
-     *            contemplated is for issuance or preview.
-     * @return All preliminary product generator information.
-     */
-    private Collection<ProductGeneratorInformation> getPreliminaryProductGeneratorInformationForGeneratedProductList(
-            boolean issue, List<GeneratedProductList> generatedProductsList) {
-        List<ProductGeneratorInformation> result = new ArrayList<>();
-        ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
-
-        Set<String> selectedEventIdentifiers = selectionManager
-                .getSelectedEventIdentifiers();
-        for (GeneratedProductList genProdList : generatedProductsList) {
-            ProductGeneratorEntry entry = pgt.get(genProdList.getProductInfo());
-
-            Set<IReadableHazardEvent> productEvents = new HashSet<>();
-            Set<IReadableHazardEvent> possibleProductEvents = new HashSet<>();
-
-            for (IHazardEventView e : eventManager
-                    .getEventsForCurrentSettings()) {
-                if (HazardEventUtilities.isHazardTypeValid(e) == false) {
-                    continue;
-                }
-                String key = HazardEventUtilities.getHazardType(e);
-                for (String[] pair : entry.getAllowedHazards()) {
-                    if (pair[0].equals(key)) {
-                        if (selectedEventIdentifiers.contains(e.getEventID())) {
-                            productEvents.add(e);
-                        } else if (e.getStatus() != HazardStatus.POTENTIAL
-                                && e.getStatus() != HazardStatus.ELAPSED
-                                && e.getStatus() != HazardStatus.ENDED
-                                && isIncludeAll(key)) {
-                            possibleProductEvents.add(e);
-                        }
-                    }
-                }
-            }
-
-            ProductGeneratorInformation info = new ProductGeneratorInformation();
-            info.setProductGeneratorName(genProdList.getProductInfo());
-            // Could be selected events or all valid events in database
-            info.setProductEvents(productEvents);
-            info.setPossibleProductEvents(possibleProductEvents);
-            result.add(info);
-        }
-        return result;
-    }
-
-    /**
      * Add any final information required to the provided product generator
      * information for the currently selected hazards. The specified preliminary
      * product generator information previously compiled by a call to
@@ -673,7 +620,6 @@ public class SessionProductManager implements ISessionProductManager {
      *         information is needed (because product-specific megawidgets to be
      *         shown have been added).
      */
-    @SuppressWarnings("unchecked")
     private StagingRequired addFinalProductGeneratorInformationForSelectedHazards(
             boolean issue,
             Collection<ProductGeneratorInformation> allProductGeneratorInfo) {
@@ -690,72 +636,44 @@ public class SessionProductManager implements ISessionProductManager {
              * review, this is only done if previewing; if issuing, no check is
              * made for megawidgets to be displayed.)
              */
-            EventSet<IEvent> eventSet = buildEventSet(info, issue);
-            if (eventSet == null) {
+            List<Map<String, Object>> rawSpecifiers = getStagingDialogMetadata(
+                    info, issue, null);
+            if (rawSpecifiers == null) {
                 return StagingRequired.NO_APPLICABLE_EVENTS;
             }
-            Map<String, Serializable> dialogInfo = productGen
-                    .getDialogInfo(info.getProductGeneratorName(), eventSet);
-            if ((dialogInfo != null) && (dialogInfo.isEmpty() == false)) {
-                List<Map<String, Serializable>> dialogInfoFields = null;
-                try {
-                    dialogInfoFields = (List<Map<String, Serializable>>) dialogInfo
-                            .get(HazardConstants.METADATA_KEY);
-                    ;
-                } catch (Exception e) {
-                    statusHandler
-                            .error("Could not get product staging megawidgets for "
-                                    + info.getProductGeneratorName()
-                                    + ": value associated with "
-                                    + HazardConstants.METADATA_KEY
-                                    + " by product generator must be list of "
-                                    + "megawidget specifiers.", e);
+            if (rawSpecifiers.isEmpty() == false) {
+
+                /*
+                 * Get the side effects applier, if any.
+                 */
+                ISideEffectsApplier sideEffectsApplier = null;
+                File scriptFile = configManager
+                        .getScriptFile(info.getProductGeneratorName());
+                if (PythonSideEffectsApplier
+                        .containsSideEffectsEntryPointFunction(scriptFile)) {
+                    sideEffectsApplier = new PythonSideEffectsApplier(
+                            scriptFile);
                 }
-                if ((dialogInfoFields != null)
-                        && (dialogInfoFields.isEmpty() == false)) {
 
-                    /*
-                     * Get the raw specifiers, and ensure they are scrollable.
-                     */
-                    List<Map<String, Object>> rawSpecifiers = new ArrayList<>(
-                            dialogInfoFields.size());
-                    for (Map<String, Serializable> rawSpecifier : dialogInfoFields) {
-                        rawSpecifiers
-                                .add(new HashMap<String, Object>(rawSpecifier));
-                    }
-                    rawSpecifiers = MegawidgetSpecifierManager
-                            .makeRawSpecifiersScrollable(rawSpecifiers, 10, 5,
-                                    10, 5);
-
-                    /*
-                     * Get the side effects applier, if any.
-                     */
-                    ISideEffectsApplier sideEffectsApplier = null;
-                    File scriptFile = productGen
-                            .getScriptFile(info.getProductGeneratorName());
-                    if (PythonSideEffectsApplier
-                            .containsSideEffectsEntryPointFunction(
-                                    scriptFile)) {
-                        sideEffectsApplier = new PythonSideEffectsApplier(
-                                scriptFile);
-                    }
-
-                    /*
-                     * Create the megawidget specifier manager.
-                     */
-                    try {
-                        info.setStagingDialogMegawidgetSpecifierManager(
-                                new MegawidgetSpecifierManager(rawSpecifiers,
-                                        IControlSpecifier.class,
-                                        timeManager.getCurrentTimeProvider(),
-                                        sideEffectsApplier));
-                        dialogInfoNeeded = true;
-                    } catch (MegawidgetSpecificationException e) {
-                        statusHandler
-                                .error("Could not get product staging megawidgets for "
-                                        + info.getProductGeneratorName() + ": "
-                                        + e, e);
-                    }
+                /*
+                 * Create the megawidget specifier manager.
+                 */
+                try {
+                    info.setStagingDialogMegawidgetSpecifierManager(
+                            new MegawidgetSpecifierManager(rawSpecifiers,
+                                    IControlSpecifier.class,
+                                    timeManager.getCurrentTimeProvider(),
+                                    sideEffectsApplier));
+                    info.setMetadataReloadIdentifiers(
+                            configManager.getMegawidgetIdentifiersWithParameter(
+                                    rawSpecifiers,
+                                    HazardConstants.METADATA_RELOAD_TRIGGER));
+                    dialogInfoNeeded = true;
+                } catch (MegawidgetSpecificationException e) {
+                    statusHandler.error(
+                            "Could not get product staging megawidgets for "
+                                    + info.getProductGeneratorName() + ": " + e,
+                            e);
                 }
             }
             info.setProductFormats(configManager.getProductGeneratorTable()
@@ -771,8 +689,56 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     @Override
-    public void generateProductFromProductData(List<ProductData> allProductData,
-            boolean correctable, boolean viewOnly) {
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getStagingDialogMetadata(
+            ProductGeneratorInformation info, boolean issue,
+            Map<String, Serializable> map) {
+        EventSet<IEvent> eventSet = buildEventSet(info, issue);
+        if (eventSet.isEmpty()) {
+            return null;
+        }
+        if (map != null && map.isEmpty() == false) {
+            eventSet.addAttribute("stagingDialogValues", (Serializable) map);
+        }
+        Map<String, Serializable> dialogInfo = productGen
+                .getDialogInfo(info.getProductGeneratorName(), eventSet);
+        if ((dialogInfo != null) && (dialogInfo.isEmpty() == false)) {
+            List<Map<String, Serializable>> dialogInfoFields = null;
+            try {
+                dialogInfoFields = (List<Map<String, Serializable>>) dialogInfo
+                        .get(HazardConstants.METADATA_KEY);
+            } catch (Exception e) {
+                statusHandler
+                        .error("Could not get product staging megawidgets for "
+                                + info.getProductGeneratorName()
+                                + ": value associated with "
+                                + HazardConstants.METADATA_KEY
+                                + " by product generator must be list of "
+                                + "megawidget specifiers.", e);
+            }
+            if ((dialogInfoFields != null)
+                    && (dialogInfoFields.isEmpty() == false)) {
+                /*
+                 * Get the raw specifiers, and ensure they are scrollable.
+                 */
+                List<Map<String, Object>> rawSpecifiers = new ArrayList<>(
+                        dialogInfoFields.size());
+                for (Map<String, Serializable> rawSpecifier : dialogInfoFields) {
+                    rawSpecifiers
+                            .add(new HashMap<String, Object>(rawSpecifier));
+                }
+                rawSpecifiers = MegawidgetSpecifierManager
+                        .makeRawSpecifiersScrollable(rawSpecifiers, 10, 5, 10,
+                                5);
+                return rawSpecifiers;
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void generateProductsForCorrection(
+            List<ProductData> allProductData) {
         ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
         synchronized (productGenerationAuditManager) {
             final String productGenerationTrackingID = UUID.randomUUID()
@@ -826,8 +792,7 @@ public class SessionProductManager implements ISessionProductManager {
             }
             // Set the eventSet for productList and GeneratorInformation
             generatedProductList.setEventSet(genProductListEventSet);
-            generatedProductList.setCorrectable(correctable);
-            generatedProductList.setViewOnly(viewOnly);
+            generatedProductList.setCorrectable(true);
 
             productGeneratorInformation
                     .setProductEvents(prodGenInfoHazardEvents);
@@ -847,16 +812,11 @@ public class SessionProductManager implements ISessionProductManager {
      * @param issue
      *            Flag indicating whether or not the hazard events are to be
      *            issued; if false, they are to be previewed.
-     * @param confirm
-     *            Flag indicating whether or not to confirm issuance.
-     * @param productGenLabel
-     *            Label for the ProductGenConfirmationDialog to indicate which
-     *            products/events will be issued.
      * @return True if generation should continue, false otherwise.
      */
     private boolean generate(
             ProductGeneratorInformation productGeneratorInformation,
-            boolean issue, boolean confirm, String productGenLabel) {
+            boolean issue) {
 
         /*
          * Just terminate ongoing operation and return if there is nothing to
@@ -865,10 +825,6 @@ public class SessionProductManager implements ISessionProductManager {
         if (!eventManager.setLowResolutionGeometriesVisibleForSelectedEvents(
                 Originator.OTHER)) {
             setPreviewOrIssueOngoing(issue, false);
-            return false;
-        }
-
-        if (issue && confirm && !areYouSure(productGenLabel)) {
             return false;
         }
 
@@ -882,38 +838,49 @@ public class SessionProductManager implements ISessionProductManager {
         EventSet<IEvent> events = buildEventSet(productGeneratorInformation,
                 issue);
 
-        String productGeneratorName = productGeneratorInformation
-                .getProductGeneratorName();
-        String[] productFormats = productGeneratorInformation
-                .getProductFormats().getPreviewFormats().toArray(new String[0]);
-        GeneratedProductList productList = productGeneratorInformation
-                .getGeneratedProducts();
-        IPythonJobListener<GeneratedProductList> listener = new JobListener(
-                issue, notificationSender, productGeneratorInformation);
-        if (productList != null) {
-            // Generator already ran, so update existing product dictionaries
-            List<Map<String, Serializable>> dataList = new ArrayList<>(
-                    productList.size());
-            for (IGeneratedProduct product : productList) {
-                dataList.add(product.getData());
-            }
-            productGen.update(productGeneratorName, events, dataList,
-                    productFormats, listener);
-        } else {
-            // Issuing/Previewing from the HID, run entire Generator
-            productGen.generate(productGeneratorName, events,
-                    productGeneratorInformation.getDialogSelections(),
-                    productFormats, listener);
-        }
-
         // Ensure nothing has elapsed while the product editor was sitting open.
-        List<IReadableHazardEvent> eventsToCheck = new ArrayList<>(
-                productGeneratorInformation.getProductEvents());
-        boolean shouldContinue = areValidEvents(eventsToCheck, issue);
+        List<IHazardEvent> hazardEvents = new ArrayList<>(events.size());
+        for (IEvent event : events) {
+            hazardEvents.add((IHazardEvent) event);
+        }
+        boolean shouldContinue = areValidEvents(hazardEvents, issue);
+        if (shouldContinue) {
+            String productGeneratorName = productGeneratorInformation
+                    .getProductGeneratorName();
+            String[] productFormats = productGeneratorInformation
+                    .getProductFormats().getPreviewFormats()
+                    .toArray(new String[0]);
+            GeneratedProductList productList = productGeneratorInformation
+                    .getGeneratedProducts();
+            IPythonJobListener<GeneratedProductList> listener = new JobListener(
+                    issue, notificationSender, productGeneratorInformation);
+            if (productList != null) {
+                // Generator already ran, so update existing product
+                // dictionaries
+                List<Map<String, Serializable>> dataList = new ArrayList<>(
+                        productList.size());
+                for (IGeneratedProduct product : productList) {
+                    dataList.add(product.getData());
+                }
+                productGen.update(productGeneratorName, events, dataList,
+                        productFormats, listener);
+            } else {
+                // Issuing/Previewing from the HID, run entire Generator
+                productGen.generate(productGeneratorName, events,
+                        productGeneratorInformation.getDialogSelections(),
+                        productFormats, listener);
+            }
 
-        // Got confirmation to issue above - close the Product Editor
-        notificationSender
-                .postNotificationAsync(new ProductGenerationConfirmation());
+            /*
+             * Close the Product Editor
+             * 
+             * TODO: This method is called inside a loop. So currently when
+             * issuing the Product Editor may close before all the products are
+             * actually regenerated (for the final time).
+             */
+            notificationSender
+                    .postNotificationAsync(new ProductGenerationConfirmation());
+        }
 
         return shouldContinue;
     }/* end generate() method */
@@ -968,7 +935,7 @@ public class SessionProductManager implements ISessionProductManager {
                             .equals(updatedEvent.getEventID())) {
 
                         eventManager.mergeHazardEvents(updatedEvent,
-                                sessionEvent, true, true, false,
+                                sessionEvent, true, true, false, false,
                                 Originator.OTHER);
 
                         /*
@@ -1013,9 +980,10 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void issueCorrection(
             final ProductGeneratorInformation productGeneratorInformation) {
-        StringBuilder sb = new StringBuilder();
-        buildProductGenLabel(productGeneratorInformation, sb);
-        if (areYouSure(sb.toString())) {
+
+        List<IReadableHazardEvent> events = getEventsForProductGenLabel(
+                productGeneratorInformation);
+        if (areYouSure(buildProductGenLabel(events))) {
             IPythonJobListener<GeneratedProductList> listener = new IPythonJobListener<GeneratedProductList>() {
                 @Override
                 public void jobFinished(GeneratedProductList result) {
@@ -1042,9 +1010,12 @@ public class SessionProductManager implements ISessionProductManager {
             String[] productFormats = generatedProducts.get(0).getEntries()
                     .keySet().toArray(new String[0]);
 
-            // A KeyInfo is needed to trigger product correction.
-            KeyInfo keyInfo = KeyInfo.createBasicKeyInfo(
+            // A ProductPart is needed to trigger product correction.
+            ProductPart productPart = ProductPart.createBasicPart(
                     productGeneratorInformation.getGenerationID());
+            List<ProductPart> productPartList = new ArrayList<>(1);
+            productPartList.add(productPart);
+
             /*
              * Call the python one more time to update items such as the
              * issueTime.
@@ -1052,7 +1023,8 @@ public class SessionProductManager implements ISessionProductManager {
              * This will call the listener's jobFinished(..) callback.
              */
             productGen.generateFrom(generatedProducts.getProductInfo(),
-                    generatedProducts, keyInfo, productFormats, listener);
+                    generatedProducts, productPartList, productFormats,
+                    listener);
         }
     }
 
@@ -1151,8 +1123,7 @@ public class SessionProductManager implements ISessionProductManager {
          * Compile the preliminary product generation information and cache it.
          */
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = this
-                .getPreliminaryProductGeneratorInformationForSelectedHazards(
-                        issue);
+                .getPreliminaryProductGeneratorInformation(issue);
         productGeneratorInformationForSelectedHazardsCache.put(issue,
                 allProductGeneratorInfo);
 
@@ -1358,89 +1329,42 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     @Override
-    public void createProductsFromHazardEventSets(boolean issue,
+    public void setupForRunningFinalProductGen(
             List<GeneratedProductList> generatedProductsList) {
-        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = createAllProductGeneratorInformationForSelectedHazards(
-                issue, generatedProductsList);
+        ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
-        productGeneratorInformationForSelectedHazardsCache.put(issue,
-                allProductGeneratorInformationForSelectedHazards);
+        /*
+         * TODO: These ProductGeneratorInformation objects have already been
+         * created for the initial preview and have been cached in the
+         * productGeneratorInformationForSelectedHazardsCache with a key of
+         * false. Need to determine if it is possible to reuse the cached
+         * objects instead of creating new ones.
+         */
+        Collection<ProductGeneratorInformation> allProductGeneratorInformation = new ArrayList<>();
+        for (GeneratedProductList genProdList : generatedProductsList) {
+            String generatorName = genProdList.getProductInfo();
 
-        ProductGeneratorInformation matchingProductGeneratorInformation = null;
-
-        Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
-
-        Set<String> selectedEventIDs = selectionManager
-                .getSelectedEventIdentifiers();
-
-        for (GeneratedProductList productList : generatedProductsList) {
-            for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForSelectedHazards) {
-                if (productList.getProductInfo()
-                        .equals(productGeneratorInformation
-                                .getProductGeneratorName())) {
-                    matchingProductGeneratorInformation = productGeneratorInformation;
-                    // Set the Generated Products in the Information
-                    matchingProductGeneratorInformation
-                            .setGeneratedProducts(productList);
-                    break;
-                }
+            ProductGeneratorInformation info = new ProductGeneratorInformation();
+            info.setProductGeneratorName(generatorName);
+            Set<IReadableHazardEvent> productEvents = new HashSet<>();
+            for (IEvent event : genProdList.getEventSet()) {
+                productEvents.add((IReadableHazardEvent) event);
             }
-
-            Set<IReadableHazardEvent> selectedEvents = new HashSet<>();
-            for (IReadableHazardEvent hazardEvent : matchingProductGeneratorInformation
-                    .getProductEvents()) {
-                if (selectedEventIDs.contains(hazardEvent.getEventID())) {
-                    selectedEvents.add(hazardEvent);
-                }
-            }
-            for (IReadableHazardEvent hazardEvent : matchingProductGeneratorInformation
-                    .getPossibleProductEvents()) {
-                if (selectedEventIDs.contains(hazardEvent.getEventID())) {
-
-                    selectedEvents.add(hazardEvent);
-                }
-            }
-
-            matchingProductGeneratorInformation
-                    .setProductEvents(selectedEvents);
-            allMatchingProductGeneratorInformation
-                    .add(matchingProductGeneratorInformation);
+            info.setPossibleProductEvents(
+                    Collections.<IReadableHazardEvent> emptySet());
+            info.setProductEvents(productEvents);
+            info.setProductFormats(pgt.getProductFormats(generatorName));
+            /*
+             * This must be set as it is used to determine whether to call the
+             * "execute" or the "updateDataList" methods in the Generator.
+             */
+            info.setGeneratedProducts(genProdList);
+            allProductGeneratorInformation.add(info);
         }
+        productGeneratorInformationForSelectedHazardsCache.put(true,
+                allProductGeneratorInformation);
 
-        runProductGeneration(allMatchingProductGeneratorInformation, issue);
-    }
-
-    @Override
-    public void createProductsFromGeneratedProductList(boolean issue,
-            List<GeneratedProductList> generatedProductsList) {
-        Collection<ProductGeneratorInformation> allProductGeneratorInformationForGeneratedProductsList = createAllProductGeneratorInformationForSelectedHazards(
-                issue, generatedProductsList);
-
-        productGeneratorInformationForSelectedHazardsCache.put(issue,
-                allProductGeneratorInformationForGeneratedProductsList);
-
-        ProductGeneratorInformation matchingProductGeneratorInformation = null;
-
-        Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
-
-        for (GeneratedProductList productList : generatedProductsList) {
-            for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForGeneratedProductsList) {
-                if (productList.getProductInfo()
-                        .equals(productGeneratorInformation
-                                .getProductGeneratorName())) {
-                    matchingProductGeneratorInformation = productGeneratorInformation;
-                    // Set the Generated Products in the Information
-                    matchingProductGeneratorInformation
-                            .setGeneratedProducts(productList);
-                    break;
-                }
-            }
-
-            allMatchingProductGeneratorInformation
-                    .add(matchingProductGeneratorInformation);
-        }
-
-        runProductGeneration(allMatchingProductGeneratorInformation, issue);
+        runProductGeneration(allProductGeneratorInformation, true);
     }
 
     /**
@@ -1632,7 +1556,7 @@ public class SessionProductManager implements ISessionProductManager {
         publishGenerationCompletion(productGenerationAuditor);
         statusHandler.error(
                 "Product Generator " + failed.getProductGeneratorInformation()
-                        .getProductGeneratorName() + " failed.");
+                        .getProductGeneratorName() + " failed.", failed.getError());
     }
 
     /**
@@ -1703,7 +1627,6 @@ public class SessionProductManager implements ISessionProductManager {
         events.addAttribute(HazardConstants.SITE_ID, configManager.getSiteID());
         events.addAttribute(HazardConstants.BACKUP_SITEID,
                 LocalizationManager.getInstance().getCurrentSite());
-        events.addAttribute(HazardConstants.HAZARD_MODE, caveMode.toString());
         events.addAttribute(HazardConstants.RUN_MODE, caveModeStr);
 
         if (issue) {
@@ -1727,7 +1650,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
         for (IReadableHazardEvent event : productGeneratorInformation
                 .getProductEvents()) {
-            IHazardEvent newEvent = new BaseHazardEvent(event);
+            IHazardEvent newEvent = new SessionHazardEvent(event);
             for (Entry<String, Serializable> entry : newEvent
                     .getHazardAttributes().entrySet()) {
                 if (entry.getValue() instanceof Date) {
@@ -1802,12 +1725,12 @@ public class SessionProductManager implements ISessionProductManager {
              * Need to re-initialize product information when issuing
              */
             if (issue) {
-                newEvent.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
                 newEvent.removeHazardAttribute(HazardConstants.ISSUE_TIME);
                 newEvent.removeHazardAttribute(HazardConstants.VTEC_CODES);
                 newEvent.removeHazardAttribute(HazardConstants.ETNS);
                 newEvent.removeHazardAttribute(HazardConstants.PILS);
             }
+            newEvent.setExpirationTime(null);
             newEvent.removeHazardAttribute(HazardConstants.ISSUED);
             newEvent.removeHazardAttribute(
                     HazardConstants.HAZARD_EVENT_CATEGORY);
@@ -1829,11 +1752,10 @@ public class SessionProductManager implements ISessionProductManager {
                         "Are you sure you want to issue the following hazard event(s)?",
                         eventLabel, new String[] { "Issue", "Cancel" });
         if (answer) {
-            if ((CAVEMode.getMode() == CAVEMode.OPERATIONAL)
-                    && (SimulatedTime.getSystemTime().isRealTime() == false)) {
+            if (SimulatedTimeOperations.isTransmitAllowed() == false) {
+                messenger.getWarner()
+                        .warnUserOfSimulatedTimeProblem("Product Issuance");
                 answer = false;
-                messenger.getWarner().warnUser("Operational Issue Hazard",
-                        "Must be in real time to issue hazard.");
             }
         }
         if (!answer) {
@@ -1844,7 +1766,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     private void disseminate(
             ProductGeneratorInformation productGeneratorInformation)
-                    throws Exception {
+            throws Exception {
         /*
          * Disseminate the products for operational mode before writing to
          * database
@@ -1920,13 +1842,15 @@ public class SessionProductManager implements ISessionProductManager {
             if ((issueFormats != null) && !issueFormats.isEmpty()) {
                 for (IGeneratedProduct generatedProduct : orderGeneratedProducts(
                         productGeneratorInformation.getGeneratedProducts())) {
+                    String pil = generatedProduct.getProductID();
                     for (String issueFormat : issueFormats) {
                         List<Serializable> objs = generatedProduct
                                 .getEntry(issueFormat);
                         if (objs != null) {
                             for (Serializable obj : objs) {
-                                ProductUtils.disseminate(String.valueOf(obj),
-                                        operationalMode);
+                                ProductUtils.disseminate(pil,
+                                        configManager.getSiteID(),
+                                        String.valueOf(obj), operationalMode);
                             }
                         }
                     }
@@ -2052,7 +1976,6 @@ public class SessionProductManager implements ISessionProductManager {
     private void runProductGeneration(
             final Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation,
             boolean issue) {
-        boolean confirm = issue;
 
         /*
          * Build an audit trail to keep track of the products that have been /
@@ -2076,21 +1999,24 @@ public class SessionProductManager implements ISessionProductManager {
         synchronized (pgiMap) {
             pgiMap.clear();
             final AtomicInteger processed = new AtomicInteger(0);
-            StringBuilder sb = new StringBuilder();
-            for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
-                buildProductGenLabel(productGeneratorInformation, sb);
+            if (issue) {
+                List<IReadableHazardEvent> events = new ArrayList<>();
+                for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
+                    events.addAll(getEventsForProductGenLabel(
+                            productGeneratorInformation));
+                }
+
+                // Display the Confirmation Dialog if issuing
+                if (!areYouSure(buildProductGenLabel(events))) {
+                    return;
+                }
             }
             for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
-                boolean continueGeneration = generate(
-                        productGeneratorInformation, issue, confirm,
-                        sb.toString());
-                confirm = false;
-                if (continueGeneration == false) {
+                if (generate(productGeneratorInformation, issue) == false) {
                     /*
-                     * Halt product generation, the user indicated that they did
-                     * not want to issue the product(s).
+                     * Events were invalid, don't increment processed.
                      */
-                    break;
+                    continue;
                 }
                 processed.incrementAndGet();
             }
@@ -2151,6 +2077,15 @@ public class SessionProductManager implements ISessionProductManager {
                     }
                 };
                 job.schedule();
+            } else {
+
+                /*
+                 * Normally the issue-ongoing flag is reset when the
+                 * IProductGenerationComplete message is received in the message
+                 * handler, but if nothing was successfully generated (such as
+                 * an error during generation) it must be reset explicitly.
+                 */
+                sessionManager.setIssueOngoing(false);
             }
         }
     }
@@ -2229,46 +2164,72 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     /**
-     * Take the ProductGeneratorInformation and creates a label to be used on
-     * the Product Generation Confirmation dialog to identify what is being
-     * issued.
+     * Takes the ProductGeneratorInformation and returns a list of events for
+     * the Product.
      * 
      * @param productGeneratorInformation
-     * @return String
      */
-    private void buildProductGenLabel(
-            ProductGeneratorInformation productGeneratorInformation,
-            StringBuilder sb) {
-        // Get all the events that will be issued and create a String to be
-        // used on the confirmation dialog.
+    private List<IReadableHazardEvent> getEventsForProductGenLabel(
+            ProductGeneratorInformation productGeneratorInformation) {
+        /*
+         * Get all the events that will be issued and create a String to be used
+         * on the confirmation dialog.
+         */
+        Set<IReadableHazardEvent> events = new HashSet<>();
         if (productGeneratorInformation.getProductEvents() != null) {
             for (IReadableHazardEvent hazardEvent : productGeneratorInformation
                     .getProductEvents()) {
-                sb.append(hazardEvent.getDisplayEventID()).append(" ").append(
-                        HazardEventUtilities.getHazardPhenSig(hazardEvent))
-                        .append("\n");
+                events.add(hazardEvent);
             }
         }
+        if (productGeneratorInformation.getPossibleProductEvents() != null) {
+            for (IReadableHazardEvent hazardEvent : productGeneratorInformation
+                    .getPossibleProductEvents()) {
+                events.add(hazardEvent);
+            }
+        }
+        return new ArrayList<>(events);
+    }
+
+    /**
+     * Take the List of events and sorts them based on Hazard Type and EventID.
+     * Then creates a label to be used on the Product Generation Confirmation
+     * dialog to identify what is being issued.
+     * 
+     * @param events
+     */
+    private String buildProductGenLabel(List<IReadableHazardEvent> events) {
+        Collections.sort(events, new Comparator<IReadableHazardEvent>() {
+
+            @Override
+            public int compare(IReadableHazardEvent o1,
+                    IReadableHazardEvent o2) {
+                String hType1 = o1.getHazardType();
+                String hType2 = o2.getHazardType();
+                int result = hType1.compareTo(hType2);
+                if (result == 0) {
+                    // HazardTypes equal compare eventIDs
+                    return o1.getEventID().compareTo(o2.getEventID());
+                }
+                return result;
+            }
+
+        });
+
+        /*
+         * List of events is now sorted, build the label
+         */
+        StringBuilder sb = new StringBuilder();
+        for (IReadableHazardEvent e : events) {
+            sb.append(e.getDisplayEventID()).append(" ")
+                    .append(e.getHazardType()).append("\n");
+        }
+        return sb.toString();
     }
 
     @Override
-    public void showUserProductViewerSelection(boolean correction,
-            Collection<String> eventIdentifiers) {
-
-        /*
-         * Get the appropriate product data.
-         */
-        String mode = CAVEMode.getMode().toString();
-        Date time = SimulatedTime.getSystemTime().getTime();
-        List<ProductData> productData = (correction
-                ? ProductDataUtil.retrieveCorrectableProductData(mode, time)
-                : ((eventIdentifiers == null) || eventIdentifiers.isEmpty()
-                        ? ProductDataUtil.retrieveViewableProductData(mode,
-                                time)
-                        : ProductDataUtil.retrieveViewableProductDataForEvents(
-                                mode, time, eventIdentifiers)));
-        messenger.getProductViewerChooser()
-                .getProductViewerChooser(productData);
+    public void showUserProductViewerSelection() {
+        messenger.getProductViewerChooser().getProductViewerChooser();
     }
 
     /**
@@ -2315,5 +2276,16 @@ public class SessionProductManager implements ISessionProductManager {
             sessionManager.setPreviewOngoing(false);
         }
         return success;
+    }
+
+    private class HazardServicesLocalizationPathObserver
+            implements ILocalizationPathObserver {
+
+        @Override
+        public void fileChanged(ILocalizationFile file) {
+            productGen.shutdown();
+            productGen = ProductGeneration
+                    .getInstance(configManager.getSiteID());
+        }
     }
 }

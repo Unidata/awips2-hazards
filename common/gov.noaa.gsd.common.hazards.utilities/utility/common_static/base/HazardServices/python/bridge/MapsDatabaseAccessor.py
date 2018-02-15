@@ -21,12 +21,16 @@ data to be used in recommenders and product generation.
  Nov 08, 2016  25643  David.Gillingham  Code cleanup in getPolygonNames and 
                                         getPolygonDict
  Nov 16, 2016  22971     Robert.Blum    Changes for incremental overrides.
+ Feb 07, 2017   7137     JRamer         Handle merging of dam-specific and generic
+                                        DamMetadData.
 """
 
 from shapely.geometry import Polygon
 from ufpy.dataaccess import DataAccessLayer
 from Bridge import Bridge
-    
+import traceback
+import sys
+
 class MapsDatabaseAccessor(object):
     def __init__(self):
         self.bridge = Bridge()
@@ -82,9 +86,60 @@ class MapsDatabaseAccessor(object):
 
         return retDict
 
-    def getDamInundationMetadata(self, damName):
-        damInundationMetadata = self.bridge.getDamMetaData()
-        return damInundationMetadata.get(damName)
+    # We now consolidate the dam specific metadata with the non-dam specific
+    # metadata and do any variable substitutions that are possible completely
+    # internally.
+    def getDamInundationMetadata(self, damName, addGeneric=False):
+        if not isinstance(damName, str) :
+            # This would only happen if the data from the recommender
+            # was somehow corrupted.  For now we are letting clients
+            # report this condition if necessary.
+            return None
+        allDamInundationMetadata = self.bridge.getDamMetaData()
+        if allDamInundationMetadata == None :
+            # This represents a serious error because there should always at
+            # least be some default non-dam specific metadata in base.
+            tb = traceback.format_stack()
+            sys.stderr.write("\nUNEXPECTED CONDITION!!! None returned from Bridge:getDamMetaData()\n")
+            for tbentry in tb[:-1] :
+                 sys.stderr.write(tbentry)
+            sys.stderr.write(tb[-1].split('\n')[0]+"\n\n")
+            return None
+        damInundationMetadata = allDamInundationMetadata.get(damName)
+        # Returning None is the expected behavior if nothing for this dam and
+        # requester does not want the generic dam info included.
+        if not addGeneric :
+            return damInundationMetadata
+        genericMetadata = allDamInundationMetadata.get("Dam")
+        if genericMetadata == None :
+            # This represents a serious error because there should always at
+            # least be some default non-dam specific metadata in base.
+            tb = traceback.format_stack()
+            sys.stderr.write("\nUNEXPECTED CONDITION!!! No non-dam specific metadata available.\n")
+            for tbentry in tb[:-1] :
+                 sys.stderr.write(tbentry)
+            sys.stderr.write(tb[-1].split('\n')[0]+"\n\n")
+            return damInundationMetadata
+        if damInundationMetadata == None :
+            # This most often happens if the dam is in mapdata.daminundation
+            # SQL table with no associated metadata in DamMetaData.py. For now
+            # we are letting clients report this condition if necessary.
+            # We can still fold the dam name into the generic metadata.
+            damInundationMetadata = {}
+            riverName = '|* riverName *|'
+            cityInfo = '|* downstream town*|'
+        else :
+            riverName = damInundationMetadata.get("riverName", '|* riverName *|')
+            cityInfo = damInundationMetadata.get("cityInfo", '|* downstream town*|')
+        for k in genericMetadata.keys() :
+            if k in damInundationMetadata :
+                continue
+            v = genericMetadata[k]
+            v = v.replace("${damName}", damName)
+            v = v.replace("${riverName}", riverName)
+            v = v.replace("${cityInfo}", cityInfo)
+            damInundationMetadata[k] = v
+        return damInundationMetadata
 
     def getAllDamInundationMetadata(self):
         return self.bridge.getDamMetaData()

@@ -28,20 +28,23 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    03/31/2016      #8837         Robert.Blum    Initial Creation.
-#    07/28/2016      #19222        Robert.Blum    Added importDirectory(...)
+#    Jul 28, 2016    #19222        Robert.Blum    Added importDirectory(...)
+#    Mar 06, 2017    #28300        Robert.Blum    Merged with Awips2_baseline module.
 #
 #
 #
 
 import os, sys, string, traceback
-import PythonOverriderInterface
+import MasterInterface
 import HazardServicesPythonOverrider
 
 
-class HazardServicesPythonOverriderInterface(PythonOverriderInterface.PythonOverriderInterface):
+class HazardServicesPythonOverriderInterface(MasterInterface.MasterInterface):
 
     def __init__(self, scriptPath, localizationPath=None, site=None):
-        super(HazardServicesPythonOverriderInterface, self).__init__(scriptPath, localizationPath=localizationPath)
+        super(HazardServicesPythonOverriderInterface, self).__init__()
+        self._localizationPath = localizationPath
+        self._scriptPath = scriptPath
         self.site = site
 
     def _importModule(self, moduleName):
@@ -57,6 +60,46 @@ class HazardServicesPythonOverriderInterface(PythonOverriderInterface.PythonOver
 
         if not moduleName in self.scripts:
             self.scripts.append(moduleName)
+
+    def importModules(self):
+        modulesToImport = []
+        
+        for s in self._scriptPath.split(os.path.pathsep):
+            if os.path.exists(s):
+                scriptfiles = os.listdir(s)
+        
+                for filename in scriptfiles:
+                    split = string.split(filename, ".")
+                    if len(split) == 2 and len(split[0]) > 0 and split[1] == "py" and not filename.endswith("Interface.py"):
+                        if not split[0] in modulesToImport:
+                            modulesToImport.append(split[0])        
+        
+        for moduleName in modulesToImport:
+            self._importModule(moduleName)
+
+    def addModule(self, moduleName):
+        if not moduleName in self.scripts:
+            self.scripts.append(moduleName)
+        self.reloadModules()
+
+    def reloadModule(self, moduleName):
+        if sys.modules.has_key(moduleName):
+            self.reloadModules()
+            self.clearModuleAttributes(moduleName)
+            self._importModule(moduleName)
+
+    def reloadModules(self):
+        for script in self.scripts:
+            self.clearModuleAttributes(script)
+            # now use PythonOverrider to re-import the module
+            self._importModule(script)
+
+    def getStartupErrors(self):
+        from java.util import ArrayList
+        errorList = ArrayList()
+        for err in self.getImportErrors():
+            errorList.add(str(err))
+        return errorList
 
     def importDirectory(self, locPath, reloadModules=True):
         lf = self.pathMgr.getLocalizationFile(locPath, loctype='COMMON_STATIC', loclevel='BASE');

@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -45,6 +46,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -108,10 +110,13 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityI
  *                                      concern).
  * Nov 17, 2016   26313    Chris.Golden Changed to work with revamped
  *                                      GeoMapUtilities.
+ * Jan 04, 2017   26746    Chris.Golden Handled relocated geo map utilities.
  * Mar 16, 2017   15528    Chris.Golden Changed over from having the
  *                                      checked attribute as part of hazard
  *                                      events to having checked status
  *                                      tracked by the event manager.
+ * Apr 19, 2017   33275    mduff        Only display the PhenSig, not the
+ *                                      PhenSig and SubType.
  * Jun 22, 2017   15561    Chris.Golden Added flag to force recreation of
  *                                      spatial displayables when necessary.
  * Sep 27, 2017   38072    Chris.Golden Changed to work with multiple
@@ -131,6 +136,21 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityI
  *                                      visual feature of a hazard event,
  *                                      instead of always using the base
  *                                      geometry of said event.
+ * Feb 27, 2018   28017    Chris.Golden Changed hatching to only show for
+ *                                      selected hazard events.
+ * Mar 22, 2018   15561    Chris.Golden Added code to ensure that the
+ *                                      spatial display's editability is
+ *                                      factored into the editability (and
+ *                                      visual cues thereof) of spatial
+ *                                      entities, into the enabled state of
+ *                                      toolbar buttons, and into whether
+ *                                      context menu items are provided.
+ * May 22, 2018    3782    Chris.Golden Changed to allow tool visual
+ *                                      features to have geometry edit
+ *                                      operations performed upon them.
+ *                                      Also refactored tool dialog to not
+ *                                      take raw maps to hold its config
+ *                                      options.
  * </pre>
  * 
  * @author Chris.Golden
@@ -393,6 +413,12 @@ class SpatialEntityManager {
     private ISpatialView<?, ?, ?> view;
 
     /**
+     * Flag indicating whether or not spatial entities being managed may be
+     * editable at this time.
+     */
+    private boolean editable = true;
+
+    /**
      * Read-only set that will always contain the currently selected event
      * identifiers.
      */
@@ -480,8 +506,7 @@ class SpatialEntityManager {
     SpatialEntityManager(ISessionManager<ObservedSettings> sessionManager,
             Set<String> selectedEventIdentifiers) {
         this.sessionManager = sessionManager;
-        this.geoMapUtilities = new GeoMapUtilities(
-                sessionManager.getConfigurationManager());
+        this.geoMapUtilities = sessionManager.getGeoMapUtilities();
         this.selectedEventIdentifiers = selectedEventIdentifiers;
         spatialEntitiesForTypes.put(SpatialEntityType.HATCHING,
                 hatchingSpatialEntities);
@@ -509,6 +534,18 @@ class SpatialEntityManager {
      */
     void setView(ISpatialView<?, ?, ?> view) {
         this.view = view;
+    }
+
+    /**
+     * Set the flag indicating whether or not entities being managed may be
+     * editable at this time.
+     * 
+     * @param editable
+     *            Flag indicating whether or not managed entities may be
+     *            editable.
+     */
+    void setEditable(boolean editable) {
+        this.editable = editable;
     }
 
     /**
@@ -560,6 +597,21 @@ class SpatialEntityManager {
             SpatialEntity<? extends IEntityIdentifier> entity = spatialEntitiesForIdentifiers
                     .get(identifier);
             if ((entity != null) && entity.isEditableUsingGeometryOps()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determine whether or not at least one tool spatial entity is editable.
+     * 
+     * @return <code>true</code> if at least one tool spatial entity is
+     *         editable, <code>false</code> otherwise.
+     */
+    boolean isAtLeastOneToolSpatialEntityEditable() {
+        for (SpatialEntity<?> entity : toolSpatialEntities) {
+            if (entity.isEditableUsingGeometryOps()) {
                 return true;
             }
         }
@@ -803,18 +855,18 @@ class SpatialEntityManager {
      * 
      * @param toolVisualFeatures
      *            Visual features to be used to generate new spatial entities.
-     * @param toolType
-     *            Type of the tool with which the spatial entities are to be
-     *            associated.
+     * @param identifier
+     *            Tool execution identifier.
      */
     void updateEntitiesForToolVisualFeatures(
-            VisualFeaturesList toolVisualFeatures, ToolType toolType) {
+            VisualFeaturesList toolVisualFeatures,
+            ToolExecutionIdentifier identifier) {
 
         /*
          * Generate the new spatial entities, and tell the view about the
          * change.
          */
-        if (replaceToolSpatialEntities(toolVisualFeatures, toolType,
+        if (replaceToolSpatialEntities(toolVisualFeatures, identifier,
                 getSelectedTimeForVisualFeatures())) {
             view.refresh();
         }
@@ -825,8 +877,8 @@ class SpatialEntityManager {
      * 
      * @param toolVisualFeatures
      *            Visual features to be used to generate new spatial entities.
-     * @param toolType
-     *            Type of the tool with which the
+     * @param identifier
+     *            Tool execution identifier with which the
      *            <code>toolVisualFeatures</code> spatial entities are to be
      *            associated.
      * @param force
@@ -835,7 +887,7 @@ class SpatialEntityManager {
      *            versions.
      */
     void recreateAllEntities(VisualFeaturesList toolVisualFeatures,
-            ToolType toolType, boolean force) {
+            ToolExecutionIdentifier identifier, boolean force) {
 
         /*
          * Iterate through the hazard events, compiling lists of spatial
@@ -911,7 +963,7 @@ class SpatialEntityManager {
          * visual features as appropriate, and if at least one is created, mark
          * the tool-related spatial entity type as changed.
          */
-        if (replaceToolSpatialEntities(toolVisualFeatures, toolType,
+        if (replaceToolSpatialEntities(toolVisualFeatures, identifier,
                 selectedTime)) {
             changedEntityTypes.add(SpatialEntityType.TOOL);
         }
@@ -966,9 +1018,9 @@ class SpatialEntityManager {
          * returning the appropriate action.
          */
         boolean inOldTime = oldTime.intersects(event.getStartTime().getTime(),
-                event.getEndTime().getTime());
+                getEndTime(event).getTime());
         boolean inNewTime = newTime.intersects(event.getStartTime().getTime(),
-                event.getEndTime().getTime());
+                getEndTime(event).getTime());
         return (inOldTime == inNewTime ? EventDisplayChange.NONE
                 : (inOldTime ? EventDisplayChange.REMOVE
                         : EventDisplayChange.ADD_OR_REPLACE));
@@ -1459,8 +1511,8 @@ class SpatialEntityManager {
      *            List of visual features provided by a tool for the collection
      *            of spatial information from the user, from which spatial
      *            entities are to be generated.
-     * @param toolType
-     *            Type of the tool that generated the visual features.
+     * @param context
+     *            Tool execution context.
      * @param selectedTime
      *            Current selected time, needed to generate the spatial entities
      *            since the visual features may have temporally variant (and
@@ -1470,8 +1522,8 @@ class SpatialEntityManager {
      */
     @SuppressWarnings("unchecked")
     private boolean replaceToolSpatialEntities(
-            VisualFeaturesList visualFeaturesList, final ToolType toolType,
-            Date selectedTime) {
+            VisualFeaturesList visualFeaturesList,
+            final ToolExecutionIdentifier identifier, Date selectedTime) {
 
         /*
          * Remove records of previous tool spatial entities, except for the
@@ -1512,13 +1564,13 @@ class SpatialEntityManager {
              */
             List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> topmostSpatialEntities = null;
             for (VisualFeature visualFeature : visualFeaturesList) {
-                ToolVisualFeatureEntityIdentifier identifier = new ToolVisualFeatureEntityIdentifier(
-                        toolType, visualFeature.getIdentifier());
+                ToolVisualFeatureEntityIdentifier entityIdentifier = new ToolVisualFeatureEntityIdentifier(
+                        identifier, visualFeature.getIdentifier());
                 SpatialEntity<ToolVisualFeatureEntityIdentifier> entity = visualFeature
                         .getStateAtTime(
                                 (SpatialEntity<ToolVisualFeatureEntityIdentifier>) spatialEntitiesForIdentifiers
-                                        .get(identifier),
-                                identifier, selectedTime);
+                                        .get(entityIdentifier),
+                                entityIdentifier, editable, selectedTime);
                 if (entity != null) {
                     if (entity.isTopmost()) {
                         if (topmostSpatialEntities == null) {
@@ -1786,7 +1838,7 @@ class SpatialEntityManager {
             visualFeaturesList = null;
         }
         boolean inTimeRange = selectedRange.intersects(
-                event.getStartTime().getTime(), event.getEndTime().getTime());
+                event.getStartTime().getTime(), getEndTime(event).getTime());
         if ((visualFeaturesList != null) || inTimeRange) {
 
             /*
@@ -1815,11 +1867,12 @@ class SpatialEntityManager {
             String hazardLabel = getHazardLabel(event);
 
             /*
-             * If hatching is showing and the selected time is within the
-             * event's time range, determine whether or not this event requires
-             * hatching, and if so, create a spatial entity for it.
+             * If hatching is showing, the event is selected, and the selected
+             * time is within the event's time range, determine whether or not
+             * this event requires hatching, and if so, create a spatial entity
+             * for it.
              */
-            if (hatching && inTimeRange) {
+            if (selected && hatching && inTimeRange) {
                 String hazardType = HazardEventUtilities.getHazardType(event);
                 if (hazardType != null) {
                     HazardTypeEntry hazardTypeEntry = hazardTypes
@@ -1931,6 +1984,32 @@ class SpatialEntityManager {
         }
         map.put(key, value);
         return map;
+    }
+
+    /**
+     * Get the correct end time for when the specified event should no longer be
+     * visible.
+     * 
+     * @param event
+     *            Event to be checked.
+     * @return The event expiration time or end time, whichever is later.
+     */
+    private Date getEndTime(IHazardEventView event) {
+        Date expirationTime = null;
+        if (event.getExpirationTime() != null) {
+            int[] expirationWindow = sessionManager.getConfigurationManager()
+                    .getExpirationWindow(event);
+            if (expirationWindow != null) {
+                int afterMins = expirationWindow[1];
+                expirationTime = new Date(event.getExpirationTime().getTime()
+                        + (afterMins * TimeUtil.MILLIS_PER_MINUTE));
+            }
+        }
+        if (expirationTime != null) {
+            return event.getEndTime().after(expirationTime) ? event.getEndTime()
+                    : expirationTime;
+        }
+        return event.getEndTime();
     }
 
     /**
@@ -2104,8 +2183,11 @@ class SpatialEntityManager {
                         hazardMultiPointTextOffsetLength,
                         hazardMultiPointTextOffsetDirection,
                         hazardTextPointSize, hazardColor,
-                        (editable ? DragCapability.ALL : DragCapability.NONE),
-                        false, editable, rotatable, scaleable, true, false);
+                        (editable && this.editable ? DragCapability.ALL
+                                : DragCapability.NONE),
+                        false, (editable && this.editable),
+                        (rotatable && this.editable),
+                        (scaleable && this.editable), true, false);
         return new CreatedSpatialEntity(entity, (entity == oldEntity));
     }
 
@@ -2199,10 +2281,10 @@ class SpatialEntityManager {
                         .get(identifier);
                 SpatialEntity<? extends IHazardEventEntityIdentifier> entity = visualFeature
                         .getStateAtTime(oldEntity, identifier, selected,
-                                editable, selectedTime, hazardColor,
-                                hazardBorderWidth, hazardBorderStyle,
-                                hazardPointDiameter, hazardLabel,
-                                hazardSinglePointTextOffsetLength,
+                                (editable && this.editable), selectedTime,
+                                hazardColor, hazardBorderWidth,
+                                hazardBorderStyle, hazardPointDiameter,
+                                hazardLabel, hazardSinglePointTextOffsetLength,
                                 hazardSinglePointTextOffsetDirection,
                                 hazardMultiPointTextOffsetLength,
                                 hazardMultiPointTextOffsetDirection,
@@ -2391,7 +2473,7 @@ class SpatialEntityManager {
     private String getHazardLabel(IHazardEventView event) {
         StringBuilder sb = new StringBuilder();
         sb.append(event.getDisplayEventID());
-        String hazardType = HazardEventUtilities.getHazardType(event);
+        String hazardType = event.getPhensig();
         if (hazardType != null) {
             sb.append(" ");
             sb.append(hazardType);

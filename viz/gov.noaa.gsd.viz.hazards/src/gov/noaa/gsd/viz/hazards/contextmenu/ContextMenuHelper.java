@@ -59,9 +59,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.VizWorkbenchManager;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.detailsviewer.EventDetailsDialog;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
 
@@ -117,9 +119,16 @@ import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
  *                                      history list are now visible. Also changed to
  *                                      not persist events upon status changes when they
  *                                      should not be saved to the database.
+ * Mar 24, 2017 30537      Kevin.Bisanz Fix event detail view to work on pending events.
  * Mar 30, 2017 15528      Chris.Golden Changed to use new version of saveEvents().
+ * Apr 03, 2017 32574      bkowal       Confirm that the user would like to end every
+ *                                      issued hazard event when all possible issued events
+ *                                      have been selected.
+ * May 02, 2017 33739      mduff        Display confirmation dialog for ending all visible
+ *                                      hazards only if ending all visible.
  * May 04, 2017 15561      Chris.Golden Fixed ConcurrentModificationException that occurred
  *                                      when deleting more than one event at once.
+ * May 15, 2017 34069      mduff        Added handling for HazardStatus.ELAPSING.
  * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
  * Jun 30, 2017 19223      Chris.Golden Added ability to change the text and enabled state
  *                                      of a menu item based upon a contribution item made
@@ -129,6 +138,9 @@ import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
  * Sep 27, 2017 38072      Chris.Golden Added use of batched messages.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
  *                                      events.
+ * Apr 23, 2018 15561      Chris.Golden Added ability to delete non-hazardous events.
+ * Apr 24, 2018 22308      Chris.Golden Changed product viewer to work with viewing of
+ *                                      products coming from text database.
  * </pre>
  * 
  * @author mnash
@@ -187,6 +199,10 @@ public class ContextMenuHelper {
      * private.
      */
     public enum ContextMenuSelections {
+
+        VIEW_DETAILS_FOR_SELECTED_EVENTS(
+                "View Details for Selected Event(s)..."),
+
         END_ALL_SELECTED_HAZARDS(),
 
         REVERT_ALL_SELECTED_HAZARDS(),
@@ -429,6 +445,7 @@ public class ContextMenuHelper {
         IHazardEventView currentEvent = null;
         if (eventManager.isCurrentEvent()) {
             currentEvent = eventManager.getCurrentEvent();
+            boolean hazardous = eventManager.isHazardous(currentEvent);
             LockInfo info = lockManager
                     .getHazardEventLockInfo(currentEvent.getEventID());
             LockStatus lockStatus = info.getLockStatus();
@@ -454,10 +471,17 @@ public class ContextMenuHelper {
 
                 case ISSUED:
                     if (lockStatus != LockStatus.LOCKED_BY_OTHER) {
-                        addContributionItem(items,
-                                ContextMenuSelections.END_THIS_HAZARD
-                                        .getValue(),
-                                originator);
+                        if (hazardous) {
+                            addContributionItem(items,
+                                    ContextMenuSelections.END_THIS_HAZARD
+                                            .getValue(),
+                                    originator);
+                        } else {
+                            addContributionItem(items,
+                                    ContextMenuSelections.DELETE_THIS_HAZARD
+                                            .getValue(),
+                                    originator);
+                        }
                     }
                     break;
 
@@ -467,6 +491,28 @@ public class ContextMenuHelper {
                                 ContextMenuSelections.REVERT_THIS_HAZARD
                                         .getValue(),
                                 originator);
+                        if (hazardous == false) {
+                            addContributionItem(items,
+                                    ContextMenuSelections.DELETE_THIS_HAZARD
+                                            .getValue(),
+                                    originator);
+                        }
+                    }
+                    break;
+
+                case ELAPSING:
+                    if (lockStatus != LockStatus.LOCKED_BY_OTHER) {
+                        if (hazardous) {
+                            addContributionItem(items,
+                                    ContextMenuSelections.END_THIS_HAZARD
+                                            .getValue(),
+                                    originator);
+                        } else {
+                            addContributionItem(items,
+                                    ContextMenuSelections.DELETE_THIS_HAZARD
+                                            .getValue(),
+                                    originator);
+                        }
                     }
                     break;
 
@@ -735,6 +781,14 @@ public class ContextMenuHelper {
             break;
         }
 
+        if ((originator == UIOriginator.CONSOLE) && (selectionManager
+                .getSelectedEventIdentifiers().size() > 0)) {
+            addContributionItem(items,
+                    ContextMenuSelections.VIEW_DETAILS_FOR_SELECTED_EVENTS
+                            .getValue(),
+                    originator);
+        }
+
         return items;
     }
 
@@ -901,6 +955,41 @@ public class ContextMenuHelper {
      */
     private void handleAction(String menuLabel, IOriginator originator) {
         if (menuLabel
+                .equals(ContextMenuSelections.VIEW_DETAILS_FOR_SELECTED_EVENTS
+                        .getValue())) {
+            List<IHazardEventView> events = selectionManager
+                    .getSelectedEvents();
+            if (events.size() > 0) {
+                List<List<IHazardEventView>> eventList = new ArrayList<>();
+                for (IHazardEventView latestEvent : events) {
+                    List<IHazardEventView> historyList = eventManager
+                            .getEventHistoryById(latestEvent.getEventID());
+
+                    List<IHazardEventView> tempList = new ArrayList<>();
+                    if (historyList != null) {
+                        tempList.addAll(historyList);
+                    }
+
+                    /*
+                     * If nothing was added from the history list (hazard not
+                     * yet saved/issued) or the the current event does not equal
+                     * the latest saved/issued event, add the current event to
+                     * the list.
+                     */
+                    if (tempList.isEmpty() || (tempList.get(tempList.size() - 1)
+                            .equals(latestEvent) == false)) {
+                        tempList.add(latestEvent);
+                    }
+
+                    eventList.add(tempList);
+                }
+                EventDetailsDialog detailsDlg = new EventDetailsDialog(
+                        VizWorkbenchManager.getInstance().getCurrentWindow()
+                                .getShell(),
+                        eventList);
+                detailsDlg.open();
+            }
+        } else if (menuLabel
                 .equals(ContextMenuSelections.END_THIS_HAZARD.getValue())) {
             IHazardEventView event = eventManager.getCurrentEvent();
             eventManager.initiateEventEndingProcess(event, originator);
@@ -928,24 +1017,13 @@ public class ContextMenuHelper {
         } else if (menuLabel.contains(
                 ContextMenuSelections.VIEW_PRODUCTS_FOR_SELECTED_EVENTS
                         .getValue())) {
-            productManager.showUserProductViewerSelection(false,
-                    selectionManager.getSelectedEventIdentifiers());
+            productManager.showUserProductViewerSelection();
         } else if (menuLabel.contains(EventCommand.END.value) && menuLabel
                 .toLowerCase().contains(HazardStatus.ISSUED.getValue())) {
-            for (IHazardEventView event : selectionManager
-                    .getSelectedEvents()) {
-
-                /*
-                 * It's possible, for example, for the selected hazards to be a
-                 * pending and an issued. We only want to end the issued one.
-                 */
-                if (event.getStatus().equals(HazardStatus.ISSUED)) {
-                    eventManager.initiateEventEndingProcess(event, originator);
-                }
+            if (eventManager.initiateSelectedEventsEndingProcess(originator)) {
+                selectionManager.setSelectedEvents(
+                        selectionManager.getSelectedEvents(), originator);
             }
-            selectionManager.setSelectedEvents(
-                    selectionManager.getSelectedEvents(), originator);
-
         } else if (menuLabel.contains(
                 ContextMenuSelections.REVERT_THIS_HAZARD.getValue())) {
             IHazardEventView event = eventManager.getCurrentEvent();

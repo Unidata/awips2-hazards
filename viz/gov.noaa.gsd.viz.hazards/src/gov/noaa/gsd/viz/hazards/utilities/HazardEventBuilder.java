@@ -9,9 +9,9 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -51,6 +51,8 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  *                                      session events.
  * Jan 17, 2018 33428      Chris.Golden Removed add-geometry-to-selected-event-geometry
  *                                      code, as it is no longer needed.
+ * May 08, 2018 15561      Chris.Golden Changed BaseHazardEvent to SessionHazardEvent.
+ * Jun 06, 2018 15561      Chris.Golden Added practice flag for hazard event creation.
  * </pre>
  * 
  * @author Dan Schaffer
@@ -90,13 +92,15 @@ public class HazardEventBuilder {
      * 
      * @param coordinates
      *            Coordinates to form the polygon.
+     * @param practice
+     *            Practice mode.
      * @return New hazard event.
      * @throws InvalidGeometryException
      *             If the geometry was found to be invalid.
      */
     @Deprecated
-    public IHazardEvent buildPolygonHazardEvent(Coordinate[] coordinates)
-            throws InvalidGeometryException {
+    public IHazardEvent buildPolygonHazardEvent(Coordinate[] coordinates,
+            boolean practice) throws InvalidGeometryException {
         IAdvancedGeometry geometry = AdvancedGeometryUtilities
                 .createGeometryWrapper(geometryFactory.createPolygon(
                         geometryFactory.createLinearRing(coordinates), null),
@@ -104,7 +108,7 @@ public class HazardEventBuilder {
 
         checkValidity(geometry);
 
-        return finishHazardEventBuild(geometry);
+        return finishHazardEventBuild(geometry, practice);
     }
 
     /**
@@ -156,10 +160,13 @@ public class HazardEventBuilder {
      * 
      * @param geometry
      *            Geometry to be used by the hazard event.
+     * @param practice
+     *            Practice mode flag.
      * @return New hazard event.
      */
-    private IHazardEvent finishHazardEventBuild(IAdvancedGeometry geometry) {
-        IHazardEvent event = new BaseHazardEvent();
+    private IHazardEvent finishHazardEventBuild(IAdvancedGeometry geometry,
+            boolean practice) {
+        IHazardEvent event = new SessionHazardEvent(practice);
         event.setGeometry(geometry);
         event.setCreationTime(sessionManager.getTimeManager().getCurrentTime());
         return event;

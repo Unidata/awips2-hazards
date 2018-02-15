@@ -6,9 +6,9 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: GSD
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Export-Package: gov.noaa.gsd.viz.megawidgets.sideeffects
-Import-Package: com.google.gson,
- com.google.gson.reflect,
- com.raytheon.uf.common.status,
+Import-Package: com.raytheon.uf.common.status,
  com.raytheon.uf.common.util,
  gov.noaa.gsd.viz.megawidgets,
  jep
+Require-Bundle: gov.noaa.gsd.common.utilities,
+ com.fasterxml.jackson;bundle-version="2.6.5"

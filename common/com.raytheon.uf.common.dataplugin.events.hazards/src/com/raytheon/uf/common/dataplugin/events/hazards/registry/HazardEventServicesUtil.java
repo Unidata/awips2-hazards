@@ -30,6 +30,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.GenericRegistryObject;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec;
@@ -65,6 +66,8 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
  *                                      from Richard Peter to improve query
  *                                      performance.
  * Feb 16, 2017 29138     Chris.Golden  Changed to work with new hazard event
+ * Feb 16, 2017 28708     Chris.Golden  Changed to use already defined
+ *                                      constants.
  * Oct 02, 2017 38506     Chris.Golden  Changed to include ability to
  *                                      serialize and deserialize
  *                                      {@link GenericRegistryObject}
@@ -149,7 +152,7 @@ public class HazardEventServicesUtil {
                 queryParameters.size());
         for (Entry<String, List<String>> entry : queryParameters.entrySet()) {
             for (String value : entry.getValue()) {
-                if (entry.getKey().equalsIgnoreCase("practice")) {
+                if (entry.getKey().equalsIgnoreCase(HazardConstants.PRACTICE)) {
                     practice = Boolean.parseBoolean(value);
                 } else {
                     parameters.add(new HazardQueryParameter(entry.getKey(),
@@ -182,7 +185,8 @@ public class HazardEventServicesUtil {
             IQueryParameterKeyGenerator queryParameterKeyGenerator) {
         queryParameters.add(new HazardQueryParameter("registryObjectClassName",
                 clazz.getName()));
-        queryParameters.add(new HazardQueryParameter("practice", practice));
+        queryParameters.add(
+                new HazardQueryParameter(HazardConstants.PRACTICE, practice));
         StringBuilder selectFrom = new StringBuilder(QUERY_BASE);
         StringBuilder whereClause = new StringBuilder(" where ");
 
@@ -272,7 +276,7 @@ public class HazardEventServicesUtil {
     @SuppressWarnings("unchecked")
     public static <T extends Object> List<T> getContentObjects(
             Collection<RegistryObjectType> result, Class<T> clazz)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         List<T> objs = new ArrayList<T>(result.size());
         if (!result.isEmpty()) {
             for (RegistryObjectType obj : result) {
@@ -319,7 +323,7 @@ public class HazardEventServicesUtil {
      */
     public static String getRegistryObjectResponse(
             List<RegistryObjectType> result)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         HazardEventResponse response = HazardEventResponse.create();
         response.setRegistryObjects(result);
         return marshal(response);

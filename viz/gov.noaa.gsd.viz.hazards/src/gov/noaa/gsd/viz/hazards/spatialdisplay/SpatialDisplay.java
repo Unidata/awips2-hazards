@@ -224,6 +224,7 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
  *                                        during the current CAVE session.
  * Feb 01, 2017 15556      Chris.Golden   Changed to pass entity list identifier with entities to
  *                                        drawable manager.
+ * Jun 02, 2017 33735      Kevin.Bisanz   Add initSuccess flag.
  * Jun 30, 2017 21638      Chris.Golden   Only allow gage action menu item to be enabled if there is a
  *                                        recommender configured as the gage-point-first recommender.
  * Sep 08, 2017 15561      Chris.Golden   Fixed bug that caused geometry modifications performed upon
@@ -239,6 +240,14 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
  *                                        service of handling mouse events that select or modify said
  *                                        drawables. Also added ability for the settings to specify which
  *                                        drag-and-drop manipulation points are to be prioritized.
+ * Mar 22, 2018 15561      Chris.Golden   Fixed bug that caused unselected events with no visual features
+ *                                        to disappear completely when going from selected to deselected.
+ *                                        Also added code to ensure that the spatial display's
+ *                                        editability is factored into the editability (and visual cues
+ *                                        thereof) of spatial entities, into the enabled state of toolbar
+ *                                        buttons, and into whether context menu items are provided.
+ * May 22, 2018  3782      Chris.Golden   Changed to allow tool visual features to have geometry edit
+ *                                        operations performed upon them.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -395,6 +404,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      * Data time increment in milliseconds.
      */
     private static final int DATA_TIME_INCREMENT_MILLIS = 15 * 60 * 1000;
+
+    /**
+     * Spatial entity types allowing geometry edit operations, in the order of
+     * preference for such operations.
+     */
+    private static final SpatialEntityType[] SPATIAL_ENTITY_TYPES_ALLOWING_GEOMETRY_EDIT_OPERATIONS = {
+            SpatialEntityType.SELECTED, SpatialEntityType.TOOL };
 
     // Private Static Variables
 
@@ -809,6 +825,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      */
     private int contextMenuY;
 
+    /**
+     * Flag indicating whether or not successful initialization has occurred.
+     */
+    private boolean initialized = false;
+
     // Public Methods
 
     /**
@@ -909,6 +930,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
                  */
                 setCurrentInputHandlerToNonDrawing(
                         InputHandlerType.SINGLE_SELECTION);
+                initialized = true;
             }
         };
         if (Display.getDefault().getThread() == Thread.currentThread()) {
@@ -920,6 +942,16 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
 
     // Public Methods
 
+    /**
+     * Determine whether or not the display was successfully initialized.
+     * 
+     * @return <code>true</code> if successful initialization occurred,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isInitialized() {
+        return initialized;
+    }
+
     @Override
     public String getName() {
         return LAYER_NAME;
@@ -929,6 +961,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     public void addContextMenuItems(IMenuManager menuManager, int x, int y) {
 
         ensureExecutingThreadIsMainUiThread();
+
+        /*
+         * Do nothing if not currently editable.
+         */
+        if (isEditable() == false) {
+            return;
+        }
 
         /*
          * Remember the point at which the menu was deployed.
@@ -1269,7 +1308,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
          * sequence if this is the last point.
          */
         if (spatialView
-                .getGeometryEditMode() == SpatialView.GeometryEditMode.NEW_EVENT) {
+                .getGeometryEditMode() == SpatialView.GeometryEditMode.NEW_GEOMETRY) {
 
             spatialView.handleUserCreationOfShape(AdvancedGeometryUtilities
                     .createGeometryWrapper(AdvancedGeometryUtilities
@@ -1329,7 +1368,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     public void handleUserDrawingActionComplete(IAdvancedGeometry geometry) {
         if (geometry != null) {
             if (spatialView
-                    .getGeometryEditMode() == SpatialView.GeometryEditMode.NEW_EVENT) {
+                    .getGeometryEditMode() == SpatialView.GeometryEditMode.NEW_GEOMETRY) {
                 spatialView.handleUserCreationOfShape(geometry);
             } else {
                 applyGeometryEdit(geometry);
@@ -1987,7 +2026,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
          * its index.
          */
         SpatialEntity<? extends IEntityIdentifier> spatialEntity = drawableManager
-                .getAssociatedSpatialEntity(
+                .getAssociatedUserModifiableSpatialEntity(
                         (AbstractDrawableComponent) drawable);
         IAdvancedGeometry originalGeometry = spatialEntity.getGeometry();
         int newIndex = drawable.getGeometryIndex();
@@ -2098,7 +2137,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     @Override
     protected void paint(IGraphicsTarget target, PaintProperties paintProps,
             Object object, AbstractMovableToolLayer.SelectionStatus status)
-                    throws VizException {
+            throws VizException {
 
         /*
          * No action; this class does not rely upon the superclass to do its
@@ -2407,7 +2446,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      * operation (replacement, union, intersection, or subtraction) to the
      * selected geometry-operation-editable spatial entity. It is assumed that
      * {@link SpatialView#getGeometryEditMode()} will return something other
-     * than {@link GeometryEditMode#NEW_EVENT} during the invocation of this
+     * than {@link GeometryEditMode#NEW_GEOMETRY} during the invocation of this
      * method.
      * 
      * @param advancedGeometry
@@ -2420,13 +2459,21 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
          * There should be only one, since only one hazard event may be selected
          * (for those that are representing base geometries) and it would have
          * only one spatial entity, and for visual features, only one in a list
-         * of visual features is supposed to have this flag set to true.
+         * of visual features is supposed to have this flag set to true. If no
+         * event is selected with visual features that are of this sort, then
+         * there should be only one spatial entity accepting geometry edits in
+         * the tool visual features.
          */
         SpatialEntity<? extends IEntityIdentifier> entityToBeEdited = null;
-        for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntitiesForTypes
-                .get(SpatialEntityType.SELECTED)) {
-            if (spatialEntity.isEditableUsingGeometryOps()) {
-                entityToBeEdited = spatialEntity;
+        for (SpatialEntityType type : SPATIAL_ENTITY_TYPES_ALLOWING_GEOMETRY_EDIT_OPERATIONS) {
+            for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntitiesForTypes
+                    .get(type)) {
+                if (spatialEntity.isEditableUsingGeometryOps()) {
+                    entityToBeEdited = spatialEntity;
+                    break;
+                }
+            }
+            if (entityToBeEdited != null) {
                 break;
             }
         }

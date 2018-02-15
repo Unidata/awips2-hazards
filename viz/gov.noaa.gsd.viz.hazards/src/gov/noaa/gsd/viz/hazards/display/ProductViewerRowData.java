@@ -19,9 +19,13 @@
  **/
 package gov.noaa.gsd.viz.hazards.display;
 
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.raytheon.uf.common.hazards.productgen.data.ProductData;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.dataplugin.text.db.StdTextProduct;
+import com.raytheon.uf.viz.productgen.validation.util.VtecObject;
 
 /**
  * Data object to back a row in the Product Viewer Dialog.
@@ -35,6 +39,8 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Mar 16, 2016  16538     mpduff      Initial creation
  * Apr 27, 2016  17742     Roger.Ferrel Added getter methods for new columns.
  * Jul 06, 2016  18257     Kevin.Bisanz Implemented toString()
+ * Jan 27, 2017  22308     Robert.Blum Refactored to work with pulling products
+ *                                     out of the text database.
  * 
  * </pre>
  * 
@@ -45,135 +51,114 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 public class ProductViewerRowData {
 
     /**
-     * The product's category
+     * List of events that were used to generate the product.
      */
-    private String productCategory;
+    private List<? extends IReadableHazardEvent> events;
 
     /**
-     * The product's issue date
+     * The Text Product for the text database.
      */
-    private Date issueDate;
-
-    private Date endDate;
+    private StdTextProduct product;
 
     /**
-     * The product's event IDs
+     * List of VTEC objects parsed from the text product.
      */
-    private String eventIds;
+    private List<VtecObject> vtecs;
 
     /**
-     * The raw product data
+     * @return the events
      */
-    private ProductData productData;
-
-    /**
-     * @return the productCategory
-     */
-    public String getProductCategory() {
-        return productCategory;
+    public List<? extends IReadableHazardEvent> getEvents() {
+        return events;
     }
 
     /**
-     * @param productCategory
-     *            the productCategory to set
+     * @param events
+     *            the events to set
      */
-    public void setProductCategory(String productCategory) {
-        this.productCategory = productCategory;
+    public void setEvents(List<? extends IReadableHazardEvent> events) {
+        this.events = events;
     }
 
     /**
-     * @return the issueDate
+     * @return the product
      */
-    public Date getIssueDate() {
-        return issueDate;
-    }
-
-    public Date getEndDate() {
-        return endDate;
+    public StdTextProduct getProduct() {
+        return product;
     }
 
     /**
-     * @param issueDate
-     *            the issueDate to set
+     * @param product
+     *            the product to set
      */
-    public void setIssueDate(Date issueDate) {
-        this.issueDate = issueDate;
-    }
-
-    public void setEndDate(Date endDate) {
-        this.endDate = endDate;
+    public void setProduct(StdTextProduct product) {
+        this.product = product;
     }
 
     /**
-     * @return the eventIds
+     * @return the product
      */
+    public List<VtecObject> getVtecs() {
+        return vtecs;
+    }
+
+    /**
+     * @param product
+     *            the product to set
+     */
+    public void setVtecs(List<VtecObject> vtecs) {
+        this.vtecs = vtecs;
+    }
+
     public String getEventIds() {
-        return eventIds;
+        if (events == null) {
+            return "";
+        }
+        List<String> eventIds = new ArrayList<>(events.size());
+        for (IReadableHazardEvent event : events) {
+            eventIds.add(event.getEventID());
+        }
+        return eventIds.toString();
     }
 
     /**
-     * @param eventIds
-     *            the eventIds to set
+     * Returns the VTEC action(s) from the text product as a single string.
+     * 
+     * @return
      */
-    public void setEventIds(String eventIds) {
-        this.eventIds = eventIds;
-    }
-
-    /**
-     * @return the productData
-     */
-    public ProductData getProductData() {
-        return productData;
-    }
-
-    /**
-     * @param productData
-     *            the productData to set
-     */
-    public void setProductData(ProductData productData) {
-        this.productData = productData;
-    }
-
-    public String getHazardType() {
-        String retVal = null;
-        if (productData != null) {
-            retVal = productData.getHazardType();
+    public String getActions() {
+        List<String> productActions = new ArrayList<>(vtecs.size());
+        for (VtecObject vtec : vtecs) {
+            productActions.add(vtec.getAction());
         }
-        return retVal;
-    }
-
-    public String getVtecStr() {
-        String retVal = null;
-        if (productData != null) {
-            retVal = productData.getVtecStr();
-        }
-        return retVal;
-    }
-
-    public Long getExpirationTime() {
-        Long retVal = null;
-        if (productData != null) {
-            retVal = productData.getExpirationTime();
-        }
-        return retVal;
+        return productActions.toString();
     }
 
     public String getUserName() {
-        String retVal = null;
-        if (productData != null) {
-            retVal = productData.getUserName();
+        if (events != null && events.isEmpty() == false) {
+            String userName = events.get(0).getWsId().getUserName();
+            if (userName != null) {
+                return userName;
+            }
         }
-        return retVal;
+        return "";
     }
 
-    @Override
-    public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getEventIds());
-        sb.append(" ");
-        sb.append(getVtecStr());
-        sb.append(" ");
-        sb.append(getHazardType());
-        return sb.toString();
+    public String getSite() {
+        if (events != null && events.isEmpty() == false) {
+            String site = events.get(0).getSiteID();
+            if (site != null) {
+                return site;
+            }
+        }
+        return "";
+    }
+
+    public Long getIssueTime() {
+        if (events != null && events.isEmpty() == false) {
+            return (Long) events.get(0)
+                    .getHazardAttribute(HazardConstants.ISSUE_TIME);
+        }
+        return null;
     }
 }

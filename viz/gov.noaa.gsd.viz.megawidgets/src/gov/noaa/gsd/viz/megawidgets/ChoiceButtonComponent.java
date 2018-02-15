@@ -46,6 +46,8 @@ import org.eclipse.swt.widgets.Label;
  *                                      having its component widgets ask to take
  *                                      up extra space when more vertical space
  *                                      is available.
+ * Apr 17, 2017   32734    Kevin.Bisanz Add null/disposed checks on choiceButton.
+ * Jun 28, 2017   35648    Robert.Blum  Preventing widget dispose error.
  * </pre>
  * 
  * @author Chris.Golden
@@ -238,8 +240,12 @@ public class ChoiceButtonComponent {
      */
     public void setEnabled(boolean enable) {
         this.enabled = enable;
-        choiceButton.setEnabled(enable && editable);
-        readOnlyLabel.setEnabled(enable);
+        if ((choiceButton != null) && (choiceButton.isDisposed() == false)) {
+            choiceButton.setEnabled(enable && editable);
+        }
+        if (readOnlyLabel != null) {
+            readOnlyLabel.setEnabled(enable);
+        }
     }
 
     /**
@@ -250,13 +256,16 @@ public class ChoiceButtonComponent {
      */
     public void setEditable(boolean editable) {
         this.editable = editable;
-        choiceButton.setEnabled(enabled && editable);
-        if (readOnlyLabel != null) {
-            buttonGridData.horizontalSpan = (editable ? 2 : 1);
-            buttonGridData.widthHint = (editable ? choiceButton.computeSize(
-                    SWT.DEFAULT, SWT.DEFAULT).x : getButtonNonTextWidth());
-            labelGridData.exclude = editable;
-            choiceButton.getParent().layout();
+        if ((choiceButton != null) && (choiceButton.isDisposed() == false)) {
+            choiceButton.setEnabled(enabled && editable);
+            if (readOnlyLabel != null && readOnlyLabel.isDisposed() == false) {
+                buttonGridData.horizontalSpan = (editable ? 2 : 1);
+                buttonGridData.widthHint = (editable
+                        ? choiceButton.computeSize(SWT.DEFAULT, SWT.DEFAULT).x
+                        : getButtonNonTextWidth());
+                labelGridData.exclude = editable;
+                choiceButton.getParent().layout();
+            }
         }
     }
 
@@ -267,7 +276,9 @@ public class ChoiceButtonComponent {
      *            Flag indicating whether or not the button is checked.
      */
     public void setChecked(boolean checked) {
-        choiceButton.setSelection(checked);
+        if ((choiceButton != null) && (choiceButton.isDisposed() == false)) {
+            choiceButton.setSelection(checked);
+        }
     }
 
     /**

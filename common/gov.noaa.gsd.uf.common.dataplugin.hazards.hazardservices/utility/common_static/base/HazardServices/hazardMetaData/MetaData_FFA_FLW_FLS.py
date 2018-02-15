@@ -13,6 +13,7 @@ class MetaData(CommonMetaData.MetaData):
         self._eventDicts = eventDicts
         productSegmentGroup = metaDict.get('productSegmentGroup')
         productLabel = productSegmentGroup.get('productLabel')
+        prevProductLabel = eventDicts[0].get('productLabel', None)
         geoType = productSegmentGroup.get('geoType')
         productParts = productSegmentGroup.get('productParts')
         productCategory = metaDict.get('productCategory')
@@ -20,71 +21,74 @@ class MetaData(CommonMetaData.MetaData):
         eventIDs = productSegmentGroup.get('eventIDs')
         suffix = "_"+productLabel
         self.immediateCauses = set()
+        self.allCAN = True
         if self._eventDicts:
             for eventDict in self._eventDicts:
                 self.immediateCauses.add(eventDict.get('immediateCause', 'ER'))
-
-        # Set up initial values -- Use previous values from User Edited Text database if available
-        for field in ['overviewSynopsis', 'callsToAction_productLevel']:
-            exec field +'_value = ""'
-            for eventID in eventIDs:
-                # NOTE:  Providing '' will look for '' in the database, but
-                # providing None as a value will prevent that parameter from
-                # being used in the query.
-                textObjects =  ProductTextUtil.retrieveProductText(field+suffix, '', '', '', [eventID])
-                if textObjects: 
-                    value = self.as_str(json.loads(textObjects[0].getValue()))
-                    exec field +'_value = value'
+                if eventDict.get('status') != 'ENDING':
+                    self.allCAN = False
                     break
                     
         # Product level CTA's are only for the point-based hazards
+        ctas = {}
         if geoType == 'point':
-            ctas = [self.getCTAs(productLabel, callsToAction_productLevel_value)]
+            if not self.allCAN:
+                previousValues = set()
+                for hazard in self._eventDicts:
+                    tempVals = self.getPreviousStagingValue(hazard, "callsToAction_productLevel", productLabel, prevProductLabel)
+                    if tempVals:
+                        previousValues.update(tempVals)
+                ctas = self.getCTAs(productLabel, previousValues)
         else:
-            if 'overviewSynopsis_area' not in productParts.get('partsList'):
+            if 'overviewSynopsis_area' not in [part.getName() for part in productParts]:
                 return {
                 METADATA_KEY:[]
                 }
-            ctas = []
 
-        label = 'Overview Synopsis for '+productLabel
+        metaData = []
+
+        # Only add the overview if there is canned choices
         choices = self.getSynopsisChoices(productLabel)
-        fields = []
-        fields.append({
-                     "fieldType": "Label",
-                     "fieldName": "overviewSynopsisExplanation" + suffix,
-                     "label": label,
-                     })
-        # only add the button if there is canned choices
+        choiceIdentifiers = set([choice["identifier"] for choice in choices])
         if choices:
-            fields.append({
-                         "fieldType": "MenuButton",
-                         "fieldName": "overviewSynopsisCanned" + suffix,
-                         "label": "Choose Canned Text",
-                         "choices": choices,
-                         })
-        metaData = [
-                    {
-                     "fieldType": "Composite",
-                     "fieldName": "overviewSynopsisContainer" + suffix,
-                     "expandHorizontally": True,
-                     "numColumns": 2,
-                     "spacing": 5,
-                     "fields": fields,
-                     },
-                    {
-                     "fieldType": "Text",
-                     "fieldName": 'overviewSynopsis' + suffix,
-                     "visibleChars": 60,
-                     "lines": 6,
-                     "expandHorizontally": True,
-                     "values": overviewSynopsis_value,
-                     }
-                    ] + ctas
+            
+            # Determine if there is a previous value to use.
+            previousValues = set()
+            for hazard in self._eventDicts:
+                previousValue = self.getPreviousStagingValue(hazard, "overviewSynopsisCanned", productLabel, prevProductLabel)
+                if previousValue:
+                    previousValues.add(previousValue)
+
+            # Use the previous value if one is found and if it
+            # is valid (i.e. it is found within the current set
+            # of choices). 
+            prevValue = None
+            if previousValues:
+                prevValue = list(previousValues)[0]
+                if prevValue not in choiceIdentifiers:
+                    prevValue = None
+                    
+            overview = {
+                    "fieldType": "ComboBox",
+                    "fieldName": "overviewSynopsisCanned" + suffix,
+                    "label": "Overview Synopsis for " + productLabel,
+                    "choices": choices,
+                    "values" : prevValue,
+                    }
+            metaData.append(overview)
+
+        if ctas:
+            metaData.append(ctas)
         return {
-                METADATA_KEY: metaData
-                }
-        
+            METADATA_KEY: metaData
+            }
+
+    def synopsisBlank(self):
+        return {"identifier":"blankSynopsis",
+                "displayString":"",
+                "productString": "",
+        }
+
     def synopsisTempSnowMelt(self, productLabel):
         if productLabel.find('FFA')>=0:
             productString = "Warm temperatures may melt high mountain snowpack and increase river flows."
@@ -154,7 +158,11 @@ class MetaData(CommonMetaData.MetaData):
         }
 
     def getSynopsisChoices(self, productLabel):
+        # No options make sense for CANs
+        if self.allCAN:
+            return []
         choices = [ 
+                    self.synopsisBlank(),
                     self.synopsisTempSnowMelt(productLabel),
                     self.synopsisDayNightTemps(productLabel),
                     self.synopsisSnowMeltReservoir(productLabel),
@@ -204,22 +212,35 @@ class MetaData(CommonMetaData.MetaData):
                 if choice.get('identifier') == identifier:
                     availableChoices.append(choice)
                     break
+
+        if availableChoices:
+            # Give a option for no canned text.
+            availableChoices.insert(0, self.synopsisBlank())
         return availableChoices
 
     def getCTAs(self, productLabel, cta_value):
+        
+        # Ensure that there are some values chosen.
         values = cta_value
         if not values:
             if productLabel.find('FFA')>=0:
                 values = ['safetyCTA']
             else:
-                values = ["stayTunedCTA"]
+                values = ["turnAroundCTA"]
+                
+        # Weed out any values that are not valid choices.
+        choices = self.getCTA_Choices(productLabel)
+        choiceIdentifiers = set([choice["identifier"] for choice in choices])
+        values = list(set(values).intersection(choiceIdentifiers))
+        
         return {
                 "fieldType":"CheckBoxes",
                 "label":"Calls to Action (1 or more):",
                 "fieldName": "callsToAction_productLevel_"+productLabel,
                 "values": values,
-                "choices": self.getCTA_Choices(productLabel)
-                }        
+                "choices": choices
+                }    
+    
     def getCTA_Choices(self, productLabel):
         if productLabel.find('FAA')>=0:
             #FA.A (FAA) Does not have Calls To Action CTA Choices
@@ -259,16 +280,22 @@ class MetaData(CommonMetaData.MetaData):
                 self.ctaWarningInEffect(),
                 self.ctaReportFlooding(),
                 ]
+
+    def getPreviousStagingValue(self, hazard, key, productLabel, prevProductLabel):
+        if prevProductLabel:
+            prevKey = key+"_" + prevProductLabel
+            return hazard.get(key + "_" + productLabel, hazard.get(prevKey))
+        return hazard.get(key + "_" + productLabel)
          
  
 # Ensure that when the megawidgets are initialized and then subsequently whenever the
 # user chooses a new choice from the canned synopses dropdown, the text in the synopsis
 # text area is changed to match.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
-    if triggerIdentifiers is not None: 	
-    	# See if the trigger identifiers list contains any of the identifiers from the
-    	# synopsis canned choices; if so, change the text's value to match the associated
-    	# canned choice text.
+    if triggerIdentifiers is not None:     
+        # See if the trigger identifiers list contains any of the identifiers from the
+        # synopsis canned choices; if so, change the text's value to match the associated
+        # canned choice text.
     
         # Example:
         # triggerIdentifiers: ['overviewSynopsisCanned_FFA_area.dayNightTemps']
@@ -291,32 +318,6 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         #                   flooding on the |* riverName *|.', 'identifier': 'categoryIncrease'}]}, 
         #        'FFA_tabs': {'enable': True, 'editable': True, 'extraData': {}}, 
         #        'overviewSynopsisContainer_FFA_area': {'enable': True, 'editable': True, 'extraData': {}}}
-         
-        def extractParts(identifier):
-            s1 = identifier.rsplit('.',1)
-            choice = s1[1]
-            triggerField = s1[0]
-            s2 = s1[0].split('_',1)
-            productLabel = s2[1]
-            return productLabel, choice, triggerField
-        
-        returnDict = {}
-        for triggerIdentifier in triggerIdentifiers:
-            # Example: triggerIdentifier:  overviewSynopsisCanned_FLW_area_14550_FA.W.dayNightTemps
-            if triggerIdentifier.find('overviewSynopsisCanned') >= 0:
-                # productLabel = FLW_area_14550_FA.W
-                # choice = dayNightTemps
-                productLabel, choice, triggerField = extractParts(triggerIdentifier)
-                # Find productString for choice
-                choices = mutableProperties.get(triggerField).get('choices')
-                for choiceDict in choices:
-                    if choiceDict.get('identifier') == choice:
-                        productString = choiceDict.get('productString')
-                changeField = 'overviewSynopsis_'+productLabel
-
-                returnDict[changeField] =  {
-                  "values": productString
-                }  
-        return returnDict
+        return {}      
     return None
 

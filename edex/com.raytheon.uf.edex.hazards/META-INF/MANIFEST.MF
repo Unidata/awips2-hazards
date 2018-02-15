@@ -32,6 +32,7 @@ Require-Bundle: com.google.guava;bundle-version="18.0.0",
  org.hibernate;bundle-version="1.0.0",
  org.springframework;bundle-version="2.5.6",
  org.apache.commons.configuration,
+ com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
@@ -46,7 +47,8 @@ Import-Package: com.raytheon.uf.common.dataplugin.events.datastorage,
  com.raytheon.uf.common.registry.handler,
  com.raytheon.uf.common.status,
  com.vividsolutions.jts.geom
-Export-Package: com.raytheon.uf.edex.hazards.notification,
-  com.raytheon.uf.edex.hazards.registry.services,
-  com.raytheon.uf.edex.hazards.servicebackup
+Export-Package: com.raytheon.uf.edex.hazards.configuration,
+ com.raytheon.uf.edex.hazards.notification,
+ com.raytheon.uf.edex.hazards.registry.services,
+ com.raytheon.uf.edex.hazards.servicebackup
 

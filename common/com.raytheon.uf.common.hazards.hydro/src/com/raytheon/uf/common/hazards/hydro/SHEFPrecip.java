@@ -36,6 +36,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * May 29, 2015 7139       Chris.Cody  Initial creation: Add SHEF Precipitation (curpc or curpp) query and processing
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
+ * Jun 16, 2017 35199      Robert.Blum Removed unneeded getter/setters.
  * 
  * </pre>
  * 
@@ -159,21 +160,6 @@ public final class SHEFPrecip extends SHEFBase {
                 }
             }
         }
-    }
-
-    /**
-     * @param typeSource
-     *            the typeSource to set
-     */
-    public void setTypeSource(String typeSource) {
-        this.typeSource = typeSource;
-    }
-
-    /**
-     * @return the set typeSource
-     */
-    public String getTypeSource() {
-        return (this.typeSource);
     }
 
     /**

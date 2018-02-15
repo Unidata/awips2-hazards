@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
-import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataRequest.ProductRequestType;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -53,6 +53,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 26, 2016   19223    Kevin.Bisanz Changes to get correctable products for
  *                                      specific events.
  * Nov 07, 2016   22119    Kevin.Bisanz Changes to export/import product data by officeID.
+ * Jun 05, 2017   29996    Robert.Blum  EditableEntries are now product parts.
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
  *                                      mutable session events.
  * 
@@ -82,7 +83,7 @@ public class ProductDataUtil {
     public static ProductDataResponse createProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
             String officeID, Date issueTime, Map<String, Serializable> data,
-            List<EditableEntryMap> editableEntries) {
+            List<ProductPart> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
                 eventIDs, officeID, issueTime, data, editableEntries,
                 ProductRequestType.CREATE, null);
@@ -109,7 +110,7 @@ public class ProductDataUtil {
     public static ProductDataResponse updateProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
             String officeID, Date issueTime, Map<String, Serializable> data,
-            List<EditableEntryMap> editableEntries) {
+            List<ProductPart> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
                 eventIDs, officeID, issueTime, data, editableEntries,
                 ProductRequestType.UPDATE, null);
@@ -249,7 +250,7 @@ public class ProductDataUtil {
     public static ProductDataResponse createOrUpdateProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
             String officeID, Date issueTime, Map<String, Serializable> data,
-            List<EditableEntryMap> editableEntries) {
+            List<ProductPart> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
                 eventIDs, officeID, issueTime, data, editableEntries,
                 ProductRequestType.SAVE_OR_UPDATE, null);
@@ -313,7 +314,7 @@ public class ProductDataUtil {
     private static ProductDataResponse sendRequest(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
             String officeID, Date issueTime, Map<String, Serializable> data,
-            List<EditableEntryMap> editableEntries, ProductRequestType type,
+            List<ProductPart> editableEntries, ProductRequestType type,
             Date currentTime) {
         return sendRequest(mode, productGeneratorName, eventIDs, officeID,
                 issueTime, data, editableEntries, type, currentTime, null);
@@ -338,18 +339,20 @@ public class ProductDataUtil {
     private static ProductDataResponse sendRequest(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
             String officeID, Date issueTime, Map<String, Serializable> data,
-            List<EditableEntryMap> editableEntries, ProductRequestType type,
+            List<ProductPart> editableEntries, ProductRequestType type,
             Date currentTime, String filePath) {
         ProductData productData = new ProductData(mode, productGeneratorName,
                 eventIDs, officeID, issueTime,
                 (HashMap<String, Serializable>) data,
-                (ArrayList<EditableEntryMap>) editableEntries);
+                (ArrayList<ProductPart>) editableEntries);
         ProductDataRequest request = new ProductDataRequest(productData, type,
                 currentTime, filePath);
         ProductDataResponse response = null;
         try {
             response = (ProductDataResponse) RequestRouter.route(request);
         } catch (Exception e) {
+            response = new ProductDataResponse();
+            response.setExceptions(e);
             statusHandler.error("Unable to send request to server", e);
         }
         return response;

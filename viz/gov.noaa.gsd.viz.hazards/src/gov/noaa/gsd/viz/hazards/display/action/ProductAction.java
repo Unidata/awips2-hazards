@@ -33,6 +33,7 @@ import java.util.Map;
  *                                      editor and product selection dialog
  *                                      now.
  * Jun 08, 2017 16373      Chris.Golden Added ActionType REVIEW.
+ * Apr 24, 2018 22308      Chris.Golden Removed ActionType VIEW.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -41,7 +42,7 @@ import java.util.Map;
 public class ProductAction {
 
     public enum ActionType {
-        PREVIEW, VIEW, REVIEW
+        PREVIEW, REVIEW
     }
 
     private ActionType actionType;

@@ -53,6 +53,7 @@ Prob_National = {
         "proposed",
         #"pending",
         "issued",
+        "elapsing",
         "elapsed",
         "ending",
         "ended"

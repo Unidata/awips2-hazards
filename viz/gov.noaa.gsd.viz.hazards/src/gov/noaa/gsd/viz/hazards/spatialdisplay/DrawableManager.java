@@ -29,6 +29,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -36,7 +37,6 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
-import com.raytheon.uf.viz.core.drawables.FillPatterns;
 import com.raytheon.uf.viz.core.drawables.IShadedShape;
 import com.raytheon.uf.viz.core.drawables.PaintProperties;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -164,6 +164,12 @@ import gov.noaa.nws.ncep.ui.pgen.gfa.IGfa;
  *                                      geometry, and the event was being
  *                                      processed by a recommender while the
  *                                      movement occurred.
+ * Feb 23, 2018   15561    Chris.Golden Fixed bug that caused unselected
+ *                                      events with no visual features to
+ *                                      disappear completely when going from
+ *                                      selected to deselected.
+ * Feb 27, 2018   28017    Chris.Golden Changed to custom hatching fill
+ *                                      pattern.
  * </pre>
  * 
  * @author Chris.Golden
@@ -637,9 +643,9 @@ class DrawableManager {
                     nextEntityIndex = 0;
                     nextDrawableIndex = 0;
                 } else {
-                    List<AbstractDrawableComponent> drawables = drawablesForIdentifiers
-                            .get(spatialEntities.get(nextEntityIndex)
-                                    .getIdentifier());
+                    List<AbstractDrawableComponent> drawables = drawablesForIdentifiersAndTypes
+                            .get(new Pair<>(spatialEntities.get(nextEntityIndex)
+                                    .getIdentifier(), nextType));
                     if ((drawables == null)
                             || (nextDrawableIndex == drawables.size())) {
                         nextEntityIndex++;
@@ -677,9 +683,29 @@ class DrawableManager {
             .getHandler(DrawableManager.class);
 
     /**
-     * Pattern to be used for hatching fills.
+     * Fill pattern to be used for hatching.
      */
-    private static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
+    private static final byte[] HATCHING_FILL_PATTERN = new byte[128];
+
+    static {
+        for (int j = 0; j < 128; j++) {
+            if ((j % 32) == 0) {
+                HATCHING_FILL_PATTERN[j] = 0x11;
+            } else if ((j % 32) == 1) {
+                HATCHING_FILL_PATTERN[j] = 0x11;
+            } else if ((j % 32) == 2) {
+                HATCHING_FILL_PATTERN[j] = 0x11;
+            } else if ((j % 32) == 3) {
+                HATCHING_FILL_PATTERN[j] = 0x11;
+            }
+        }
+    }
+
+    /**
+     * Spatial entity types for which user modification is a possibility.
+     */
+    private static final List<SpatialEntityType> USER_MODIFIABLE_SPATIAL_ENTITY_TYPES = ImmutableList
+            .of(SpatialEntityType.SELECTED, SpatialEntityType.TOOL);
 
     /**
      * Comparator to be used to sort geometries and their associated
@@ -727,15 +753,16 @@ class DrawableManager {
             .unmodifiableSet(reactiveDrawables);
 
     /**
-     * Map pairing spatial entity identifiers with their associated spatial
-     * entities.
+     * Map pairing spatial entity identifiers together with their types with
+     * their associated spatial entities.
      */
-    private final Map<IEntityIdentifier, SpatialEntity<? extends IEntityIdentifier>> spatialEntitiesForIdentifiers = new HashMap<>();
+    private final Map<Pair<? extends IEntityIdentifier, SpatialEntityType>, SpatialEntity<? extends IEntityIdentifier>> spatialEntitiesForIdentifiersAndTypes = new HashMap<>();
 
     /**
-     * Map pairing spatial entity identifiers with their associated drawables.
+     * Map pairing spatial entity identifiers together with their types with
+     * their associated drawables.
      */
-    private final Map<IEntityIdentifier, List<AbstractDrawableComponent>> drawablesForIdentifiers = new HashMap<>();
+    private final Map<Pair<? extends IEntityIdentifier, SpatialEntityType>, List<AbstractDrawableComponent>> drawablesForIdentifiersAndTypes = new HashMap<>();
 
     /**
      * Map pairing spatial entities with their associated types.
@@ -1104,9 +1131,11 @@ class DrawableManager {
         /*
          * Associate the new drawables with the spatial entity.
          */
-        spatialEntitiesForIdentifiers.put(spatialEntity.getIdentifier(),
+        Pair<? extends IEntityIdentifier, SpatialEntityType> identifierAndType = new Pair<>(
+                spatialEntity.getIdentifier(), type);
+        spatialEntitiesForIdentifiersAndTypes.put(identifierAndType,
                 spatialEntity);
-        drawablesForIdentifiers.put(spatialEntity.getIdentifier(), drawables);
+        drawablesForIdentifiersAndTypes.put(identifierAndType, drawables);
         typesForSpatialEntities.put(spatialEntity, type);
 
         /*
@@ -1213,8 +1242,10 @@ class DrawableManager {
         /*
          * If there are drawables for this spatial entity, remove them.
          */
-        List<AbstractDrawableComponent> drawables = drawablesForIdentifiers
-                .remove(spatialEntity.getIdentifier());
+        Pair<? extends IEntityIdentifier, SpatialEntityType> identifierAndType = new Pair<>(
+                spatialEntity.getIdentifier(), type);
+        List<AbstractDrawableComponent> drawables = drawablesForIdentifiersAndTypes
+                .remove(identifierAndType);
         typesForSpatialEntities.remove(spatialEntity);
         boolean result = false;
         if (drawables != null) {
@@ -1295,7 +1326,7 @@ class DrawableManager {
                 }
             }
         }
-        spatialEntitiesForIdentifiers.remove(spatialEntity.getIdentifier());
+        spatialEntitiesForIdentifiersAndTypes.remove(identifierAndType);
         return result;
     }
 
@@ -1320,10 +1351,20 @@ class DrawableManager {
          * it visually. If none is found, then the drawables have disappeared,
          * so nothing needs to be done.
          */
-        SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntitiesForIdentifiers
-                .get(((IDrawable<?>) associatedDrawable).getIdentifier());
-        List<AbstractDrawableComponent> drawables = drawablesForIdentifiers
-                .get(spatialEntity.getIdentifier());
+        IEntityIdentifier identifier = ((IDrawable<?>) associatedDrawable)
+                .getIdentifier();
+        Pair<? extends IEntityIdentifier, SpatialEntityType> identifierAndType = null;
+        SpatialEntity<? extends IEntityIdentifier> spatialEntity = null;
+        for (SpatialEntityType type : USER_MODIFIABLE_SPATIAL_ENTITY_TYPES) {
+            identifierAndType = new Pair<>(identifier, type);
+            spatialEntity = spatialEntitiesForIdentifiersAndTypes
+                    .get(identifierAndType);
+            if (spatialEntity != null) {
+                break;
+            }
+        }
+        List<AbstractDrawableComponent> drawables = drawablesForIdentifiersAndTypes
+                .get(identifierAndType);
         if (drawables == null) {
             return;
         }
@@ -1710,9 +1751,9 @@ class DrawableManager {
                         && (activeIdentifiers
                                 .contains(((IDrawable<?>) nearestDrawable)
                                         .getIdentifier())
-                        || reactiveIdentifiers
-                                .contains(((IDrawable<?>) nearestDrawable)
-                                        .getIdentifier()))
+                                || reactiveIdentifiers.contains(
+                                        ((IDrawable<?>) nearestDrawable)
+                                                .getIdentifier()))
                         && (isDrawableModifiable(nearestDrawable)
                                 || isDrawableBoundingBox(nearestDrawable))) {
                     drawable = (nearestDrawable instanceof BoundingBoxDrawable
@@ -2203,17 +2244,28 @@ class DrawableManager {
     }
 
     /**
-     * Get the spatial entity associated with the specified drawable, if any.
+     * Get the user modifiablespatial entity associated with the specified
+     * drawable, if any.
      * 
      * @param drawable
      *            Drawable.
      * @return Associated spatial entity, or <code>null</code> if none is
      *         associated.
      */
-    SpatialEntity<? extends IEntityIdentifier> getAssociatedSpatialEntity(
+    SpatialEntity<? extends IEntityIdentifier> getAssociatedUserModifiableSpatialEntity(
             AbstractDrawableComponent drawable) {
-        return spatialEntitiesForIdentifiers
-                .get(((IDrawable<?>) drawable).getIdentifier());
+        IEntityIdentifier identifier = ((IDrawable<?>) drawable)
+                .getIdentifier();
+        for (SpatialEntityType type : USER_MODIFIABLE_SPATIAL_ENTITY_TYPES) {
+            Pair<? extends IEntityIdentifier, SpatialEntityType> identifierAndType = new Pair<>(
+                    identifier, type);
+            SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntitiesForIdentifiersAndTypes
+                    .get(identifierAndType);
+            if (spatialEntity != null) {
+                return spatialEntity;
+            }
+        }
+        return null;
     }
 
     /**
@@ -2997,7 +3049,7 @@ class DrawableManager {
          */
         boolean combinableTextLocationChanged = false;
         Map<Coordinate, List<TextDrawable>> newTextDrawablesForLocations = new HashMap<>();
-        for (List<AbstractDrawableComponent> drawables : drawablesForIdentifiers
+        for (List<AbstractDrawableComponent> drawables : drawablesForIdentifiersAndTypes
                 .values()) {
             for (AbstractDrawableComponent drawable : drawables) {
                 if (drawable.getClass() == TextDrawable.class) {
@@ -3131,8 +3183,8 @@ class DrawableManager {
 
                     hatchedAreaShadedShape.compile();
 
-                    hatchedAreaShadedShape.setFillPattern(FillPatterns
-                            .getGLPattern(GL_PATTERN_VERTICAL_DOTTED));
+                    hatchedAreaShadedShape
+                            .setFillPattern(HATCHING_FILL_PATTERN);
 
                 } catch (VizException e) {
                     statusHandler.error("Error compiling hazard hatched areas",

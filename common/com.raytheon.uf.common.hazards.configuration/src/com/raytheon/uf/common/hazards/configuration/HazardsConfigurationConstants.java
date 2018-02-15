@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.configuration;
 
-import java.io.File;
+import com.raytheon.uf.common.localization.PathManager;
 
 /**
  * Configuration file location constants.
@@ -35,6 +35,7 @@ import java.io.File;
  * Nov 17, 2015 3473       Robert.Blum Moved all python files under HazardServices localization dir.
  * Feb 12, 2016 14923      Robert.Blum Added text and event utilities path constants.
  * Mar 03, 2016 7452       Robert.Blum Added PYTHON_LOCALIZATION_GEOSPATIAL_DIR.
+ * May 12, 2016 16374      mduff       Added FILTER_ICONS_PY and changed File.separator to PathManager.SEPARATOR.
  * </pre>
  * 
  * @author bkowal
@@ -55,7 +56,7 @@ public class HazardsConfigurationConstants {
     public static final String PYTHON_LOCALIZATION_DIR = "python";
 
     public static final String HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR;
 
     public static final String PYTHON_LOCALIZATION_CONFIG_DIR = "config";
 
@@ -112,66 +113,72 @@ public class HazardsConfigurationConstants {
     public static final String PRODUCT_GENERATOR_TABLE_DIR = "productGeneratorTable";
 
     public static final String PRODUCT_GENERATOR_RELATIVE_PATH = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator
-            + PYTHON_LOCALIZATION_PRODUCTGEN_DIR + File.separator
-            + PYTHON_LOCALIZATION_PRODUCTS_DIR + File.separator;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_EVENTS_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_PRODUCTGEN_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_PRODUCTS_DIR
+            + PathManager.SEPARATOR;
 
     public static final String RECOMMENDERS_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator
-            + PYTHON_LOCALIZATION_RECOMMENDERS_DIR;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_EVENTS_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_RECOMMENDERS_DIR;
 
     public static final String RECOMMENDERS_CONFIG_LOCALIZATION_DIR = RECOMMENDERS_LOCALIZATION_DIR
-            + File.separator + PYTHON_LOCALIZATION_CONFIG_DIR;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_CONFIG_DIR;
 
     public static final String PYTHON_EVENTS_DIRECTORY = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_EVENTS_DIR
+            + PathManager.SEPARATOR;
 
     public static final String HAZARD_TYPES_PY = HAZARD_SERVICES_DIR
-            + File.separator + HAZARD_TYPES_LOCALIZATION_DIR + File.separator
-            + "HazardTypes.py";
+            + PathManager.SEPARATOR + HAZARD_TYPES_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + "HazardTypes.py";
 
     public static final String START_UP_CONFIG_PY = HAZARD_SERVICES_DIR
-            + File.separator + STARTUP_CONFIG_DIR + File.separator
+            + PathManager.SEPARATOR + STARTUP_CONFIG_DIR + PathManager.SEPARATOR
             + "StartUpConfig.py";
 
     public static final String HAZARD_CATEGORIES_PY = HAZARD_SERVICES_DIR
-            + File.separator + HAZARD_CATEGORIES_LOCALIZATION_DIR
-            + File.separator + "HazardCategories.py";
+            + PathManager.SEPARATOR + HAZARD_CATEGORIES_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + "HazardCategories.py";
 
     public static final String HAZARD_METADATA_PY = HAZARD_SERVICES_DIR
-            + File.separator + HAZARD_METADATA_DIR + File.separator
-            + "HazardMetaData.py";
+            + PathManager.SEPARATOR + HAZARD_METADATA_DIR
+            + PathManager.SEPARATOR + "HazardMetaData.py";
 
     public static final String ALERTS_CONFIG_PATH = HAZARD_SERVICES_DIR
-            + File.separator + ALERTS_DIR + File.separator
+            + PathManager.SEPARATOR + ALERTS_DIR + PathManager.SEPARATOR
             + "HazardAlertsConfig.xml";
 
     public static final String PRODUCT_GENERATOR_TABLE_PY = HAZARD_SERVICES_DIR
-            + File.separator + PRODUCT_GENERATOR_TABLE_DIR + File.separator
-            + "ProductGeneratorTable.py";
+            + PathManager.SEPARATOR + PRODUCT_GENERATOR_TABLE_DIR
+            + PathManager.SEPARATOR + "ProductGeneratorTable.py";
 
     public static final String EVENT_DRIVEN_TOOLS_PY = RECOMMENDERS_CONFIG_LOCALIZATION_DIR
-            + File.separator + "EventDrivenTools.py";
+            + PathManager.SEPARATOR + "EventDrivenTools.py";
 
     public static final String DEFAULT_CONFIG_PY = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_DATA_STORAGE_DIR + File.separator
-            + "defaultConfig.py";
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DATA_STORAGE_DIR
+            + PathManager.SEPARATOR + "defaultConfig.py";
 
     public static final String VTEC_CONSTANTS_PY = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR + File.separator
-            + "VTECConstants.py";
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR
+            + PathManager.SEPARATOR + "VTECConstants.py";
 
     public static final String TEXT_UTILITIES_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
 
     public static final String EVENT_UTILITIES_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator
-            + PYTHON_UTILITIES_DIR;
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + PYTHON_LOCALIZATION_EVENTS_DIR
+            + PathManager.SEPARATOR + PYTHON_UTILITIES_DIR;
+
+    public static final String FILTER_ICONS_PY = HAZARD_SERVICES_DIR
+            + PathManager.SEPARATOR + HAZARD_CATEGORIES_LOCALIZATION_DIR
+            + PathManager.SEPARATOR + "FilterIcons.py";
 }

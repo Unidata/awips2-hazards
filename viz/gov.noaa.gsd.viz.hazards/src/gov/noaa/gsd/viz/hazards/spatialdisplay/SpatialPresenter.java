@@ -38,27 +38,30 @@ import org.eclipse.jface.action.IContributionItem;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventMetadataModification;
@@ -78,10 +81,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
+import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -234,6 +238,7 @@ import net.engio.mbassy.listener.Handler;
  *                                           hazard events.
  * Jun 22, 2017 15561      Chris.Golden      Added flag to force recreation of spatial displayables
  *                                           when necessary.
+ * Jun 27, 2017 14789      Robert.Blum       Added passing of select by area color to view.
  * Jun 30, 2017 19223      Chris.Golden      Changed to work with new signatures of ContextMenuHelper
  *                                           constructor and method.
  * Jun 30, 2017 21638      Chris.Golden      Only allow gage action menu item to be enabled if there
@@ -255,6 +260,22 @@ import net.engio.mbassy.listener.Handler;
  * Feb 02, 2018 26712      Chris.Golden      Added the ability to center and zoom on a particular
  *                                           visual feature of a hazard event, instead of always
  *                                           using the base geometry of said event.
+ * Feb 23, 2018 28012      Chris.Golden      Ensured that Add/Remove Shapes menu is not used if an
+ *                                           event can't have its area increased.
+ * Mar 22, 2018 15561      Chris.Golden      Added code to ensure that the spatial display's
+ *                                           editability is factored into the editability (and
+ *                                           visual cues thereof) of spatial entities, into the
+ *                                           enabled state of toolbar buttons, and into whether
+ *                                           context menu items are provided.
+ * Apr 30, 2018 15561      Chris.Golden      Fixed bug that caused National as a site to cause a
+ *                                           failure for select-by-area to work.  Also fixed bug
+ *                                           that in certain cases caused null pointer exceptions
+ *                                           during unloads of the H.S. layer. Also changed
+ *                                           BaseHazardEvent to SessionHazardEvent.
+ * May 22, 2018  3782      Chris.Golden      Changed to allow the last tool visual feature, if it
+ *                                           has no geometry, to accept a new user-created geometry
+ *                                           as its geometry.
+ * Jun 06, 2018 15561      Chris.Golden      Added practice flag for hazard event creation.
  * </pre>
  * 
  * @author Chris.Golden
@@ -359,6 +380,23 @@ public class SpatialPresenter
             .getHandler(getClass());
 
     /**
+     * Spatial view editability change handler. The identifier is ignored.
+     */
+    private final IStateChangeHandler<Object, Boolean> editabilityChangeHandler = new IStateChangeHandler<Object, Boolean>() {
+
+        @Override
+        public void stateChanged(Object identifier, Boolean value) {
+            spatialEntityManager.setEditable(value);
+            updateAllDisplayables(false);
+        }
+
+        @Override
+        public void statesChanged(Map<Object, Boolean> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("editability");
+        }
+    };
+
+    /**
      * Selected entity identifiers change handler. The identifier is ignored.
      */
     private final IStateChangeHandler<Object, Set<IEntityIdentifier>> selectedEntityIdentifiersChangeHandler = new IStateChangeHandler<Object, Set<IEntityIdentifier>>() {
@@ -444,7 +482,8 @@ public class SpatialPresenter
 
         @Override
         public void stateChanged(Toggle identifier, Boolean value) {
-            if (getModel().getEventManager() == null) {
+            if ((getModel() == null)
+                    || (getModel().getEventManager() == null)) {
                 return;
             }
             if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
@@ -500,22 +539,24 @@ public class SpatialPresenter
     private final Set<String> selectedEventIdentifiers = new HashSet<>();
 
     /**
-     * Type of the tool attempting to collect information via the visual
-     * features within {@link #toolVisualFeatures}; if the latter is empty, this
-     * is irrelevant.
+     * Execution identifier of the tool attempting to collect information via
+     * the visual features within {@link #toolVisualFeatures}; if the latter is
+     * empty, this is irrelevant.
      */
-    private ToolType spatialInfoCollectingToolType;
-
-    /**
-     * Receiver of modifications to tool visual features, if any.
-     */
-    private ISessionRecommenderManager.ISpatialParametersReceiver spatialInfoReceiver;
+    private ToolExecutionIdentifier spatialInfoCollectingContext;
 
     /**
      * Visual features being used by a tool to collect spatial information; if
      * empty, no tool is currently doing so.
      */
     private VisualFeaturesList toolVisualFeatures = EMPTY_VISUAL_FEATURES;
+
+    /**
+     * Visual feature from {@link #toolVisualFeatures} that has no geometry and
+     * therefore may be used to take a new geometry that the user has drawn, if
+     * any. This is meaningless if <code>toolVisualFeatures</code> is empty.
+     */
+    private VisualFeature toolVisualFeatureAcceptingNewGeometry;
 
     /**
      * Map of event identifiers to select-by-area geometries for those events.
@@ -835,7 +876,7 @@ public class SpatialPresenter
         if (spatialEntityManager.isChangedSelectedTimeAffectingVisualFeatures(
                 lastSelectedTime, newSelectedTime)) {
             spatialEntityManager.updateEntitiesForToolVisualFeatures(
-                    toolVisualFeatures, spatialInfoCollectingToolType);
+                    toolVisualFeatures, spatialInfoCollectingContext);
         }
 
         /*
@@ -848,38 +889,46 @@ public class SpatialPresenter
      * Set the tool that is hoping to collect spatial information from the user
      * with the specified visual features, or reset so that no tool is doing so.
      * 
-     * @param toolType
-     *            Type of the tool; if <code>null</code>, no tool is collecting
-     *            spatial information.
+     * @param identifier
+     *            Tool execution identifier; if <code>null</code>, no tool is
+     *            collecting spatial information.
      * @param visualFeatures
      *            Visual features to be used to collect spatial information; if
      *            <code>null</code>, no tool is collecting spatial information.
-     * @param spatialParametersReceiver
-     *            Receiver to be passed parameters that the user chooses in the
-     *            spatial display. If <code>null</code>, no tool is collecting
-     *            spatial information.
      */
-    public void setToolVisualFeatures(ToolType toolType,
-            VisualFeaturesList visualFeatures,
-            ISessionRecommenderManager.ISpatialParametersReceiver spatialParametersReceiver) {
+    public void setToolVisualFeatures(ToolExecutionIdentifier identifier,
+            VisualFeaturesList visualFeatures) {
 
         /*
          * Remember the tool context for the new visual features.
          */
-        spatialInfoCollectingToolType = toolType;
-        spatialInfoReceiver = spatialParametersReceiver;
+        spatialInfoCollectingContext = identifier;
 
         /*
          * If the visual features are different from what they were before,
-         * record the new ones, and generate spatial entities for them.
+         * record the new ones, record a geometry-consuming visual feature if
+         * one is found, and generate spatial entities for them.
          */
         visualFeatures = (visualFeatures == null ? EMPTY_VISUAL_FEATURES
                 : visualFeatures);
+        toolVisualFeatureAcceptingNewGeometry = null;
         if (toolVisualFeatures.equals(visualFeatures) == false) {
             toolVisualFeatures = visualFeatures;
+            if ((toolVisualFeatures != null)
+                    && (toolVisualFeatures.isEmpty() == false)
+                    && toolVisualFeatures.get(toolVisualFeatures.size() - 1)
+                            .isLackingGeometry()) {
+                toolVisualFeatureAcceptingNewGeometry = toolVisualFeatures
+                        .get(toolVisualFeatures.size() - 1);
+            }
             spatialEntityManager.updateEntitiesForToolVisualFeatures(
-                    toolVisualFeatures, spatialInfoCollectingToolType);
+                    toolVisualFeatures, spatialInfoCollectingContext);
         }
+
+        /*
+         * Update allowable geometry editing actions.
+         */
+        updateGeometryEditingActions(true);
     }
 
     /**
@@ -915,7 +964,7 @@ public class SpatialPresenter
          * Recreate the spatial entities.
          */
         spatialEntityManager.recreateAllEntities(toolVisualFeatures,
-                spatialInfoCollectingToolType, force);
+                spatialInfoCollectingContext, force);
 
         /*
          * Update allowable geometry editing actions.
@@ -927,11 +976,12 @@ public class SpatialPresenter
 
     @Override
     protected void initialize(ISpatialView<?, ?, ?> view) {
-        getView().initialize(this,
-                getModel().getConfigurationManager().getSiteID(),
+        getView().initialize(this, LocalizationManager.getInstance().getSite(),
                 getModel().getConfigurationManager().getSiteID(),
                 spatialEntityManager.getSelectedSpatialEntityIdentifiers(),
-                getPriorityForDragAndDropGeometryEdits());
+                getPriorityForDragAndDropGeometryEdits(),
+                getModel().getConfigurationManager()
+                        .getColor(HazardConstants.SELECT_BY_AREA_COLOR));
         spatialEntityManager.setView(view);
 
         /*
@@ -944,6 +994,8 @@ public class SpatialPresenter
          * Bind the invocation and change handlers to the appropriate invokers
          * and changers in the view.
          */
+        getView().getEditabilityChanger()
+                .setStateChangeHandler(editabilityChangeHandler);
         getView().getSelectedSpatialEntityIdentifiersChanger()
                 .setStateChangeHandler(selectedEntityIdentifiersChangeHandler);
         getView().getCreateShapeInvoker()
@@ -1093,9 +1145,14 @@ public class SpatialPresenter
          */
         EnumSet<GeometryResolution> resolutionsFound = EnumSet
                 .noneOf(GeometryResolution.class);
+
         List<IHazardEventView> selectedEvents = selectionManager
                 .getSelectedEvents();
-        for (IHazardEventView event : selectedEvents) {
+        for (
+
+        IHazardEventView event : selectedEvents)
+
+        {
             if (lockManager.getHazardEventLockStatus(
                     event.getEventID()) == LockStatus.LOCKED_BY_OTHER) {
                 continue;
@@ -1109,7 +1166,9 @@ public class SpatialPresenter
                 break;
             }
         }
-        if (resolutionsFound.contains(GeometryResolution.LOW)) {
+        if (resolutionsFound.contains(GeometryResolution.LOW))
+
+        {
             spatialItems.add(createContributionItem(
                     CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS,
                     new Runnable() {
@@ -1122,7 +1181,9 @@ public class SpatialPresenter
                         }
                     }, scheduler));
         }
-        if (resolutionsFound.contains(GeometryResolution.HIGH)) {
+        if (resolutionsFound.contains(GeometryResolution.HIGH))
+
+        {
             spatialItems.add(createContributionItem(
                     CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS,
                     new Runnable() {
@@ -1141,7 +1202,9 @@ public class SpatialPresenter
          * one event selected, and if the event was built via a select-by-area
          * process.
          */
-        if (selectedEvents.size() == 1) {
+        if (selectedEvents.size() == 1)
+
+        {
             IHazardEventView event = selectedEvents.get(0);
             List<?> contextMenuEntries = (List<?>) event.getHazardAttribute(
                     HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
@@ -1158,10 +1221,18 @@ public class SpatialPresenter
                             continue;
                         }
                         String hazardType = event.getHazardType();
-                        if ((hazardType != null) && (configManager
-                                .getHazardTypes().get(hazardType)
-                                .getHatchingStyle() == HatchingStyle.NONE)) {
-                            continue;
+                        if (hazardType != null) {
+                            HazardTypeEntry hazardTypeInfo = configManager
+                                    .getHazardTypes().get(hazardType);
+                            if ((hazardTypeInfo
+                                    .getHatchingStyle() == HatchingStyle.NONE)
+                                    || ((hazardTypeInfo
+                                            .isAllowAreaChange() == false)
+                                            && HazardStatus
+                                                    .issuedButNotEndedOrElapsed(
+                                                            event.getStatus()))) {
+                                continue;
+                            }
                         }
                         spatialItems.add(createContributionItem(
                                 HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES,
@@ -1255,9 +1326,45 @@ public class SpatialPresenter
      * @param geometry
      *            New geometry that has been created.
      */
-    private IHazardEventView handleUserShapeCreation(
-            IAdvancedGeometry geometry) {
-        return buildHazardEvent(geometry, true);
+    private void handleUserShapeCreation(IAdvancedGeometry geometry) {
+
+        /*
+         * Do nothing with the geometry if it is not valid.
+         */
+        if (geometry.isValid() == false) {
+            statusHandler.handle(Priority.WARN,
+                    "Invalid geometry: "
+                            + geometry.getValidityProblemDescription()
+                            + "; new geometry will not be used.");
+            return;
+        }
+
+        /*
+         * If there is a tool visual feature that is able to accept a new
+         * geometry, create a copy of it, but with the new geometry, and replace
+         * the old, non-geometried one with the new one. Then notify the
+         * recommender manager of the change.
+         */
+        if (toolVisualFeatureAcceptingNewGeometry != null) {
+            VisualFeature newVisualFeature = new VisualFeature(
+                    toolVisualFeatureAcceptingNewGeometry, geometry);
+            toolVisualFeatureAcceptingNewGeometry = null;
+            toolVisualFeatures.set(toolVisualFeatures.size() - 1,
+                    newVisualFeature);
+            spatialEntityManager.updateEntitiesForToolVisualFeatures(
+                    toolVisualFeatures, spatialInfoCollectingContext);
+            getModel().getRecommenderManager().spatialParametersChanged(
+                    spatialInfoCollectingContext,
+                    Sets.newHashSet(newVisualFeature.getIdentifier()),
+                    toolVisualFeatures);
+            return;
+        }
+
+        /*
+         * Since the geometry was not consumed by a tool visual feature, make a
+         * new hazard event out of it.
+         */
+        buildHazardEvent(geometry);
     }
 
     /**
@@ -1281,24 +1388,24 @@ public class SpatialPresenter
                 .getIdentifier() instanceof ToolVisualFeatureEntityIdentifier) {
 
             /*
-             * Find and modify the visual feature, then run the recommender with
-             * the modified visual feature list.
+             * Find and modify the visual feature, then notify the recommender
+             * manager of the change.
              */
-            VisualFeature feature = toolVisualFeatures.getByIdentifier(
-                    ((ToolVisualFeatureEntityIdentifier) context
-                            .getIdentifier()).getVisualFeatureIdentifier());
+            String visualFeatureIdentifier = ((ToolVisualFeatureEntityIdentifier) context
+                    .getIdentifier()).getVisualFeatureIdentifier();
+            VisualFeature feature = toolVisualFeatures
+                    .getByIdentifier(visualFeatureIdentifier);
             if (feature != null) {
                 feature.setGeometry(context.getSelectedTime(),
                         context.getGeometry());
                 toolVisualFeatures.replace(feature);
-                spatialInfoReceiver
-                        .receiveSpatialParameters(toolVisualFeatures);
+                spatialEntityManager.updateEntitiesForToolVisualFeatures(
+                        toolVisualFeatures, spatialInfoCollectingContext);
+                getModel().getRecommenderManager().spatialParametersChanged(
+                        spatialInfoCollectingContext,
+                        Sets.newHashSet(visualFeatureIdentifier),
+                        toolVisualFeatures);
             }
-
-            /*
-             * Remove the visual features from the display.
-             */
-            setToolVisualFeatures(null, null, null);
         } else {
 
             /*
@@ -1425,7 +1532,7 @@ public class SpatialPresenter
             /*
              * Create the event.
              */
-            IHazardEventView hazardEvent = buildHazardEvent(newGeometry, false);
+            IHazardEventView hazardEvent = buildHazardEvent(newGeometry);
             if (hazardEvent == null) {
                 return;
             }
@@ -1527,13 +1634,16 @@ public class SpatialPresenter
         }
 
         /*
-         * Ensure that the selected gage is within the forecast area.
+         * Ensure that the selected gage is within the Hydrologic Service Area.
          */
-        String area = riverForecastManager
-                .getAreaInundationCoordinates(gageIdentifier);
-        if (area == null) {
+        String siteIdentifier = getModel().getSiteId();
+        String hydroServiceArea = riverForecastManager
+                .getHydrologicServiceAreaIdForGage(gageIdentifier);
+        if ((siteIdentifier == null) || (hydroServiceArea == null)
+                || (siteIdentifier.equals(hydroServiceArea) == false)) {
             displayHandler.getWarner().warnUser("Error",
-                    "The selected gage is not within the current forecast area. Unable to generate a hazard.");
+                    "The selected gage is not within the current Hydrologic "
+                            + "Service Area.\n\nUnable to execute the recommender.");
             return;
         }
 
@@ -1721,22 +1831,12 @@ public class SpatialPresenter
      * 
      * @param geometry
      *            Geometry with which to build the event.
-     * @param checkValidity
-     *            Flag indicating whether or not to check the geometry for
-     *            validity.
      * @return Hazard event, or <code>null</code> if the geometry was checked
      *         and found to be invalid.
      */
-    private IHazardEventView buildHazardEvent(IAdvancedGeometry geometry,
-            boolean checkValidity) {
-        if (checkValidity && (geometry.isValid() == false)) {
-            statusHandler.handle(Priority.WARN,
-                    "Invalid geometry: "
-                            + geometry.getValidityProblemDescription()
-                            + "; new geometry will not be used.");
-            return null;
-        }
-        IHazardEvent hazardEvent = new BaseHazardEvent();
+    private IHazardEventView buildHazardEvent(IAdvancedGeometry geometry) {
+        IHazardEvent hazardEvent = new SessionHazardEvent(
+                CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false);
         hazardEvent.setGeometry(geometry);
         hazardEvent
                 .setCreationTime(getModel().getTimeManager().getCurrentTime());
@@ -1892,9 +1992,12 @@ public class SpatialPresenter
         /*
          * Determine whether or not geometry editing should be allowed.
          */
-        boolean editable = ((selectedEventIdentifiers.size() == 1)
+        boolean editable = (((selectedEventIdentifiers.size() == 1)
                 && spatialEntityManager
-                        .isAtLeastOneSelectedSpatialEntityEditable());
+                        .isAtLeastOneSelectedSpatialEntityEditable())
+                || ((selectedEventIdentifiers.size() < 2)
+                        && spatialEntityManager
+                                .isAtLeastOneToolSpatialEntityEditable()));
 
         /*
          * Enable the combination of geometries via various operations only if

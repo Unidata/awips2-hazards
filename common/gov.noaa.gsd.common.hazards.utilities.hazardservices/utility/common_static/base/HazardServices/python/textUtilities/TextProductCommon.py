@@ -8,8 +8,10 @@ import EventFactory
 import GeometryFactory
 import JUtil
 import VTECConstants
+import GeneralConstants
 from KeyInfo import KeyInfo
 import ProductTextUtil
+import Bridge
 from shapely.geometry import Polygon
 from ufpy.dataaccess import DataAccessLayer
 
@@ -17,6 +19,9 @@ import json
 import traceback
 
 import re
+
+TPC_prevErrtime = 0
+TPC_prevDamName = ''
 
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -246,43 +251,41 @@ class TextProductCommon(object):
             return altDict.get(key)
         return default
 
-    def getSavedVal(self, key, eventIDs=None, segment=None, productCategory=None, productID=None):
-        '''
-        Retrieves any user edited text from the productText table if available.
-        Otherwise it returns None.
-        '''
-        value = None
-        if None in [key, productCategory, productID, eventIDs, segment]:
-            return None
-        productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
-        if len(productTextList) > 0:
-            value = productTextList[0].getValue()
-        return value
-
-    def setVal(self, dictionary, key, value, editable=False, eventIDs=None, segment=None,
-                  label=None, productCategory=None, productID=None, displayable=False,
-                  required=True, displayLabel=True, useKeyAsLabel=False):
+    def setVal(self, dictionary, key, value, eventIDs=None, segment=None,
+                  productCategory=None, productID=None):
         '''
         Utility method to add a value to a dictionary. It will create the KeyInfo key
         if editable or displayable are set to true. Otherwise it adds the value to 
         dictionary using the default key provided.
         '''
-        if editable:
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, 
-                                    label=label, eventIDInLabel=True, required=required,
-                                    displayLabel=displayLabel)
-        elif displayable:
-            if useKeyAsLabel: label = key
-            if label is None: label = ''
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False,
-                                    displayable=True, label=label, eventIDInLabel=True, required=required,
-                                    displayLabel=displayLabel)
-        else:
-            userEditedKey = key
-
+        userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment)
         dictionary[userEditedKey] = value
 
-    def parameterSetupForKeyInfo(self, dictionary):
+    def parameterSetupForProductLevel(self, productSegments):
+        eventIDs = set()
+        ugcs = set()
+        for productSegment in productSegments:
+            for vtecRecord in productSegment.vtecRecords:
+                eventIDs.update(vtecRecord.get('eventID'))
+                ugcs.update(vtecRecord.get('id'))
+        return self.parameterSetupForKeyInfo(eventIDs, ugcs)
+
+    def parameterSetupForSegmentLevel(self, productSegment):
+        eventIDs = set()
+        ugcs = set()
+        for vtecRecord in productSegment.vtecRecords:
+            eventIDs.update(vtecRecord.get('eventID'))
+            ugcs.update(vtecRecord.get('id'))
+        return self.parameterSetupForKeyInfo(eventIDs, ugcs)
+
+    def parameterSetupForSectionLevel(self, vtecRecord):
+        eventIDs = set()
+        ugcs = set()
+        eventIDs.update(vtecRecord.get('eventID'))
+        ugcs.update(vtecRecord.get('id'))
+        return self.parameterSetupForKeyInfo(eventIDs, ugcs)
+
+    def parameterSetupForDictionary(self, dictionary):
         '''
         Utility method for preparing the eventIDs and UGCs to be 
         passed into the KeyInfo constructor. This method determines
@@ -310,10 +313,10 @@ class TextProductCommon(object):
             # RVS
             ugcs.update(set(dictionary.get('ugcs', [])))
             eventIDs.update(set(dictionary.get('eventIDs', [])))
-        tmpEventIDs = []
-        for eventID in eventIDs:
-            tmpEventIDs.append(eventID)
+        return self.parameterSetupForKeyInfo(eventIDs, ugcs)
 
+    def parameterSetupForKeyInfo(self, eventIDs, ugcs):
+        tmpEventIDs = list(eventIDs)
         ugcs = list(ugcs)
         ugcs.sort()
         ugcList = ''
@@ -886,8 +889,8 @@ class TextProductCommon(object):
             return areaPhrase 
         
         nameDescription, nameTypePhrase = self.getNameDescription(areaGroups)
-        areaPhrase = areaPhrase + '...including the following ' + nameTypePhrase + '...'
-        areaPhrase = areaPhrase + nameDescription
+        areaPhrase += ', including the following ' + nameTypePhrase + ', '
+        areaPhrase += nameDescription
       
         return areaPhrase
 
@@ -951,7 +954,7 @@ class TextProductCommon(object):
 
                 # single (don't mention state, partOfState again)
                 if len(areaGroups) == 1:
-                    phrase = '...'.join(snames[0:-1])
+                    phrase = ', '.join(snames[0:-1])
                 # complex phrasing (state, partOfState, and names)
                 else:
                     if i == 0:
@@ -960,7 +963,7 @@ class TextProductCommon(object):
                         phrase = 'In '
                     if partOfState != '' and partOfState != ' ':
                         phrase = phrase + partOfState + ' '
-                    phrase = phrase + state + '...' + '...'.join(snames[0:-1])
+                    phrase = phrase + state + ', ' + ', '.join(snames[0:-1])
 
                 if len(snames) == 1:
                     phrase = phrase + snames[-1]
@@ -1415,7 +1418,7 @@ class TextProductCommon(object):
             if replacement:
                 return ' is replacing the '
             else:
-                return ' is canceling the '
+                return ' is cancelling the '
         elif actionCode == 'EXT':
             return ' is extending the '
         elif actionCode == 'EXP':
@@ -2412,48 +2415,48 @@ class TextProductCommon(object):
     def getRiverProTimePhrase(self, issueTime, eventTime, timeZone):
         '''
             Returns a timephrase to be used for a specific time. Phrases
-            were taken from NHOR's timephra.dat file.
+            were taken from ILM's timephra.dat file.
         '''
         HR = 3600
         yesterday = [
           (0 * HR, 3 * HR, 'after midnight yesterday'),
           (3 * HR, 6 * HR, 'early yesterday'),
           (6 * HR, 9 * HR, 'yesterday morning'),
-          (9 * HR, 12 * HR, 'yesterday late morning'),
-          (12 * HR, 15 * HR, 'yesterday early afternoon'),
-          (15 * HR, 18 * HR, 'yesteday afternoon'),
+          (9 * HR, 12 * HR, 'late yesterday morning'),
+          (12 * HR, 15 * HR, 'early yesterday afternoon'),
+          (15 * HR, 18 * HR, 'yesterday afternoon'),
           (18 * HR, 21 * HR, 'yesterday evening'),
-          (21 * HR, 24 * HR, 'yesterday late evening')]
+          (21 * HR, 24 * HR, 'late yesterday evening')]
 
         today = [
-          (0 * HR, 3 * HR, 'after midnight <Weekday> morning'),
-          (3 * HR, 6 * HR, 'early <Weekday> morning'),
-          (6 * HR, 9 * HR, '<Weekday> morning'),
-          (9 * HR, 12 * HR, 'late <Weekday> morning'),
-          (12 * HR, 15 * HR, '<Weekday> afternoon'),
-          (15 * HR, 18 * HR, 'late <Weekday> afternoon'),
-          (18 * HR, 21 * HR, '<Weekday> evening'),
-          (21 * HR, 24 * HR, '<Weekday> night')]
+          (0 * HR, 3 * HR, 'early this morning'),
+          (3 * HR, 6 * HR, 'early this morning'),
+          (6 * HR, 9 * HR, 'this morning'),
+          (9 * HR, 12 * HR, 'late this morning'),
+          (12 * HR, 15 * HR, 'this afternoon'),
+          (15 * HR, 18 * HR, 'late this afternoon'),
+          (18 * HR, 21 * HR, 'this evening'),
+          (21 * HR, 24 * HR, 'late this evening')]
 
         tomorrow = [
-          (0 * HR, 3 * HR, 'after midnight <Weekday>'),
-          (3 * HR, 6 * HR, 'early <Weekday>'),
+          (0 * HR, 3 * HR, 'just after midnight tonight'),
+          (3 * HR, 6 * HR, 'late tonight'),
+          (6 * HR, 9 * HR, 'tomorrow morning'),
+          (9 * HR, 12 * HR, 'late tomorrow morning'),
+          (12 * HR, 15 * HR, 'early tomorrow afternoon'),
+          (15 * HR, 18 * HR, 'tomorrow afternoon'),
+          (18 * HR, 21 * HR, 'tomorrow evening'),
+          (21 * HR, 24 * HR, 'late tomorrow evening')]
+
+        subsequentDay = [
+          (0 * HR, 3 * HR, 'early <Weekday> morning'),
+          (3 * HR, 6 * HR, 'early <Weekday> morning'),
           (6 * HR, 9 * HR, '<Weekday> morning'),
           (9 * HR, 12 * HR, 'late <Weekday> morning'),
           (12 * HR, 15 * HR, 'early <Weekday> afternoon'),
           (15 * HR, 18 * HR, '<Weekday> afternoon'),
           (18 * HR, 21 * HR, '<Weekday> evening'),
           (21 * HR, 24 * HR, 'late <Weekday> evening')]
-
-        subsequentDay = [
-          (0 * HR, 3 * HR, 'early <Weekday> morning'),
-          (3 * HR, 6 * HR, '<Weekday> morning'),
-          (6 * HR, 9 * HR, '<Weekday> morning'),
-          (9 * HR, 12 * HR, 'late <Weekday> morning'),
-          (12 * HR, 15 * HR, 'early <Weekday> afternoon'),
-          (15 * HR, 18 * HR, '<Weekday> afternoon'),
-          (18 * HR, 21 * HR, '<Weekday> evening'),
-          (21 * HR, 24 * HR, '<Weekday> before midnight')]
 
         # Convert UTC issueTime/eventTime to a UTC datetime objects
         utcIssueTime = datetime.fromtimestamp(issueTime / 1000, self.gmtTZ)
@@ -2863,8 +2866,11 @@ class TextProductCommon(object):
         Given the issuance time, purgeHours, and the vtecRecords (with times converted to ms),
         returns the appropriate expiration time.  
         
-        Expiration time is the earliest of the specified expiration time, 1 hr if a CAN code
-        is detected, or the ending time of ongoing events (CON, EXT, EXB, NEW).
+        Expiration time is the earliest of
+        1) The specified expiration time
+        2) If a CAN/EXP code is detected a configurable value
+           ('endingExpirationDuration' from HazardTypes.py)
+        3) The ending time of ongoing events (CON, EXT, EXB, NEW)
         The issueTime and expireTime are ints in milliseconds. 
         
         @param issueTime in ms
@@ -2880,7 +2886,7 @@ class TextProductCommon(object):
         
         '''
         if purgeHours > 0:
-            expireTime = issueTime + purgeHours * 3600 * 1000
+            expireTime = issueTime + purgeHours * GeneralConstants.MILLIS_PER_HOUR
         else:
             expireTime = None
             # Pick the earliest end time of the vtecRecords in the segment
@@ -2888,6 +2894,11 @@ class TextProductCommon(object):
                 if expireTime is None or vtecRecord.get('endTime') < expireTime:
                     expireTime = vtecRecord.get('endTime')
 
+        expireDuration = None
+        if vtecRecords:
+            if self.isWarnGenHazard(vtecRecords[0]) == False:
+                expireDuration = 60 * GeneralConstants.MILLIS_PER_MINUTE
+        roundValue = roundMinutes * GeneralConstants.MILLIS_PER_MINUTE  # in milliseconds
         if not fixedExpire:
             canExpFound = 0
             activeFound = 0
@@ -2907,20 +2918,27 @@ class TextProductCommon(object):
             if laterActive is not None:
                 expireTime = min(expireTime, laterActive)
             elif canExpFound and not activeFound:
-                expireTime = min(expireTime, issueTime+3600*1000)  #1hr from now
-                
-        #ensure expireTime is not before issueTime, and is at least 1 hour
-        if expireTime - issueTime < 3600*1000:
-            expireTime = issueTime + 3600*1000
+                key = vtecRecords[0].get('key')
+                bridge = Bridge.Bridge()
+                hazardTypesDict = bridge.getHazardTypes()
+                expireDuration = hazardTypesDict[key]['endingExpirationDuration']
+                roundValue = hazardTypesDict[key]['endingExpirationRounding']
+                expireTime = min(expireTime, issueTime+expireDuration)
 
-        # round to next 'roundMinutes'
-        roundValue = roundMinutes * 60 * 1000  # in milliseconds
-        delta = expireTime % roundValue  # in milliseconds
-        baseTime = int(expireTime / roundValue) * roundValue
-        if delta / 60000 >= 1:  # add the next increment
-            expireTime = baseTime + roundValue
-        else:  # within 1 minute, don't add the next increment
-            expireTime = baseTime
+        # This check should only occur on WarnGen hazards if it is a CAN/EXP.
+        #ensure expireTime is not before issueTime, and is at least a configured duration
+        if expireDuration and (expireTime - issueTime < expireDuration):
+            expireTime = issueTime + expireDuration
+
+        if roundValue != 0: # No rounding to be done
+            # round to next 'roundMinutes'
+            delta = expireTime % roundValue  # in milliseconds
+            baseTime = int(expireTime / roundValue) * roundValue
+            if delta / GeneralConstants.MILLIS_PER_MINUTE >= 1:  # add the next increment
+                expireTime = baseTime + roundValue
+            else:  # within 1 minute, don't add the next increment
+                expireTime = baseTime
+
         return expireTime
     
     def getGeneralAreaList(self, areaList):
@@ -3179,7 +3197,56 @@ class TextProductCommon(object):
                 newWords = newWords + strWords
             words = newWords
         return words
-    
+
+    def damInfoFor(self, owner, damOrLeveeName):
+        global TPC_prevErrtime, TPC_prevDamName
+        # Client of this may never have called setUp() to initalize the logger.
+        if not hasattr(self, 'logger') :
+            self.setUp({})
+        tnow = int(time.time())
+
+        # This logic was being replicated in Legacy_Base_Formatter and
+        # AttributionFirstBulletText, so consolidate here.
+        if not isinstance(damOrLeveeName, str) :
+            if TPC_prevErrtime == tnow : # dont repeat for same prodgen op
+                return None
+            TPC_prevErrtime = tnow
+            tb = traceback.format_stack()
+            errmsg = "UNEXPECTED CONDITION!!! No value for variable damOrLeveeName.\n"
+            for tbentry in tb[:-1] :
+                errmsg += tbentry
+            errmsg += tb[-1].split('\n')[0]+"\n"
+            self.logger.exception(errmsg)
+            return None
+
+        # If we already have metadata for this dam, just return it.
+        if hasattr(owner, 'damMetadata') :
+            if isinstance(owner.damMetadata, dict) :
+                if owner.damMetadata.get("damName") == damOrLeveeName :
+                    return owner.damMetadata
+
+        # This logic was being replicated in Legacy_Base_Formatter and
+        # AttributionFirstBulletText, so consolidate here.
+        from MapsDatabaseAccessor import MapsDatabaseAccessor
+        mapsAccessor = MapsDatabaseAccessor()
+        owner.damMetadata = mapsAccessor.getDamInundationMetadata(damOrLeveeName, True)
+        if owner.damMetadata != None :
+            return owner.damMetadata
+        owner.damMetadata = {}
+
+        # dont repeat error for same prodgen op
+        if TPC_prevErrtime != tnow or TPC_prevDamName != damOrLeveeName :
+            TPC_prevErrtime = tnow
+            TPC_prevDamName = damOrLeveeName
+            tb = traceback.format_stack()
+            errmsg = "UNEXPECTED CONDITION!!! No value returned from getDamInundationMetadata('" + \
+                     str(damOrLeveeName)+"')\n"
+            for tbentry in tb[:-1] :
+                errmsg += tbentry
+            errmsg += tb[-1].split('\n')[0]+"\n"
+            self.logger.exception(errmsg)
+
+        return owner.damMetadata
 
 #  This class is copied from the CallToActions GHG code.
 #  For PV2, it will be transitioned to the Hazard Services meta-information
@@ -3187,15 +3254,6 @@ class TextProductCommon(object):
 class CallToActions(object):
     def __init__(self):
         pass
-
-#    def pydevDebug(self):
-#        import sys
-#        PYDEVD_PATH='/home/rtran/awipsdr4/Ade/eclipse/plugins/org.python.pydev.debug_1.5.4.2010011921/pysrc'
-#        if sys.path.count(PYDEVD_PATH) < 1:
-#            sys.path.append(PYDEVD_PATH)
-#
-#        import pydevd
-#        pydevd.settrace() 
 
     # returns the default Call To Action 
     def defaultCTA(self, phensig):

@@ -39,9 +39,6 @@ import com.google.common.collect.Maps;
  * The end goal is to generate and make use of this class ONLY ONCE per CAVE
  * session. This will greatly speed up CAVE Hazard Event generation and reduce
  * database traffic.
- * <p>
- * The system memory persistence of an instance of this object will be
- * maintained by the RecommenderDataCache object.
  * 
  * <pre>
  * SOFTWARE HISTORY

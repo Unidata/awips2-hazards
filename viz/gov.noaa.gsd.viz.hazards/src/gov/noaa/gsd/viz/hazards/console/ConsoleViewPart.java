@@ -85,6 +85,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new name for the
  *                                           {@link TextComboAction}.
+ * Apr 17, 2018   32693    Chris.Golden      Added code to disallow console context
+ *                                           menus when a preview is ongoing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -310,6 +312,13 @@ public class ConsoleViewPart extends DockTrackingViewPart
             Date currentTime) {
         if (body != null) {
             body.setTimeResolution(timeResolution, currentTime);
+        }
+    }
+
+    @Override
+    public void setAllowContextMenus(boolean allowContextMenus) {
+        if (body != null) {
+            body.setAllowContextMenus(allowContextMenus);
         }
     }
 

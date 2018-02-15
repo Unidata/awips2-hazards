@@ -138,6 +138,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IWidget;
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
+ * May 15, 2017  30227     Roger.Ferrel      Allow event tabs to be closed with
+ *                                           confirmation.
  * Jan 17, 2018  33428     Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
  * Feb 13, 2018  44514     Chris.Golden      Removed event-modifying script code, as
@@ -439,6 +441,21 @@ public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
                         public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> call()
                                 throws Exception {
                             return getViewPart().getVisibleEventChanger();
+                        }
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Deselect event invoker delegate.
+     */
+    private final ICommandInvoker<Pair<String, Integer>> deselectEventInvoker = new CommandInvokerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<ICommandInvoker<Pair<String, Integer>>>() {
+
+                        @Override
+                        public ICommandInvoker<Pair<String, Integer>> call()
+                                throws Exception {
+                            return getViewPart().getDeselectEventInvoker();
                         }
                     }, this),
             RUNNABLE_ASYNC_SCHEDULER);
@@ -754,6 +771,11 @@ public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
     @Override
     public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> getVisibleEventChanger() {
         return visibleEventChanger;
+    }
+
+    @Override
+    public ICommandInvoker<Pair<String, Integer>> getDeselectEventInvoker() {
+        return deselectEventInvoker;
     }
 
     @Override

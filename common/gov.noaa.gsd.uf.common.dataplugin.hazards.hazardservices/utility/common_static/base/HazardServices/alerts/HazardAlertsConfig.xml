@@ -188,6 +188,41 @@
         </configuration>
 
         <configuration>
+            <category>BurnScar Flash Flood Warning</category>
+            <hazardTypes>
+                <phenomenon>FF</phenomenon>
+                <significance>W</significance>
+        <subType>BurnScar</subType>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>50</expirationTime>
+                <units>percent_completed</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>90</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
             <category>Flood Watch</category>
             <hazardTypes>
                 <phenomenon>FL</phenomenon>

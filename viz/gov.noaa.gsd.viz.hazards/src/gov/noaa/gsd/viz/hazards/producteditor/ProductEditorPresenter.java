@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.MessageBox;
@@ -16,11 +17,16 @@ import org.eclipse.swt.widgets.MessageBox;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 
@@ -75,6 +81,7 @@ import net.engio.mbassy.listener.Handler;
  *                                           expiration product.
  * Jan 26, 2016     7623   Ben.Phillippe     Implemented locking of HazardEvents
  * Mar 30, 2016     8837   Robert.Blum       Added siteChanged() for service backup.
+ * Sep 19, 2016    16871   Robert.Blum       Closing Product Editor when a hazard elapses.
  * Sep 20, 2016    21622   Ben.Phillippe     Prevent preview of other site's hazards
  * Dec 12, 2016    21504   Robert.Blum       Refactored locking code.
  * Feb 02, 2017    15556   Chris.Golden      Minor changes to support console refactor.
@@ -83,6 +90,8 @@ import net.engio.mbassy.listener.Handler;
  *                                           notifies of one or more lock statuses
  *                                           changing.
  * Apr 27, 2017    11853   Chris.Golden      Added public method to close product editor.
+ * May 17, 2017    34152   Robert.Blum       Fix Product Generation case that results in
+ *                                           invalid products.
  * Dec 17, 2017    20739   Chris.Golden      Refactored away access to directly mutable
  *                                           session events.
  * Jan 17, 2018    33428   Chris.Golden      Changed to work with new, more flexible
@@ -94,6 +103,8 @@ import net.engio.mbassy.listener.Handler;
  */
 public class ProductEditorPresenter
         extends HazardServicesPresenter<IProductEditorView<?, ?, ?>> {
+
+    private final String NEW_EVENTS_WARNING = "New event(s) have been added. The product(s) currently displayed in the Product Editor are no longer valid. The Product Editor will be closed.";
 
     // Public Constructors
 
@@ -188,6 +199,74 @@ public class ProductEditorPresenter
         getView().changeSite(change.getSiteIdentifier());
     }
 
+    @Handler
+    public void sessionEventsAdded(SessionEventsAdded notification) {
+        for (IReadableHazardEvent event : notification.getEvents()) {
+            if (checkIfEventImpactsProducts(event)) {
+                getView().closeEditorWithError("New Hazard Events",
+                        NEW_EVENTS_WARNING);
+            }
+        }
+    }
+
+    @Handler
+    public void sessionEventModified(SessionEventModified notification) {
+
+        /*
+         * Check if any of the events in the Product Editor have been set to
+         * Elapsed. If so notify the user that the editor is no longer valid.
+         */
+        IHazardEventView event = notification.getEvent();
+        if (notification.getClassesOfModifications()
+                .contains(EventStatusModification.class)
+                && (event.getStatus() == HazardStatus.ELAPSED)) {
+            for (GeneratedProductList productList : getView()
+                    .getGeneratedProductsList()) {
+                for (IEvent tempEvent : productList.getEventSet()) {
+                    if (tempEvent instanceof IReadableHazardEvent) {
+                        IReadableHazardEvent iHazardEvent = (IReadableHazardEvent) tempEvent;
+                        if (iHazardEvent.getEventID()
+                                .equals(event.getEventID())) {
+                            StringBuilder sb = new StringBuilder();
+                            sb.append("Hazard Event ");
+                            sb.append(event.getEventID());
+                            sb.append(" has elapsed.");
+                            sb.append(" This product(s) is no longer valid.");
+                            sb.append(" The Product Editor will be closed.");
+                            getView().closeEditorWithError(
+                                    "Hazard Event has Elapsed.", sb.toString());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Handler
+    public void sessionEventsLockStatusModified(
+            SessionEventsLockStatusModified change) {
+
+        /*
+         * Determine if any locks of the events currently in the Product Editor
+         * have been broken. If so disable the Issue and Save buttons.
+         */
+        if (getView().isProductEditorOpen()) {
+            for (GeneratedProductList productList : getView()
+                    .getGeneratedProductsList()) {
+                for (IEvent event : productList.getEventSet()) {
+                    IReadableHazardEvent hazard = (IReadableHazardEvent) event;
+                    for (String eventIdentifier : change
+                            .getEventIdentifiers()) {
+                        if (hazard.getEventID().equals(eventIdentifier)) {
+                            getView().handleHazardEventLock();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Protected Methods
 
     @Override
@@ -256,28 +335,18 @@ public class ProductEditorPresenter
 
     }
 
-    @Handler
-    public void sessionEventsLockStatusModified(
-            SessionEventsLockStatusModified change) {
-
+    private boolean checkIfEventImpactsProducts(
+            IReadableHazardEvent hazardEvent) {
         /*
-         * Determine if any locks of the events currently in the Product Editor
-         * have been broken. If so disable the Issue and Save buttons.
+         * This new hazard will only impact the current product(s) if it is
+         * configured as an "includeAll" hazard that uses the same Product
+         * Generator..
          */
-        if (getView().isProductEditorOpen()) {
-            for (GeneratedProductList productList : getView()
-                    .getGeneratedProductsList()) {
-                for (IEvent event : productList.getEventSet()) {
-                    IReadableHazardEvent hazard = (IReadableHazardEvent) event;
-                    for (String eventIdentifier : change
-                            .getEventIdentifiers()) {
-                        if (hazard.getEventID().equals(eventIdentifier)) {
-                            getView().handleHazardEventLock();
-                            return;
-                        }
-                    }
-                }
-            }
+        Set<String> includeAllTypes = getModel().getConfigurationManager()
+                .getIncludeAllHazards(hazardEvent);
+        if (includeAllTypes.contains(hazardEvent.getHazardType())) {
+            return true;
         }
+        return false;
     }
 }

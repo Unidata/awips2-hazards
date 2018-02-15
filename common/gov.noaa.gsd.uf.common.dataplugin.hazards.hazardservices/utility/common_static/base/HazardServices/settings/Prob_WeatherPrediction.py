@@ -57,6 +57,7 @@ Prob_WeatherPrediction = {
         "proposed",
         #"pending",
         "issued",
+        "elapsing",
         "elapsed",
         "ending",
         "ended"

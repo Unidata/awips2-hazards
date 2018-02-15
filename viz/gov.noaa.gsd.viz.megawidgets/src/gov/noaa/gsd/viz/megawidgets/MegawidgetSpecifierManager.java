@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +18,8 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 
 /**
  * Megawidget specifier manager class, used to instantiate megawidget
@@ -129,8 +129,8 @@ public class MegawidgetSpecifierManager {
                 SCROLLABLE_WRAPPER_PARAMETERS);
         scrollableRawSpecifier.put(CompositeSpecifier.LEFT_MARGIN, leftMargin);
         scrollableRawSpecifier.put(CompositeSpecifier.TOP_MARGIN, topMargin);
-        scrollableRawSpecifier
-                .put(CompositeSpecifier.RIGHT_MARGIN, rightMargin);
+        scrollableRawSpecifier.put(CompositeSpecifier.RIGHT_MARGIN,
+                rightMargin);
         scrollableRawSpecifier.put(CompositeSpecifier.BOTTOM_MARGIN,
                 bottomMargin);
         return makeRawSpecifiersScrollable(rawSpecifiers,
@@ -173,8 +173,7 @@ public class MegawidgetSpecifierManager {
             topSpecifier = rawSpecifiers.get(0);
             try {
                 String specifierType = MegawidgetSpecifierManager.class
-                        .getPackage().getName()
-                        + "."
+                        .getPackage().getName() + "."
                         + topSpecifier.get(ISpecifier.MEGAWIDGET_TYPE)
                         + "Specifier";
                 Class<?> specifierClass = Class.forName(specifierType);
@@ -251,8 +250,8 @@ public class MegawidgetSpecifierManager {
      */
     public MegawidgetSpecifierManager(
             List<? extends Map<String, Object>> specifiers,
-            ICurrentTimeProvider currentTimeProvider,
-            Class<? extends ISpecifier> superClass)
+            Class<? extends ISpecifier> superClass,
+            ICurrentTimeProvider currentTimeProvider)
             throws MegawidgetSpecificationException {
         this(specifiers, superClass, currentTimeProvider, null);
     }
@@ -293,8 +292,8 @@ public class MegawidgetSpecifierManager {
 
         List<ISpecifier> createdSpecifiers = new ArrayList<>(specifiers.size());
         for (Map<String, Object> specifierMap : specifiers) {
-            ISpecifier specifier = factory.createMegawidgetSpecifier(
-                    superClass, specifierMap);
+            ISpecifier specifier = factory.createMegawidgetSpecifier(superClass,
+                    specifierMap);
             ensureMegawidgetIdentifiersAreUnique(specifier, identifiers);
             createdSpecifiers.add(specifier);
         }

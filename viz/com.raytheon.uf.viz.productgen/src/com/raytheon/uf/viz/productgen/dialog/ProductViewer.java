@@ -38,7 +38,7 @@ import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ITextProduct;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 
 /**
  * 
@@ -52,6 +52,8 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * ------------ ---------- ------------ --------------------------
  * Jul 29, 2015 9681       Robert.Blum  Initial creation
  * Jan 26, 2016 11860      Robert.Blum  Product Editor is now modal.
+ * Feb 23, 2017 29170      Robert.Blum  Product Editor refactor.
+ * Jun 05, 2017 29996      Robert.Blum  Updates for changes to abstract parent class.
  * </pre>
  * 
  * @author Robert.Blum
@@ -83,7 +85,8 @@ public class ProductViewer extends AbstractProductDialog {
     public ProductViewer(Shell parentShell,
             List<GeneratedProductList> generatedProductListStorage,
             HazardTypes hazardTypes) {
-        super(parentShell, SWT.RESIZE, generatedProductListStorage, hazardTypes);
+        super(parentShell, SWT.RESIZE, generatedProductListStorage,
+                hazardTypes);
         setText(DIALOG_TITLE);
     }
 
@@ -142,7 +145,8 @@ public class ProductViewer extends AbstractProductDialog {
          * format contained in the product
          */
         for (GeneratedProductList products : generatedProductListStorage) {
-            for (int folderIndex = 0; folderIndex < products.size(); folderIndex++) {
+            for (int folderIndex = 0; folderIndex < products
+                    .size(); folderIndex++) {
 
                 IGeneratedProduct product = products.get(folderIndex);
 
@@ -202,7 +206,7 @@ public class ProductViewer extends AbstractProductDialog {
     }
 
     @Override
-    protected void regenerate(KeyInfo keyInfo) {
+    protected void regenerate(List<ProductPart> productParts) {
         // Do nothing
     }
 

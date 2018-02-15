@@ -28,7 +28,9 @@ package com.raytheon.uf.common.hazards.configuration;
  *
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Dec 2, 2016  26624      bkowal      Initial creation
+ * Dec 02, 2016 26624      bkowal      Initial creation
+ * Mar 31, 2017 30536      kbisanz     Add getServiceId()
+ * Jun 19, 2017 35153      mduff       Get the active site id
  *
  * </pre>
  *
@@ -38,9 +40,9 @@ package com.raytheon.uf.common.hazards.configuration;
 public interface IServerConfigLookupWrapper {
 
     /**
-     * Returns the localization site.
+     * Returns the active site for Hazard Services.
      * 
-     * @return the localization site.
+     * @return the active site.
      */
     public String getSite();
 
@@ -57,5 +59,12 @@ public interface IServerConfigLookupWrapper {
      * @return the localization port.
      */
     public String getPort();
+
+    /**
+     * Returns the id of the service which handles localization requests.
+     *
+     * @return the localization service id
+     */
+    public String getServiceId();
 
 }

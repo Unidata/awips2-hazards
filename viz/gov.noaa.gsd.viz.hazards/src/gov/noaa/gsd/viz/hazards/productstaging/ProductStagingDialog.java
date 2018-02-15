@@ -8,10 +8,8 @@
 package gov.noaa.gsd.viz.hazards.productstaging;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IDialogSettings;
@@ -28,6 +26,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
@@ -95,6 +94,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
  * Aug 12, 2015   4123     Chris.G.    Changed to work with latest version of
  *                                     megawidget manager listener.
  * Feb 24, 2016  13929     Robert.Blum Remove first part of staging dialog.
+ * Mar 21, 2017  29996     Robert.Blum Updated to allow refreshMetadata to work.
  * Oct 10, 2017  39151     Chris G.    Changed to handle new parameter for megawidget
  *                                     manager constructor.
  * </pre>
@@ -141,9 +141,10 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
     private Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames;
 
     /**
-     * Set of megawidget managers.
+     * Map of product names to megawidget managers with the megawidgets for said
+     * products.
      */
-    private final Set<MegawidgetManager> megawidgetManagers = new HashSet<>();
+    private Map<String, MegawidgetManager> megawidgetManagersForProductNames;
 
     /**
      * Minimum visible time for graphical time megawidgets.
@@ -213,6 +214,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         this.megawidgetSpecifierManagersForProductNames = megawidgetSpecifierManagersForProductNames;
         this.minimumVisibleTime = minimumVisibleTime;
         this.maximumVisibleTime = maximumVisibleTime;
+        this.megawidgetManagersForProductNames = new HashMap<>();
 
         /*
          * If the shell exists, the dialog is already showing, in which case the
@@ -220,7 +222,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
          * createDialogArea() is called.
          */
         if ((getShell() != null) && getShell().isVisible()) {
-            createWidgets();
+            createTabs();
         }
     }
 
@@ -240,6 +242,16 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
     public boolean close() {
         getShell().setCursor(null);
         return super.close();
+    }
+
+    /**
+     * Get the megawidget manager for the specified product.
+     * 
+     * @param productName
+     * @return
+     */
+    public MegawidgetManager getMegawidgetManager(String productName) {
+        return megawidgetManagersForProductNames.get(productName);
     }
 
     // Protected Methods
@@ -266,12 +278,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         top.setLayout(new FillLayout());
         tabFolder = new CTabFolder(top, SWT.TOP);
         tabFolder.setBorderVisible(true);
-
-        /*
-         * Create the widgets.
-         */
-        createWidgets();
-
+        createTabs();
         tabFolder.pack();
         return top;
     }
@@ -352,99 +359,111 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
     // Private Methods
 
     /**
-     * Create the widgets needed.
+     * Create the tabs.
      */
-    private void createWidgets() {
+    private void createTabs() {
         tabFolder.setRedraw(false);
         resetContents();
         for (final String productName : productNames) {
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
             tabItem.setText(productName);
             Composite composite = createTabPageComposite(tabFolder, false);
-            MegawidgetSpecifierManager specifierManager = megawidgetSpecifierManagersForProductNames
-                    .get(productName);
-            Map<String, Object> startingStates = new HashMap<>();
-            specifierManager.populateWithStartingStates(startingStates);
-            try {
-                MegawidgetManager megawidgetManager = new MegawidgetManager(
-                        composite, specifierManager, startingStates,
-                        new IMegawidgetManagerListener() {
-
-                            @Override
-                            public void commandInvoked(
-                                    MegawidgetManager manager,
-                                    String identifier) {
-
-                                /*
-                                 * No action; interdependencies script may react
-                                 * if so configured.
-                                 */
-                            }
-
-                            @Override
-                            public void stateElementChanged(
-                                    MegawidgetManager manager,
-                                    String identifier, Object state) {
-                                if (productMetadataChangeHandler != null) {
-                                    productMetadataChangeHandler.stateChanged(
-                                            productName, identifier, state);
-                                }
-                            }
-
-                            @Override
-                            public void stateElementsChanged(
-                                    MegawidgetManager manager,
-                                    Map<String, ?> statesForIdentifiers) {
-                                if (productMetadataChangeHandler != null) {
-                                    productMetadataChangeHandler.statesChanged(
-                                            productName, new HashMap<>(
-                                                    statesForIdentifiers));
-                                }
-                            }
-
-                            @Override
-                            public void sizeChanged(MegawidgetManager manager,
-                                    String identifier) {
-
-                                /*
-                                 * No action; size changes of any children
-                                 * should be handled by scrollable wrapper
-                                 * megawidget.
-                                 */
-                            }
-
-                            @Override
-                            public void visibleTimeRangeChanged(
-                                    MegawidgetManager manager,
-                                    String identifier, long lower, long upper) {
-                                /*
-                                 * No action; the visible time range of any
-                                 * megawidget in the product staging dialog is
-                                 * not tied to the visible time range elsewhere.
-                                 */
-                            }
-
-                            @Override
-                            public void sideEffectMutablePropertyChangeErrorOccurred(
-                                    MegawidgetManager manager,
-                                    MegawidgetPropertyException exception) {
-                                statusHandler
-                                        .error("Error occurred while attempting to "
-                                                + "apply megawidget interdependencies: "
-                                                + exception, exception);
-                            }
-                        }, null, minimumVisibleTime, maximumVisibleTime);
-                megawidgetManagers.add(megawidgetManager);
-            } catch (MegawidgetException e) {
-                statusHandler
-                        .error("unexpected problem creating metadata megawidgets for product "
-                                + productName + ": " + e, e);
-            }
+            createTabWidgets(productName, composite);
             tabItem.setControl(composite);
         }
         tabFolder.setSelection(0);
         getShell().setCursor(null);
         tabFolder.setRedraw(true);
+    }
+
+    /**
+     * Create the widgets for the specified product name's tab.
+     * 
+     * @param productName
+     *            Name of the product for which the widgets are to be created.
+     * @param composite
+     *            Parent of the created widgets.
+     */
+    private void createTabWidgets(final String productName,
+            Composite composite) {
+        MegawidgetSpecifierManager specifierManager = megawidgetSpecifierManagersForProductNames
+                .get(productName);
+        Map<String, Object> startingStates = new HashMap<>();
+        specifierManager.populateWithStartingStates(startingStates);
+        try {
+            MegawidgetManager megawidgetManager = new MegawidgetManager(
+                    composite, specifierManager, startingStates,
+                    new IMegawidgetManagerListener() {
+
+                        @Override
+                        public void commandInvoked(MegawidgetManager manager,
+                                String identifier) {
+
+                            /*
+                             * No action; interdependencies script may react if
+                             * so configured.
+                             */
+                        }
+
+                        @Override
+                        public void stateElementChanged(
+                                MegawidgetManager manager, String identifier,
+                                Object state) {
+                            if (productMetadataChangeHandler != null) {
+                                productMetadataChangeHandler.stateChanged(
+                                        productName, identifier, state);
+                            }
+                        }
+
+                        @Override
+                        public void stateElementsChanged(
+                                MegawidgetManager manager,
+                                Map<String, ?> statesForIdentifiers) {
+                            if (productMetadataChangeHandler != null) {
+                                productMetadataChangeHandler.statesChanged(
+                                        productName,
+                                        new HashMap<>(statesForIdentifiers));
+                            }
+                        }
+
+                        @Override
+                        public void sizeChanged(MegawidgetManager manager,
+                                String identifier) {
+
+                            /*
+                             * No action; size changes of any children should be
+                             * handled by scrollable wrapper megawidget.
+                             */
+                        }
+
+                        @Override
+                        public void visibleTimeRangeChanged(
+                                MegawidgetManager manager, String identifier,
+                                long lower, long upper) {
+                            /*
+                             * No action; the visible time range of any
+                             * megawidget in the product staging dialog is not
+                             * tied to the visible time range elsewhere.
+                             */
+                        }
+
+                        @Override
+                        public void sideEffectMutablePropertyChangeErrorOccurred(
+                                MegawidgetManager manager,
+                                MegawidgetPropertyException exception) {
+                            statusHandler
+                                    .error("Error occurred while attempting to "
+                                            + "apply megawidget interdependencies: "
+                                            + exception, exception);
+                        }
+                    }, null, minimumVisibleTime, maximumVisibleTime);
+            megawidgetManagersForProductNames.put(productName,
+                    megawidgetManager);
+        } catch (MegawidgetException e) {
+            statusHandler
+                    .error("unexpected problem creating metadata megawidgets for product "
+                            + productName + ": " + e, e);
+        }
     }
 
     /**
@@ -454,7 +473,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         for (CTabItem item : tabFolder.getItems()) {
             item.dispose();
         }
-        megawidgetManagers.clear();
+        megawidgetManagersForProductNames.clear();
     }
 
     /**
@@ -479,5 +498,38 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         }
         composite.setLayout(layout);
         return composite;
+    }
+
+    /**
+     * Refreshes the metadata for the specified product name.
+     * 
+     * @param productName
+     * @param manager
+     */
+    public void refreshStagingMetadata(String productName,
+            MegawidgetSpecifierManager manager,
+            Map<String, Map<String, Object>> visiblePages) {
+        megawidgetSpecifierManagersForProductNames.put(productName, manager);
+        // Find the tab that needs updated
+        for (CTabItem item : tabFolder.getItems()) {
+            if (item.getText().equals(productName)) {
+                Composite comp = (Composite) item.getControl();
+                // Dispose of the previous Megawidgets
+                for (Control control : comp.getChildren()) {
+                    control.dispose();
+                }
+
+                // Create the new Megawidgets
+                createTabWidgets(productName, comp);
+                try {
+                    // Set the correct visible pages
+                    megawidgetManagersForProductNames.get(productName)
+                            .setMutableProperties(visiblePages);
+                } catch (MegawidgetPropertyException e) {
+                    statusHandler.handle(Priority.PROBLEM,
+                            e.getLocalizedMessage(), e);
+                }
+            }
+        }
     }
 }

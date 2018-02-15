@@ -1,59 +1,6 @@
 '''
     Description: Hydro Formatter that contains common hydro functions.
                  Product Specific formatters can inherit from this class.
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Jan 12, 2015    4937    Robert.Blum Initial creation
-    Jan 31, 2015    4937    Robert.Blum General cleanup
-    Feb 20, 2015    4937    Robert.Blum Added groupSummary productPart method
-    Mar 17, 2015    6963    Robert.Blum Rounded rfp stage values to a precision of 2.
-    Apr 09, 2015    7271    Chris.Golden Changed to use MISSING_VALUE constant.
-    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
-    Apr 27, 2015    7579    Robert.Blum Fix error when stageFlowUnits are None.
-    May 05, 2015    7141    Robert.Blum Passing required data to the TableText module and
-                                        adding back in floodPointTable since it no longer
-                                        re-instantiates RiverForecastPoints.
-    May 12, 2015    7729    Robert.Blum Changed floodCategoryBullet to use severity from 
-                                        the HID and not the database also minor change to
-                                        put impacts on the product Editor even if no impacts
-                                        were chosen on the HID.
-    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
-    May 13, 2015    7729    Robert.Blum Updated floodCategoryBullet to account for None and
-                                        Unknown flood severities.
-    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
-                                        empty string.
-    Jun 02, 2015    7138    Robert.Blum Limited flood point table for RVS based on 
-                                        staging dialog input.
-    Jul 22, 2015    9640    Robert.Blum Changes for displaying flood table based on checkbox in 
-                                        the HID. Also retrieving saved user edited tables from 
-                                        productText table. Plus moved all rounding to one common
-                                        place so that it can be easily overridden by sites.
-    Jul 27, 2015    9637    Robert.Blum Adjustment of && due to adding polygonText product part 
-                                        for FL.* hazards.
-    Sep 09, 2015    10263   Robert Blum No Forecast bullet if there is no forecast stage.
-    Oct 07, 2015    11858   Robert.Blum Removed Group Summary when forecastMaxCategory is
-                                        unknown or nonFlood. Also made it so the product part is
-                                        not required.
-    Nov 10, 2015    12942   Robert.Blum Added logic to flood category bullet for when there is
-                                        observed but no forecast category.
-    Jan 11, 2016    11888   Roger.Ferrel Added check to prevent duplicate entries in group summary.
-    Jan 11, 2016    13008   Roger.Ferrel Remove reference to volcano in typeOfFloodingMapping's SM.
-    Jan 14, 2016     9643   Roger.Ferrel Display MSG in createDataDictForFloodPointTable for
-                                         missing observedStage.
-    Feb 23, 2016    11901   Robert.Blum  Passing issueTime to ForecastStageText module.
-    Mar 02, 2016    11898   Robert.Blum  Completely reworked ForecastStageText based on RiverPro's templates.
-    Mar 21, 2016    15640   Robert.Blum  Fixed custom edits not getting put in final product.
-    May 04, 2016    15584   Kevin.Bisanz Updates to handle stage or flow based river point.
-    May 06, 2016    17523   mduff        Fixed the forecast stage bullet to read correctly if no observed data are available.
-    May 17, 2016    15010   mduff        Round FL.* products to 1 decimal place.
-    May 24, 2016    15584   Kevin.Bisanz Do not convert flow based values
-                                         to stage; instead use values which
-                                         have been based on primary PE.
-    May 26, 2016    16043   Robert.Blum  Rounding values in the flood point table.
-    Oct 12, 2016    21647   Sara.Stewart Modified RS text
-    Nov 03, 2016    22965   Robert.Blum  Fixed issue with MISSING_VALUE constant.
 '''
 import datetime
 import collections
@@ -64,8 +11,7 @@ from abc import *
 from ForecastStageText import ForecastStageText
 from TableText import Table
 from TableText import Column
-
-from HazardConstants import MISSING_VALUE, MISSING_VALUE_STR
+import HazardConstants
 
 class Format(Legacy_Base_Formatter.Format):
     # String to be displayed in the flood point table if
@@ -77,7 +23,7 @@ class Format(Legacy_Base_Formatter.Format):
         super(Format, self).initialize(editableEntries)
 
     @abstractmethod
-    def execute(self, productDict, editableEntries, overrideProductText):
+    def execute(self, productDict, editableEntries):
         '''
         Must be overridden by the Product Formatter
         '''
@@ -93,134 +39,161 @@ class Format(Legacy_Base_Formatter.Format):
 
     ################# Product Level
 
-    def _groupSummary(self, productDict):
+    def groupSummary(self, productDict, productPart):
         '''
         For the North Branch Potomac River...including KITZMILLER...CUMBERLAND...Record 
-        flooding is forecast.
+            flooding is forecast.
         '''
-        # Get saved value from productText table if available
-        summaryStmt = self._getVal('groupSummary', productDict)
-        if summaryStmt is None:
-            summaryStmt = ''
-            summaryStmts = []
-            for segment in productDict.get('segments', []):
-                for section in segment.get('sections', []):
-                    for hazard in section.get('hazardEvents', []):
-                        groupName = hazard.get('riverName_GroupName', '')
-                        groupList = hazard.get('groupForecastPointList', '')
-                        groupList = groupList.replace(',',', ')
-                        maxCatName = hazard.get('groupMaxForecastFloodCatName', '')
-                        if maxCatName in ['Unknown', 'NonFlood']:
-                            continue
-                        groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
-                        if not operator.contains(summaryStmts, groupSummary) :
-                            summaryStmts.append(groupSummary)
-            if summaryStmts:
-                summaryStmt = '\n'.join(summaryStmts)
-        self._setVal('groupSummary', summaryStmt, productDict, 'Group Summary', required=False)
-        return self._getFormattedText(summaryStmt, endText='\n\n')
-
+        summaryStmt = ''
+        summaryStmts = []
+        for segment in productDict.get('segments', []):
+            for section in segment.get('sections', []):
+                for hazard in section.get('hazardEvents', []):
+                    groupName = hazard.get('groupName', '')
+                    groupList = hazard.get('groupForecastPointList', '')
+                    groupList = groupList.replace(',',', ')
+                    maxCatName = hazard.get('groupMaxForecastFloodCatName', '')
+                    forecastCategoryName = hazard.get('floodCategoryForecastName')
+                    if forecastCategoryName:
+                        # The forecast category name has been set in the HID, use it.
+                        maxCatName = forecastCategoryName
+                    if maxCatName in ['Unknown', 'NonFlood']:
+                        continue
+                    groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
+                    if not operator.contains(summaryStmts, groupSummary) :
+                        summaryStmts.append(groupSummary)
+        if summaryStmts:
+            summaryStmt = '\n'.join(summaryStmts)
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(summaryStmt)
+        return self.getFormattedText(productPart, endText='\n\n')
     ################# Segment Level
 
     ###################### Section Level
 
-    def _observedStageBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('observedStageBullet', sectionDict)
-        if bulletContent is None:
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            if hazard.get('observedCategory') < 0:
-                bulletContent = 'There is no current observed data.'
-            else:
-                observedStageFlow = hazard.get('observedStage')
-                (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, observedStageFlow)
-                observedTime = self._getFormattedTime(hazard.get('observedTime_ms'), timeZones=self.timezones)
-                bulletContent = 'At {0} the {1} was {2}.'.format(observedTime, stageFlowName, combinedValuesUnits)
-        self._setVal('observedStageBullet', bulletContent, sectionDict, 'Observed Stage Bullet')
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
+    def observedStageBullet(self, sectionDict, productPart):
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        if hazard.get('floodCategoryObserved') < 0:
+            bulletContent = 'There is no current observed data.'
+        else:
+            observedStageFlow = hazard.get('observedStage')
+            (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, observedStageFlow)
+            observedTime = self._getFormattedTime(hazard.get('observedTime_ms'), timeZones=self.timezones)
+            bulletContent = 'At {0} the {1} was {2}.'.format(observedTime, stageFlowName, combinedValuesUnits)
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* ', endText='\n')
 
-    def _floodStageBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('floodStageBullet', sectionDict)
-        if bulletContent is None:
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            primaryPE = hazard.get('primaryPE')
-            if self._riverForecastUtils.isPrimaryPeStage(primaryPE) :
-                floodStageFlow = hazard.get('floodStage')
-            else:
-                floodStageFlow = hazard.get('floodFlow')
+    def floodStageBullet(self, sectionDict, productPart):
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        primaryPE = hazard.get('primaryPE')
+        if self._riverForecastUtils.isPrimaryPeStage(primaryPE) :
+            floodStageFlow = hazard.get('floodStage')
+        else:
+            floodStageFlow = hazard.get('floodFlow')
 
-            if floodStageFlow != MISSING_VALUE:
-                (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, floodStageFlow)
-                bulletContent = 'Flood {0} is {1}.'.format(stageFlowName, combinedValuesUnits)
-                
-            else:
-                bulletContent = ''
-        self._setVal('floodStageBullet', bulletContent, sectionDict, 'Flood Stage Bullet')
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
-
-    def _otherStageBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('otherStageBullet', sectionDict)
-        if bulletContent is None:
-            # TODO This productPart needs to be completed
-            bulletContent = '|* Default otherStageBullet *|'
-        self._setVal('otherStageBullet', bulletContent, sectionDict, 'Other Stage Bullet', required=False)
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
-
-    def _floodCategoryBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('floodCategoryBullet', sectionDict)
-        if bulletContent is None:
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            observedCategory = hazard.get('floodSeverity')
-            observedCategoryName = hazard.get('floodSeverityName')
-            maxFcstCategory = hazard.get('maxFcstCategory')
-            maxFcstCategoryName = hazard.get('maxFcstCategoryName')
-            if observedCategory in ['N', 'U']:
-                observedCategoryInt = 0
-            else:
-                observedCategoryInt = int(observedCategory)
-
-            if hazard.get('observedCategory') < 0 and maxFcstCategory > 0:
-                bulletContent = maxFcstCategoryName + ' flooding is forecast.'
-            elif observedCategoryInt <= 0 and maxFcstCategory > 0:
-                bulletContent = maxFcstCategoryName + ' flooding is forecast.'
-            elif observedCategoryInt > 0 and maxFcstCategory > 0:
-                bulletContent = observedCategoryName + ' flooding is occurring and '+ maxFcstCategoryName+' flooding is forecast.'
-            elif observedCategoryInt > 0:
-                bulletContent = observedCategoryName + ' flooding is occurring.'
-            else:
-                if observedCategory is 'U':
-                    bulletContent = 'Flooding is forecast.'
-                else:
-                    bulletContent = 'No flooding is currently forecast.'
-
-        self._setVal('floodCategoryBullet', bulletContent, sectionDict, 'Flood Category Bullet')
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
-
-    def _recentActivityBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('recentActivityBullet', sectionDict)
-        if bulletContent is None:
+        if floodStageFlow != HazardConstants.MISSING_VALUE:
+            (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, floodStageFlow)
+            bulletContent = 'Flood {0} is {1}.'.format(stageFlowName, combinedValuesUnits)
+        else:
             bulletContent = ''
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            if hazard.get('observedCategory') > 0:
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* ', endText='\n')
 
-                maxStageFlow = hazard.get('max24HourObservedStage')
-                stageFlowUnits =  hazard.get('stageFlowUnits') 
+    def otherStageBullet(self, sectionDict, productPart):
+        # TODO This productPart needs to be completed
+        bulletContent = '|* Default otherStageBullet *|'
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* ', endText='\n')
 
-                observedTime = self._getFormattedTime(hazard.get('observedTime_ms'), timeZones=self.timezones).rstrip()
+    def floodCategoryBulletWorker(self, category, categoryName, action):
+        '''
+        Constructs a part of the flood category bullet based on the inputs.
+        @param category Flood category (e.g. -1,0,1,2,3,4)
+        @param categoryName Flood category name (e.g. Minor, Moderate, Major, Record)
+        @param action Word describing the time frame of the data (e.g. "occurring"
+               for observed data or "forecast" for forecast data)
+        @return String for the flood category bullet or None if no flooding.
+        '''
+        bulletContent = None
 
-                (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, maxStageFlow)
-                bulletContent = 'Recent Activity...The maximum river {0} in the 24 hours ending at {1} was {2}.'\
-                            .format(stageFlowName, observedTime, combinedValuesUnits)
-        self._setVal('recentActivityBullet', bulletContent, sectionDict, 'Recent Activity Bullet', required=False)
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
+        if category is not None:
+            categoryInt = int(category)
+
+            if categoryInt > 0 and categoryName:     # Minor/Moderate/Major/Record flooding
+                bulletContent = categoryName + ' flooding is ' + action
+            elif categoryInt == 0:  # No flooding
+                bulletContent = None
+            elif categoryInt == -1:   # Unknown flooding
+                bulletContent = 'Flooding is ' + action
+            else:
+                raise Exception('Unhandled flood category:{0} categoryName:{1}'.format(category, categoryName))
+
+        return bulletContent
+
+    def floodCategoryBullet(self, sectionDict, productPart):
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        phen= hazard.get('phen')
+        sig = hazard.get('sig')
+        phenSig = phen + '.' + sig
+
+        observedCategory = hazard.get('floodCategoryObserved')
+        observedCategoryName = hazard.get('floodCategoryObservedName')
+        forecastCategory = hazard.get('floodCategoryForecast')
+        forecastCategoryName = hazard.get('floodCategoryForecastName')
+        if phenSig in ['HY.S']:
+            observedCategory = '0'
+            observedCategoryName = ''
+            forecastCategory = '0'
+            forecastCategoryName = ''
+        elif phenSig in ['FL.A']:
+            # Nothing observed during a watch, or else it would not be a watch
+            observedCategory = '0'
+            observedCategoryName = ''
+
+        observedText = self.floodCategoryBulletWorker(observedCategory, observedCategoryName, 'occurring')
+        forecastText = self.floodCategoryBulletWorker(forecastCategory, forecastCategoryName, 'forecast')
+
+        if phenSig in ['FL.A']:
+            # FL.A uses "<category> is possible"
+            # FL.W uses "<category> is forecast"
+            forecastText = self.floodCategoryBulletWorker(forecastCategory, forecastCategoryName, 'possible')
+
+        if observedText and forecastText :
+            bulletContent = '{0} and {1}.'.format(observedText, forecastText)
+        elif observedText:
+            bulletContent = '{0}.'.format(observedText)
+        elif forecastText:
+            bulletContent = '{0}.'.format(forecastText)
+        else:
+            bulletContent = 'No flooding is currently forecast.'
+
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* ', endText='\n')
+
+
+    def recentActivityBullet(self, sectionDict, productPart):
+        bulletContent = ''
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        if hazard.get('floodCategoryObserved') > 0:
+            maxStageFlow = hazard.get('max24HourObservedStage')
+            stageFlowUnits =  hazard.get('stageFlowUnits') 
+
+            observedTime = self._getFormattedTime(hazard.get('observedTime_ms'), timeZones=self.timezones).rstrip()
+
+            (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, maxStageFlow)
+            bulletContent = 'Recent Activity...The maximum river {0} in the 24 hours ending at {1} was {2}.'\
+                        .format(stageFlowName, observedTime, combinedValuesUnits)
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* ', endText='\n')
     
     def _stageFlowValuesUnits(self, hazard, stageFlowValue, physicalElement=None):
         '''
@@ -246,44 +219,40 @@ class Format(Legacy_Base_Formatter.Format):
 
         return stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits
 
-    def _forecastStageBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('forecastStageBullet', sectionDict)
-        if bulletContent is None:
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            bulletContent = ForecastStageText().getForecastStageText(hazard, self.timezones, self.productDict.get('issueTime'), \
-                                                                     sectionDict.get('vtecRecord').get('act'), sectionDict.get('vtecRecord').get('pil'))
-        self._setVal('forecastStageBullet', bulletContent, sectionDict, 'Forecast Stage Bullet', required=False)
-        return self._getFormattedText(bulletContent, startText='* Forecast...', endText='\n')
+    def forecastStageBullet(self, sectionDict, productPart):
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        bulletContent = ForecastStageText().getForecastStageText(hazard, self.timezones, self.productDict.get('issueTime'), \
+                                                                 sectionDict.get('vtecRecord').get('act'), sectionDict.get('vtecRecord').get('pil'))
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* Forecast...', endText='\n')
 
     def _getRiverDescription(self, hazardDict):
         '''
         To use the actual river name:
         
-        return riverDescription = hazardDict.get('riverName_RiverName')
+        return riverDescription = hazardDict.get('streamName')
         '''
         return 'The river'
 
-    def _pointImpactsBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('pointImpactsBullet', sectionDict)
-        if bulletContent is None:
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            impactStrings = []
-            impactsList = hazard.get('pointImpacts', None)
-            if impactsList:
-                for value, physicalElement, textField in impactsList:
-                    (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, value, physicalElement)
-                    impactString = 'Impact...At ' + stageFlowValue + ' ' + stageFlowUnits +'...'+textField
-                    impactStrings.append(impactString)
-                if impactStrings:
-                    bulletContent = '\n'.join(impactStrings)
-            else:
-                bulletContent = ''
+    def pointImpactsBullet(self, sectionDict, productPart):
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        impactStrings = []
+        impactsList = hazard.get('pointImpacts', None)
+        if impactsList:
+            for value, physicalElement, textField in impactsList:
+                (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, value, physicalElement)
+                impactString = 'Impact...At ' + stageFlowValue + ' ' + stageFlowUnits +'...'+textField
+                impactStrings.append(impactString)
+            if impactStrings:
+                bulletContent = '\n'.join(impactStrings)
+        else:
+            bulletContent = ''
 
-        self._setVal('pointImpactsBullet', bulletContent, sectionDict, 'Impacts Bullet', required=False)
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
         if bulletContent:
             # Add the bullets
             impactStrings = bulletContent.split('\n')
@@ -292,76 +261,60 @@ class Format(Legacy_Base_Formatter.Format):
                 bulletContent += '* ' + string + '\n'
         return bulletContent
 
-    def _floodHistoryBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        bulletContent = self._getVal('floodHistoryBullet', sectionDict)
-        if bulletContent is None:
-            # There will only be one hazard per section for point hazards
-            hazard = sectionDict.get('hazardEvents')[0]
-            primaryPE = hazard.get('primaryPE')
-            crestContents = hazard.get('crestsSelectedForecastPointsComboBox', None)
-            if crestContents is not None:
-                crest,crestDate = crestContents.split(' ')
-                (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, crest)
-                bulletContent = "Flood History...This crest compares to a previous crest of " + stageFlowValue + " " + stageFlowUnits + " on " + crestDate +"."
-            else:
-                bulletContent = 'Flood History...No available flood history available.'
-        self._setVal('floodHistoryBullet', bulletContent, sectionDict, 'Flood History Bullet', required=False)
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
+    def floodHistoryBullet(self, sectionDict, productPart):
+        # There will only be one hazard per section for point hazards
+        hazard = sectionDict.get('hazardEvents')[0]
+        primaryPE = hazard.get('primaryPE')
+        crestContents = hazard.get('crestsSelectedForecastPointsComboBox', None)
+        if crestContents is not None:
+            crest,crestDate = crestContents.split(' ')
+            (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, crest)
+            bulletContent = "Flood History...This crest compares to a previous crest of " + stageFlowValue + " " + stageFlowUnits + " on " + crestDate +"."
+        else:
+            bulletContent = 'Flood History...No available flood history available.'
 
-    def _floodPointHeader(self, sectionDict):
-        # Get saved value from productText table if available
-        header = self._getVal('floodPointHeader', sectionDict)
-        if header is None:
-            # TODO This productPart needs to be completed
-            header = 'Flood point header'
-        self._setVal('floodPointHeader', header, sectionDict, 'Flood Point Header')
-        return self._getFormattedText(header, endText='\n')
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(bulletContent)
+        return self.getFormattedText(productPart, startText='* ', endText='\n')
 
-    def _floodPointHeadline(self, segmentDict):
-        # Get saved value from productText table if available
-        headline = self._getVal('floodPointHeadline', sectionDict)
-        if headline is None:
-            # TODO This productPart needs to be completed
-            headline = 'Flood point headline'
-        self._setVal('floodPointHeadline', headline, sectionDict, 'Flood Point Headline')
-        return self._getFormattedText(headline, endText='\n')
-
-    def _floodPointTable(self, dictionary):
+    def floodPointTable(self, dictionary, productPart):
         text = ''
         HazardEventDicts = self.getDataForFloodPointTable(dictionary)
         if HazardEventDicts:
-            # Get saved value from productText table if available
-            text = self._getVal('floodPointTable', dictionary)
-            if text is None:
-                columns = []
-                # Create the columns
-                columns.append(Column('location', width=16, align='<', labelLine1='', labelAlign1='<',  labelLine2='Location', labelAlign2='<'))
-                columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
-                columns.append(Column('observedStage', width=16, align='<',labelLine1='Observed', labelAlign1='<', labelLine2='Stg   Day/Time', labelAlign2='<'))
+            columns = []
+            # Create the columns
+            columns.append(Column('location', width=16, align='<', labelLine1='', labelAlign1='<',  labelLine2='Location', labelAlign2='<'))
+            columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
+            columns.append(Column('observedStage', width=16, align='<',labelLine1='Observed', labelAlign1='<', labelLine2='Stg   Day/Time', labelAlign2='<'))
 
-                hazardEventDict = HazardEventDicts[0]
-                observedTime_ms = hazardEventDict.get('observedTime_ms')
-                day1Label = self._tpc.getFormattedTime(observedTime_ms + 24*3600*1000, '%a', timeZones=self.timezones)
-                day2Label = self._tpc.getFormattedTime(observedTime_ms + 48*3600*1000, '%a', timeZones=self.timezones)
-                day3Label = self._tpc.getFormattedTime(observedTime_ms + 72*3600*1000, '%a', timeZones=self.timezones) 
-                headerLabel = day1Label + '   '+day2Label+ '   '+day3Label
+            hazardEventDict = HazardEventDicts[0]
+            day0ValTime_ms = hazardEventDict.get('day0ValTime_ms', HazardConstants.MISSING_VALUE)
+            if day0ValTime_ms != HazardConstants.MISSING_VALUE:
+                day1Label = self._tpc.getFormattedTime(day0ValTime_ms + 24*3600*1000, '%a', timeZones=self.timezones)
+                day2Label = self._tpc.getFormattedTime(day0ValTime_ms + 48*3600*1000, '%a', timeZones=self.timezones)
+                day3Label = self._tpc.getFormattedTime(day0ValTime_ms + 72*3600*1000, '%a', timeZones=self.timezones)
+                timeStr = self.formatTime(day0ValTime_ms, format='%I %p', timeZones=self.timezones)
+            else:
+                day1Label = 'd1 '
+                day2Label = 'd2 '
+                day3Label = 'd3 '
+                timeStr = 'unknown time'
+            headerLabel = day1Label + '   '+day2Label+ '   '+day3Label
+            columns.append(Column('forecastStage_next3days', width=18, align='<', labelLine1='Forecasts (' + timeStr + ")", labelAlign1='<', labelLine2=headerLabel, labelAlign2='<'))
+ 
+            # Got the column headings now make the required data structure for the table
+            tableValuesDict = self.createDataDictForFloodPointTable(HazardEventDicts)
 
-                timeStr = self.formatTime(observedTime_ms, format='%I %p', timeZones=self.timezones)
-                columns.append(Column('forecastStage_next3days', width=18, align='<', labelLine1='Forecasts (' + timeStr + ")", labelAlign1='<', labelLine2=headerLabel, labelAlign2='<'))
-     
-                # Got the column headings now make the required data structure for the table
-                tableValuesDict = self.createDataDictForFloodPointTable(HazardEventDicts)
-    
-                # Got the columns and data now format the table.
-                floodPointTable = Table(columns, tableValuesDict)
-                text = floodPointTable.makeTable()
-        self._setVal('floodPointTable', text, dictionary, 'Flood Point Table', required=False)
+            # Got the columns and data now format the table.
+            floodPointTable = Table(columns, tableValuesDict)
+            text = floodPointTable.makeTable()
 
+        # Update the Product Part with the generated Text
+        productPart.setGeneratedText(text.rstrip())
         endText = ''
         if text:
             endText = '\n\n'
-        return self._getFormattedText(text.rstrip(), startText='\n&&\n\n', endText=endText)
+        return self.getFormattedText(productPart, startText='\n&&\n\n\n', endText=endText)
 
     ###################### Utility methods
 
@@ -409,22 +362,25 @@ class Format(Legacy_Base_Formatter.Format):
                 valueDictionary = {}
                 # Info needed to create column values
                 observedTime = hazard.get('observedTime_ms')
-                timeStr = self.formatTime(observedTime, format='%a %I %p', timeZones=self.timezones)
+                if observedTime != HazardConstants.MISSING_VALUE:
+                    timeStr = self.formatTime(observedTime, format='%a %I %p', timeZones=self.timezones)
+                else:
+                    timeStr = 'unknown'
                 # Round - result is a string
                 os = hazard.get('observedStage')
-                if os != MISSING_VALUE :
+                if os != HazardConstants.MISSING_VALUE :
                     observedStage = self._tpc.roundFloat(os, returnString=True)
                 else:
                     observedStage = self.FLOOD_POINT_TABLE_MISSING_VALUE_STRING
                 floodStage = self._tpc.roundFloat(hazard.get('floodStage'), returnString=True)
-                day1 = hazard.get('day1')
-                if day1 != MISSING_VALUE_STR:
+                day1 = hazard.get('day1', HazardConstants.MISSING_VALUE)
+                if day1 != HazardConstants.MISSING_VALUE:
                     day1 = self._tpc.roundFloat(day1)
-                day2 = hazard.get('day2')
-                if day2 != MISSING_VALUE_STR:
+                day2 = hazard.get('day2', HazardConstants.MISSING_VALUE)
+                if day2 != HazardConstants.MISSING_VALUE:
                     day2 = self._tpc.roundFloat(day2)
-                day3 = hazard.get('day3')
-                if day3 != MISSING_VALUE_STR:
+                day3 = hazard.get('day3', HazardConstants.MISSING_VALUE)
+                if day3 != HazardConstants.MISSING_VALUE:
                     day3= self._tpc.roundFloat(day3)
                 next3DaysValue = self.format(day1, width=6) + self.format(day2, width=6) + self.format(day3, width=6)
 
@@ -441,7 +397,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def format(self, value, width=None, align='<'):
         value = str(value)
-        if value == MISSING_VALUE_STR:
+        if value == HazardConstants.MISSING_VALUE_STR:
             value = self.FLOOD_POINT_TABLE_MISSING_VALUE_STRING
         if width is None:
             width = len(value)

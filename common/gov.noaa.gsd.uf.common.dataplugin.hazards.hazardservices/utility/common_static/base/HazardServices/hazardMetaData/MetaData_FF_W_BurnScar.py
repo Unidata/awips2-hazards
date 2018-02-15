@@ -1,18 +1,26 @@
 import CommonMetaData
 from HazardConstants import *
+import sys
+import traceback
 
 class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+
+        if hazardEvent is not None:
+            self.burnScarName = hazardEvent.get('burnScarName')
+            from MapsDatabaseAccessor import MapsDatabaseAccessor
+            mapsAccessor = MapsDatabaseAccessor()
+            self.burnScarMetaData = \
+              mapsAccessor.getBurnScarMetadata(self.burnScarName)
+
+        if self.hazardStatus == "ending":
             metaData = [
-                        self.getPreviousEditedText(),
                         self.getEndingOption(),
                         ]
-        elif self.hazardStatus == 'pending':
+        else:
            metaData = [
-                     self.getPreviousEditedText(),
                      self.getInclude(),
                      self.setBurnScarNameLabel(self.hazardEvent),
                      self.getImmediateCause(),
@@ -22,32 +30,11 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
+                     self.getScenario(),
                      self.getLocationsAffected(),
                      self.getCTAs(), 
-                     # Preserving CAP defaults for future reference.
-#                      self.getCAP_Fields([
-#                                           ("urgency", "Immediate"),
-#                                           ("severity", "Severe"),
-#                                           ("certainty", "Likely"),
-#                                           ("responseType", "Avoid"),
-#                                          ])
                     ]
-        else: # issued
-           metaData = [
-                     self.getPreviousEditedText(),
-                     self.getInclude(),
-                     self.setBurnScarNameLabel(hazardEvent),
-                     self.getImmediateCause(),
-                     self.getSource(),
-                     self.getEventType(),
-                     self.getFlashFloodOccurring(),
-                     self.getDebrisFlowOptions(),
-                     self.getRainAmt(),
-                     self.getAdditionalInfo(),
-                     # TODO this should only be on the HID for EXT and not CON
-                     self.getLocationsAffected(),
-                     self.getCTAs(), 
-            ]
+
         return {
                 METADATA_KEY: metaData
                 }    
@@ -103,8 +90,8 @@ class MetaData(CommonMetaData.MetaData):
             self.includeEmergency(),
             ]
         
-    def getSource(self):
-        choices = [
+    def getSourceChoices(self):
+        return [
             self.dopplerSource(),
             self.dopplerGaugesSource(),
             self.trainedSpottersSource(),
@@ -114,26 +101,12 @@ class MetaData(CommonMetaData.MetaData):
             self.satelliteSource(),
             self.gaugesSource(),
                     ]
-        return {
-            "fieldName": "source",
-            "fieldType":"RadioButtons",
-            "label":"Source:",
-            "values": self.defaultValue(choices),
-            "choices": choices,                
-                }  
 
-    def getEventType(self):
-        return {
-                 "fieldType":"ComboBox",
-                 "fieldName": "eventType",
-                 "label": "Event type:",
-                 "expandVertically": False,
-                 "values": "thunderEvent",
-                 "choices": [
-                        self.eventTypeThunder(),
-                        self.eventTypeRain(),
-                        ]
-                }
+    def getEventTypeChoices(self):
+        return [
+                self.eventTypeThunder(),
+                self.eventTypeRain(),
+                ]
 
     def getFlashFloodOccurring(self, defaultOn=False):
         return {
@@ -184,10 +157,103 @@ class MetaData(CommonMetaData.MetaData):
             self.listOfDrainages(),
             self.additionalRain(),
             ]
+
+    def includeEmergency(self):
+        # Pick up existing emergency headline metadata from base class
+        basemeta = super(MetaData ,self).includeEmergency()
+
+        # Attempt to get the information we need to modify this.
+        try :
+            emergencyText = self.burnScarMetaData["emergencyHeadline"]
+        except :
+            if not hasattr(self, 'burnScarName') :
+                return basemeta
+            if not isinstance(self.burnScarName, str) :
+                return basemeta
+            burnlo = self.burnScarName.lower()
+            if burnlo.find(' area')<0 and burnlo.find(' burn')<0 and \
+               burnlo.find(' scar')<0 :
+                emergencyText = self.burnScarName + " burn area including |*Location*|"
+            else :
+                emergencyText = self.burnScarName + " including |*Location*|"
+
+        # Remove the prompt and set a value that is the emergencyHeadline string.
+        # Catch errors here because it is theoretically possible for an override
+        # to make this operation fail.
+        try :
+            fieldDict = basemeta["detailFields"][0]["fields"][0]
+            if fieldDict["maxChars"] < len(emergencyText) :
+                fieldDict["maxChars"] = len(emergencyText)
+            del fieldDict["promptText"]
+            fieldDict["values"] = emergencyText
+        except :
+            tb = traceback.format_stack()
+            sys.stderr.write( \
+             "\nUNEXPECTED CONDITION!!! No 'promptText' for emergency checkbutton\n")
+            for tbentry in tb[:-1] :
+                 sys.stderr.write(tbentry)
+            sys.stderr.write(tb[-1].split('\n')[0]+"\n\n")
+        return basemeta
+
+    def getScenario(self):
+        return {
+            "fieldName": "scenario",
+            "fieldType":"ComboBox",
+            "label":"Scenario:",
+            "choices": self.scenarioChoices(),
+            }
+
+    def scenarioChoices(self):
+        scenarioDict = None
+        if self.burnScarMetaData != None :
+            scenarioDict = self.burnScarMetaData.get("scenarios")
+        if scenarioDict == None :
+            # Hard code some defaults just in case
+            return [
+                    {"identifier": "no_scenario", "displayString": "None",
+                     "productString": "|* Enter scenario text. *|" }
+                    ]
+        scenarioList = []
+        for scenarioId in scenarioDict.keys() :
+            scenarioList.append( \
+                {"identifier": scenarioId, \
+                 "displayString": scenarioDict[scenarioId]["displayString"], \
+                 "productString": scenarioDict[scenarioId]["productString"]} )
+        return scenarioList
+
+    def getCTAs(self,values=None):
+        basemeta = super(MetaData ,self).getCTAs(values)
+
+        # If values is not null, then we are not initializing metadata new
+        # from scratch and we should just respect those settings.
+        if values != None :
+            return basemeta
+
+        try:
+            basemeta["pages"][0]["pageFields"][0]['values'].append("actQuicklyCTA")
+        except:
+            try:
+                basemeta["pages"][0]["pageFields"][0]['values']=["actQuicklyCTA"]
+            except:
+                pass
+
+        if self.burnScarMetaData == None :
+            return basemeta
         
+        try:
+            basemeta["pages"][0]["pageFields"][0]['values'].append("burnScarScenarioCTA")
+        except:
+            try:
+                basemeta["pages"][0]["pageFields"][0]['values']=["burnScarScenarioCTA"]
+            except:
+                pass
+
+        return basemeta
+
     def getCTA_Choices(self):
         return [
             self.ctaFFWEmergency(),
+            self.ctaBurnScarScenario(),
             self.ctaBurnAreas(),
             self.ctaTurnAround(),
             self.ctaActQuickly(),
@@ -202,7 +268,23 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             self.ctaFlashFloodWarningMeans(),
             ]
-        
+
+    def ctaBurnScarScenario(self) :
+        # tagstr must match same in Legacy_FFW_FFS_Formatter:_callsToAction_sectionLevel()
+        tagstr = "|*Burn-Scar*|"
+        if self.burnScarName:
+            dspStr = self.burnScarName
+        else:
+            dspStr = "For scenario"
+        prdStr = "This is a life threatening situation.  Heavy rainfall will cause "+\
+                 "extensive and severe flash flooding of creeks...streams...and ditches "+\
+                 "in the "+tagstr+". Severe debris flows can also be anticipated "+\
+                 "across roads.  Roads and driveways may be washed away in places. "+\
+                 "If you encounter flood waters...climb to safety."
+        return {"identifier": "burnScarScenarioCTA",
+                "displayString": dspStr,
+                "productString": prdStr }
+
     def CAP_WEA_Values(self):
         if self.hazardStatus == "pending":
            return ["WEA_activated"]
@@ -236,6 +318,10 @@ class MetaData(CommonMetaData.MetaData):
             else:
                 retmsg = message3
         return retmsg
+
+    def getLocationsAffected(self):
+        # False means don't have pathcast be default Haz Inf Dialog choice
+        return super(MetaData ,self).getLocationsAffected(False)
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

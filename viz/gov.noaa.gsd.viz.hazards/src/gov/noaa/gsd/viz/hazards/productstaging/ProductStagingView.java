@@ -23,6 +23,7 @@ import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvocationHandlerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangeHandlerDelegate;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
@@ -53,6 +54,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IWidget;
  *                                           specified for the products (again, if
  *                                           applicable).
  * Feb 24, 2016   13929    Robert.Blum       Remove first part of staging dialog.
+ * Mar 21, 2017   29996    Robert.Blum       Added ability to refreshMetadata.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
  * </pre>
@@ -145,6 +147,19 @@ public class ProductStagingView implements
         productStagingDialog.setProductMetadataChangeHandler(
                 new QualifiedStateChangeHandlerDelegate<String, String, Object>(
                         handler, RUNNABLE_ASYNC_SCHEDULER));
+    }
+
+    @Override
+    public void refreshStagingMetadata(String productName,
+            MegawidgetSpecifierManager megawidgetSpecifierManager,
+            Map<String, Map<String, Object>> visiblePages) {
+        productStagingDialog.refreshStagingMetadata(productName,
+                megawidgetSpecifierManager, visiblePages);
+    }
+
+    @Override
+    public MegawidgetManager getMegawidgetManager(String productName) {
+        return productStagingDialog.getMegawidgetManager(productName);
     }
 
     @Override

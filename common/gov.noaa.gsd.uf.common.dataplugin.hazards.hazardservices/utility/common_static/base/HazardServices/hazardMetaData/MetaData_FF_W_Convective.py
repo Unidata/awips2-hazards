@@ -8,14 +8,12 @@ class MetaData(CommonMetaData.MetaData):
 
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+        if self.hazardStatus == "ending":
                 metaData = [
-                            self.getPreviousEditedText(),
                             self.getEndingOption(),
                     ]
-        elif self.hazardStatus == 'pending':
+        else:
             metaData = [
-                    self.getPreviousEditedText(),
                     self.getInclude(),
                     self.getImmediateCause(),
                     self.getSource(),
@@ -26,29 +24,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodLocation(),
                     self.getLocationsAffected(),
                     self.getCTAs(),
-                    # Preserving CAP defaults for future reference.                 
-#                     self.getCAP_Fields([
-#                                         ("urgency", "Immediate"),
-#                                         ("severity", "Severe"),
-#                                         ("certainty", "Likely"),
-#                                         ("responseType", "Avoid"),
-#                                        ])
-                    ]
-        else: # issued
-            metaData = [
-                    self.getPreviousEditedText(),
-                    self.getInclude(),
-                    self.getImmediateCause(),
-                    self.getSource(),
-                    self.getEventType(),
-                    self.getFlashFloodOccurring(),
-                    self.getRainAmt(),
-                    self.getAdditionalInfo(),
-                    self.getFloodLocation(),
-                    # TODO this should only be on the HID for EXT and not CON
-                    self.getLocationsAffected(),
-                    self.getCTAs(),
-            ]
+                        ]
         return {
                 METADATA_KEY: metaData
                 }    
@@ -77,8 +53,8 @@ class MetaData(CommonMetaData.MetaData):
             self.includeEmergency(),
             ]     
          
-    def getSource(self):
-        choices = [
+    def getSourceChoices(self):
+        return [
             self.dopplerSource(),
             self.dopplerGaugesSource(),
             self.trainedSpottersSource(),
@@ -89,27 +65,13 @@ class MetaData(CommonMetaData.MetaData):
             self.satelliteGaugesSource(),
             self.gaugesSource(),
                     ]
+
+    def getEventTypeChoices(self):
+        return [
+                self.eventTypeThunder(),
+                self.eventTypeRain(),
+                ]
         
-        return {
-             "fieldName": "source",
-            "fieldType":"RadioButtons",
-            "label":"Source:",
-            "values": self.defaultValue(choices),
-            "choices": choices,                
-                }  
-
-    def getEventType(self):
-        return {
-                 "fieldType":"ComboBox",
-                 "fieldName": "eventType",
-                 "label": "Event type:",
-                 "values": "thunderEvent",
-                 "choices": [
-                        self.eventTypeThunder(),
-                        self.eventTypeRain(),
-                        ]
-                }
-
     def getFlashFloodOccurring(self, defaultOn=False):
         return {
              "fieldType":"CheckBox",
@@ -148,20 +110,15 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaFlashFloodWarningMeans(),
             ]
 
-    def CAP_WEA_Values(self):
-        if self.hazardStatus == "pending":
-                return ["WEA_activated"] 
-        else:
-            return []
-       
-    def CAP_WEA_Text(self):
-        return "Flash Flood Warning this area til %s. Avoid flooded areas. Check local media. -NWS"
-
     def endingOptionChoices(self):
         return [
             self.recedingWater(),
             self.rainEnded(),
             ]
+
+    def getLocationsAffected(self):
+        # False means don't have pathcast be default Haz Inf Dialog choice
+        return super(MetaData ,self).getLocationsAffected(False)
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

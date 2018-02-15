@@ -12,8 +12,8 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.HydrographForecast;
 import com.raytheon.uf.common.hazards.hydro.HydrographObserved;
@@ -77,7 +77,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 26, 2016 21435      Sara.Stewart      Added Crests MaxFcst and CurObs attributes
  * Oct 13, 2016 22519      mduff             Use the HSA passed into the recommender, not the local site's HSA.
  *                                           The system could be in service backup mode.
- *
+ * Feb 28, 2017 22588      Kevin.Bisanz      Change value of INCLUDE_NONFLOOD_POINTS to match python.
+ * Mar 15, 2017 30224      Robert.Blum       Added hazard attribute for group name.
+ * May 05, 2017 33737      bkowal            Set the crest time to missing when not available.
+ * May 08, 2018 15561      Chris.Golden      Changed BaseHazardEvent to SessionHazardEvent.
+ * Jun 06, 2018 15561      Chris.Golden      Added practice flag for hazard event construction.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -91,19 +95,25 @@ public class RiverProFloodRecommender {
      * Flag indicating whether or not to include non-flood points in the
      * recommendation.
      */
-    private static final String INCLUDE_NONFLOOD_POINTS = "includeNonFloodPoints";
+    private static final String INCLUDE_NONFLOOD_POINTS = "includePointsBelowAdvisory";
 
     /**
      * Represents the first character of a river flow PE.
      */
     private static final char RIVER_FLOW_CHARACTER = 'Q';
 
+    private final boolean practice;
+
     private RiverForecastManager riverForecastManager = null;
 
     /**
      * Default constructor
+     * 
+     * @param practice
+     *            Practice mode flag.
      */
-    public RiverProFloodRecommender() {
+    public RiverProFloodRecommender(boolean practice) {
+        this.practice = practice;
         this.riverForecastManager = new RiverForecastManager();
     }
 
@@ -170,7 +180,7 @@ public class RiverProFloodRecommender {
     private IHazardEvent setRiverHazard(boolean includeNonFloodPoints,
             RiverForecastPoint riverForecastPoint) {
 
-        IHazardEvent riverHazard = new BaseHazardEvent();
+        IHazardEvent riverHazard = new SessionHazardEvent(practice);
         Map<String, Serializable> hazardAttributes = new HashMap<>();
 
         if (riverForecastPoint.isIncludedInRecommendation()
@@ -311,12 +321,21 @@ public class RiverProFloodRecommender {
      *            attributes for
      * @param hazardAttributes
      *            The attributes of the hazard
-     * @param riverHazardEvent
-     *            The hazard event representing the river point
      * @return
      */
     private void buildFloodAttributes(RiverForecastPoint riverForecastPoint,
             Map<String, Serializable> hazardAttributes) {
+
+        hazardAttributes.put(HazardConstants.POINTID,
+                riverForecastPoint.getLid());
+        hazardAttributes.put(HazardConstants.STREAM_NAME,
+                riverForecastPoint.getStream());
+
+        String groupId = riverForecastPoint.getGroupId();
+        RiverForecastGroup riverForecastGroup = getRiverForecastGroup(groupId,
+                recommenderData);
+        hazardAttributes.put(HazardConstants.GROUP_NAME,
+                riverForecastGroup.getGroupName());
 
         // Default to excessive rainfall.
         hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
@@ -403,7 +422,8 @@ public class RiverProFloodRecommender {
             hazardAttributes.put(HazardConstants.CREST_STAGE,
                     riverForecastPoint.getMaximumObservedForecastValue());
         } else {
-            hazardAttributes.put(HazardConstants.CREST, 0);
+            hazardAttributes.put(HazardConstants.CREST,
+                    RiverHydroConstants.MISSING_VALUE);
             hazardAttributes.put(HazardConstants.CREST_STAGE, 0);
         }
 
@@ -517,6 +537,12 @@ public class RiverProFloodRecommender {
                 riverForecastPoint.getLid());
         hazardAttributes.put(HazardConstants.STREAM_NAME,
                 riverForecastPoint.getStream());
+
+        String groupId = riverForecastPoint.getGroupId();
+        RiverForecastGroup riverForecastGroup = getRiverForecastGroup(groupId,
+                recommenderData);
+        hazardAttributes.put(HazardConstants.GROUP_NAME,
+                riverForecastGroup.getGroupName());
 
         hazardAttributes.put(HazardConstants.FLOOD_STAGE,
                 riverForecastPoint.getFloodStage());

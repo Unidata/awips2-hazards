@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+import org.apache.commons.lang.math.NumberUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
@@ -95,6 +96,8 @@ import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
  * Aug 16, 2016   15017    Robert.Blum Updates for setting the crest value/time correctly.
  * Oct 05, 2016   22586    mduff       Added getDoubleValue so when values are set as Float by Python we don't 
  *                                     get ClassCastExceptions.
+ * Jan 12, 2017   28011    bkowal      Fix Crest Value validation / conversion.
+ * Mar 08, 2017   21436    Robert.Blum Setting values to missing when null.
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly mutable session events.
  * </pre>
  * 
@@ -290,6 +293,7 @@ public class GraphicalEditor extends CaveSWTDialog
         } else {
             crestTxt.setText(MISSING_VAL);
             crestMsgChk.setSelection(true);
+            crestTime = HazardConstants.MISSING_VALUE;
         }
 
         Date fallDate = graphData.getFallDate();
@@ -300,6 +304,7 @@ public class GraphicalEditor extends CaveSWTDialog
         } else {
             fallTxt.setText(MISSING_VAL);
             fallMsgChk.setSelection(true);
+            fallTime = HazardConstants.MISSING_VALUE;
         }
 
     }
@@ -916,7 +921,8 @@ public class GraphicalEditor extends CaveSWTDialog
                 endTimeUntilFurtherNotice);
 
         Double crestValue = Double.valueOf(HazardConstants.MISSING_VALUE);
-        if (this.crestValTxt.getText().isEmpty() == false) {
+        final String crestVal = crestValTxt.getText().trim();
+        if (!crestVal.isEmpty() && !MISSING_VAL.equals(crestVal)) {
             crestValue = Double.valueOf(this.crestValTxt.getText());
         }
 
@@ -1017,6 +1023,7 @@ public class GraphicalEditor extends CaveSWTDialog
         StringBuffer errMsgSB = new StringBuffer();
         Date beginDate = convertTimeToDate(beginTime);
         Date endDate = convertTimeToDate(endTime);
+        final String crestVal = crestValTxt.getText().trim();
 
         if (beginDate == null) {
             isValid = false;
@@ -1058,6 +1065,13 @@ public class GraphicalEditor extends CaveSWTDialog
                 errMsgSB.append("\nEnd Time must be after StartTime.\n");
                 isValid = false;
             }
+        }
+
+        if (!crestVal.isEmpty() && (!MISSING_VAL.equals(crestVal)
+                && !NumberUtils.isNumber(crestVal))) {
+            errMsgSB.append("Invalid crest value\n");
+            errMsgSB.append("Crest value must be numerical or set to '")
+                    .append(MISSING_VAL).append("'\n");
         }
 
         if (errMsgSB.length() > 0) {

@@ -34,7 +34,7 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 
 /**
@@ -77,7 +77,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
                 assertNotNull(result);
                 assertThat(result, hasSize(1));
                 assertTrue("Event not of type BaseHazardEvent", result
-                        .iterator().next() instanceof BaseHazardEvent);
+                        .iterator().next() instanceof SessionHazardEvent);
                 proceed = true;
             }
         };

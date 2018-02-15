@@ -25,7 +25,6 @@ import java.util.Date;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.message.WsId;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -41,18 +40,19 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Oct 1, 2012             mnash       Initial creation
- * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Oct 1, 2012             mnash        Initial creation
+ * Nov 14, 2013 1472       bkowal       Renamed hazard subtype to subType
  * Apr 23, 2014 2925       Chris.Golden Augmented with additional methods to
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
- * Feb 22, 2015 6561       mpduff      Added getter/setter for insert time, changed 
- *                                     SORT_BY_PERSIST_TIME to use insert time
- * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation methods.
+ * Feb 22, 2015 6561       mpduff       Added getter/setter for insert time, changed 
+ *                                      SORT_BY_PERSIST_TIME to use insert time
+ * Jul 31, 2015 7458       Robert.Blum  Added new userName and workstation methods.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Oct 29, 2015 11864      Robert.Blum  Added get/setExpirationTime().
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
@@ -65,6 +65,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
  *                                      geometries instead of JTS geometries.
  * Dec 19, 2016 21504      Robert.Blum  Changed userName and workstation to WsId.
+ * Jan 26, 2017 21635      Roger.Ferrel Add issueSite.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
  * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
  *                                      since use of the history list is being
@@ -74,6 +75,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Mar 30, 2017 15528      Chris.Golden Added modified flag as part of basic
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
+ * Apr 28, 2017 33430      Robert.Blum  Removed HazardMode.
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * Dec 11, 2017 20739      Chris.Golden Changed to extend {@link IHazardEventView}.
  * Jan 26, 2018 33428      Chris.Golden Added issuance count.
@@ -106,6 +108,8 @@ public interface IHazardEvent extends IReadableHazardEvent {
 
     public void setSiteID(String site);
 
+    public void setIssueSiteID(String issueSite);
+
     public void setEventID(String eventId);
 
     public void setStatus(HazardStatus state);
@@ -128,6 +132,8 @@ public interface IHazardEvent extends IReadableHazardEvent {
     public void setEndTime(Date date);
 
     public void setInsertTime(Date date);
+
+    public void setExpirationTime(Date date);
 
     public void setWsId(WsId wsId);
 
@@ -155,8 +161,6 @@ public interface IHazardEvent extends IReadableHazardEvent {
     public void setVisualFeatures(VisualFeaturesList visualFeatures);
 
     public void setProductGeometry(Geometry geom);
-
-    public void setHazardMode(ProductClass mode);
 
     public void setSource(Source source);
 

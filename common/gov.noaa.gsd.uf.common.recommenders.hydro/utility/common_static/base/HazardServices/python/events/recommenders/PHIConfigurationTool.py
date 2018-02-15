@@ -67,7 +67,7 @@ class Recommender(RecommenderTemplate.Recommender):
         fieldDictList = []
         valueDict = {}
         
-        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
         practice = (False if caveMode == 'OPERATIONAL' else True)
         
         returnList = GenericRegistryObjectDataAccess.queryObjects([("uniqueID", "phiConfig"),("objectType", "phiConfigData")], practice)
@@ -199,7 +199,7 @@ class Recommender(RecommenderTemplate.Recommender):
                         DOMAINBUFFERKEY:dialogInputMap.get(BUFFERSOURCE),
                     }
 
-        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
         practice = (False if caveMode == 'OPERATIONAL' else True)
 
         GenericRegistryObjectDataAccess.storeObject(objectDict, practice)

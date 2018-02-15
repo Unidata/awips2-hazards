@@ -7,9 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -26,6 +23,9 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
+
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 /**
  * Description: General utility methods specific to Hazard Services.
@@ -56,6 +56,7 @@ import com.raytheon.uf.common.python.PyUtil;
  *                                         as private final.
  * Sep 29, 2016   15928    Chris.Golden    Moved geometry manipulation methods
  *                                         to AdvancedGeometryUtilities.
+ * May 22, 2018    3782    Chris.Golden    Removed most usage of Dict class.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -172,26 +173,26 @@ public class Utilities {
          * eye notices green more than the others.
          */
         float component = (1f - ((RED_LUMINANCE_WEIGHT * color.getRed())
-                + (GREEN_LUMINANCE_WEIGHT * color.getGreen()) + (BLUE_LUMINANCE_WEIGHT * color
-                .getBlue())) < 0.5f ? 0f : 1f);
+                + (GREEN_LUMINANCE_WEIGHT * color.getGreen())
+                + (BLUE_LUMINANCE_WEIGHT * color.getBlue())) < 0.5f ? 0f : 1f);
         return new Color(component, component, component);
     }
 
-    public static Map<String, Serializable> asMap(Dict runData) {
+    public static Map<String, Serializable> asMap(Map<String, ?> runData) {
         if (runData == null) {
             return null;
         }
         HashMap<String, Serializable> result = new HashMap<>();
-        for (Entry<String, Object> entry : runData.entrySet()) {
+        for (Entry<String, ?> entry : runData.entrySet()) {
             Object val = entry.getValue();
             if (val instanceof Dict) {
                 result.put(entry.getKey(), (Serializable) asMap((Dict) val));
             } else if (val instanceof Serializable) {
                 result.put(entry.getKey(), (Serializable) val);
             } else {
-                throw new RuntimeException(entry + ", "
-                        + val.getClass().getSimpleName()
-                        + " does not implement Serializable");
+                throw new RuntimeException(
+                        entry + ", " + val.getClass().getSimpleName()
+                                + " does not implement Serializable");
             }
         }
         return result;

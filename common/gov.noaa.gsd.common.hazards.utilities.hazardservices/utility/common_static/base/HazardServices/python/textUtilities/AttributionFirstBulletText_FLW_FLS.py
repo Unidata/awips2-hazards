@@ -239,22 +239,19 @@ class AttributionFirstBulletText(AFB.AttributionFirstBulletText):
                     qualifiers += ' in '
             elif typeOfFlooding:
                 if self.action in ['NEW', 'EXT']:
-                    qualifiers += '\n  ' + typeOfFlooding
+                    qualifiers += ' for...\n  ' + typeOfFlooding
                 else:
                     qualifiers += ' for ' + typeOfFlooding
                 if addPreposition:
                     qualifiers += ' in...'
 
-        elif self.phenSig == 'FA.Y': 
+        elif self.phenSig == 'FA.Y':
             if self.optionalSpecificTypeStr:
                 qualifiers+= ' for ' +  self.optionalSpecificTypeStr.title()
             if self.immediateCause not in ['ER', 'IC']:
                 if typeOfFlooding:
                     if self.action in ['NEW', 'EXT']:
-                        if self.optionalSpecificTypeStr:
-                            qualifiers += ' for..\n  ' + typeOfFlooding
-                        else:
-                            qualifiers += '\n  ' + typeOfFlooding
+                        qualifiers += ' for...\n  ' + typeOfFlooding
                     else:
                         qualifiers += ' for ' + typeOfFlooding
                     if addPreposition:
@@ -262,6 +259,5 @@ class AttributionFirstBulletText(AFB.AttributionFirstBulletText):
             else:
                 if qualifiers and addPreposition:
                     qualifiers += ' for...'
-
         return qualifiers
 

@@ -9,9 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
-
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 
@@ -24,6 +21,9 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.uf.viz.core.rsc.tools.action.AbstractGenericToolAction;
 import com.raytheon.viz.ui.input.EditableManager;
+
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 
 /**
  * Action handler for the Hazards button displayed on the CAVE toolbar.
@@ -47,32 +47,27 @@ import com.raytheon.viz.ui.input.EditableManager;
  *                                        loaded when it was done here. Also
  *                                        changed to create the correct subclass
  *                                        of resource data.
+ * Jan 31, 2017   28013    dgilling       Prevent starting Hazard Services if
+ *                                        SimulatedTime mode engaged.
+ * Mar 24, 2017   28013    Kevin.Bisanz   Allow starting of Hazard Services if
+ *                                        SimulatedTime mode engaged because
+ *                                        elapsing is done on EDEX now.
+ * Jun 02, 2017   33735    Kevin.Bisanz   Add check for SpatialDisplay.isInitSuccess.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class HazardServicesAction extends
-        AbstractGenericToolAction<SpatialDisplay> {
+public class HazardServicesAction
+        extends AbstractGenericToolAction<SpatialDisplay> {
 
     // Public Methods
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.viz.ui.tools.AbstractTool#runTool()
-     */
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
         super.execute(event);
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.viz.awipstools.ui.action.MapToolAction#getResourceData()
-     */
     @Override
     protected GenericToolsResourceData<SpatialDisplay> getResourceData() {
         return new SpatialDisplayResourceData();
@@ -89,7 +84,8 @@ public class HazardServicesAction extends
                     EditableManager.makeEditable(rp.getResource(), true);
                     SpatialDisplay spatialDisplay = (SpatialDisplay) rp
                             .getResource();
-                    if (spatialDisplay.getStatus() == ResourceStatus.DISPOSED) {
+                    if (spatialDisplay.getStatus() == ResourceStatus.DISPOSED
+                            || (spatialDisplay.isInitialized() == false)) {
                         spatialDisplay.unload();
                         unloaded = true;
                         break;
@@ -103,8 +99,8 @@ public class HazardServicesAction extends
         }
 
         SpatialDisplayResourceData spatialDisplayResourceData = new SpatialDisplayResourceData();
-        SpatialDisplay spatialDisplay = spatialDisplayResourceData.construct(
-                new LoadProperties(), descriptor);
+        SpatialDisplay spatialDisplay = spatialDisplayResourceData
+                .construct(new LoadProperties(), descriptor);
         return spatialDisplay;
     }
 }

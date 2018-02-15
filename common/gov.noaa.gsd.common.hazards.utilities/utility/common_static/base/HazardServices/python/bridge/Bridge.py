@@ -14,32 +14,6 @@
  @since: February 2012
  @author: GSD Hazard Services Team
  
- History:
- Date         Ticket#    Engineer    Description
- ------------ ---------- ----------- --------------------------
- Apr 19, 2013            blawrenc     Made fixes for code review
-                                      Replaced most string literals
-                                      with constants from
-                                      HazardConstants.py
- Jul 15, 2013     585    Chris.Golden Added passing of event bus
-                                      to job listeners, since event
-                                      bus is no longer a singleton.
- August 14, 2013  1360   hansen       Modified to return hazard event
-                                      set from product generators
- August 20 2013   1360   blawrenc     Removed eventDictsToHazardEvents().
-                                      This is not used.
- January 29 2013  2882   bkowal       Eliminated Python Script Adapter
- February 14, 2014 2979  bkowal       Created, separate named methods with
-                                      specific parameters for retrieving 
-                                      different types of hazard information.
- Oct 29, 2014    5070    mpduff       Fix SiteCFG.py that was moved 
- Feb 19, 2015    5071    Robert.Blum  converting unicode strings from json to prevent errors.
- Mar 31, 2016    8837    Robert.Blum  Changes for Service Backup.
- Apr 25, 2016    17611   Robert.Blum  Changes for incremental overrides.
- Sep 21, 2016    21609   Kevin.Bisanz Add getDuplicateUGCs(..).
- Oct 07, 2016    21777   Robert.Blum  Fixed duplicate logger handlers.
- Oct 17, 2016    21699   Robert.Blum  Added additional methods to handle incremental overrides.
- Nov 16, 2016    22971   Robert.Blum  More methods for incremental overrides.
 ''' 
 
 import ast, types, time, traceback, os
@@ -50,7 +24,7 @@ from HazardServicesConfig import HazardServicesConfig
 import HazardMetaDataAccessor
 from HazardConstants import *
 from LocalizationInterface import LocalizationInterface
-from PythonOverrider import importModule
+from HazardServicesPythonOverrider import importModule
 import collections
 # TODO: remove the traceback import when the deprecated function is removed
 import traceback
@@ -459,6 +433,19 @@ class Bridge:
         rawOut = hazardServicesConfig.getConfigData({}) or {}
         if hazardType:
             return rawOut.get(hazardType)
+        return rawOut
+
+    def getProductParts(self, productPart=None):
+        '''
+        Returns product part configuration information.
+        @param productPart: The product part to retrieve config information for.
+                            If this is not provided, then the entire Product Parts
+                            configuration dictionary is returned. 
+        @return: The dictionary of Product Parts or a specific Product Part entry 
+        '''
+        criteria = {'filter':{'name': 'ProductParts'}}
+        hazardServicesConfig = HazardServicesConfig(configType=self.unusedArgument, configDir=self.textUtilitiesPath)
+        rawOut = hazardServicesConfig.getConfigData(criteria) or {}
         return rawOut
 
     def getConfigFile(self, criteria):

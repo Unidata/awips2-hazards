@@ -29,13 +29,12 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionHazardNotificationListener;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
@@ -85,7 +84,7 @@ public class SessionHazardNotificationListenerTest {
     }
 
     private HazardEvent getDummyEvent() {
-        IHazardEvent event = new BaseHazardEvent();
+        IHazardEvent event = new SessionHazardEvent(true);
         event.setEventID(TEST_EVENT_ID);
         event.setPhenomenon(TEST_PHEN1);
         event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(

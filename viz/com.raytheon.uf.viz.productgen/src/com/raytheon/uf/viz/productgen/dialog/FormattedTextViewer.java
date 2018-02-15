@@ -45,22 +45,22 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  *                                      the parent class.
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
  * Aug 22, 2016 21475      Robert.Blum  Changed Font to be fixed width.
+ * Feb 23, 2017 29170      Robert.Blum  Product Editor refactor.
+ * Apr 03, 2017 32572      Roger.Ferrel Added {@link #getIncompleteRequiredFields()}.
+ * Jun 05, 2017 29996      Robert.Blum  Adjusted parent class.
  * 
  * </pre>
  * 
  * @author Robert.Blum
  * @version 1.0
  */
-public class FormattedTextViewer extends AbstractDataEditor {
+public class FormattedTextViewer extends AbstractProductTab {
 
     /** The font size of the product on this Text Viewer */
     private static int FONT_SIZE = 10;
 
     /** The name of the formatter used to format the data */
     private final String format;
-
-    /** The generated product associated with this data editor */
-    private final IGeneratedProduct product;
 
     /**
      * The index into the list of formatted texts for the format in the
@@ -106,8 +106,8 @@ public class FormattedTextViewer extends AbstractDataEditor {
         setControl(editorPane);
 
         // Create a new StyledText object containing the formatted text
-        this.styledText = new StyledText(editorPane, SWT.H_SCROLL
-                | SWT.V_SCROLL);
+        this.styledText = new StyledText(editorPane,
+                SWT.H_SCROLL | SWT.V_SCROLL);
 
         /*
          * Set the font of the formatted tabs to be fixed width.
@@ -132,8 +132,8 @@ public class FormattedTextViewer extends AbstractDataEditor {
          */
         String formattedTextTabLabel = format;
         if (product.getEntry(format).size() > 1) {
-            formattedTextTabLabel = ProductEditorUtil.getFormattedTextTabLabel(
-                    product, format, formatIndex);
+            formattedTextTabLabel = ProductEditorUtil
+                    .getFormattedTextTabLabel(product, format, formatIndex);
         }
         setText(formattedTextTabLabel);
     }
@@ -167,44 +167,6 @@ public class FormattedTextViewer extends AbstractDataEditor {
     }
 
     @Override
-    public boolean hasUnsavedChanges() {
-        return false;
-    }
-
-    @Override
-    public boolean isDataEditable() {
-        return false;
-    }
-
-    @Override
-    public boolean requiredFieldsCompleted() {
-        return true;
-    }
-
-    @Override
-    public void saveModifiedValues() {
-    }
-
-    @Override
-    public void revertValues() {
-    }
-
-    @Override
-    public void undoModification() {
-
-    }
-
-    @Override
-    protected boolean undosRemaining() {
-        return false;
-    }
-
-    @Override
-    protected int getUndosRemaining() {
-        return 0;
-    }
-
-    @Override
     protected void updateButtonState() {
         // Do nothing - no buttons to update
     }
@@ -212,6 +174,11 @@ public class FormattedTextViewer extends AbstractDataEditor {
     @Override
     protected void createEditorButtons(Composite editorPane) {
         // Do nothing - no buttons to create
+    }
+
+    @Override
+    public boolean isDataEditable() {
+        return false;
     }
 
     @Override

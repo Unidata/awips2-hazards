@@ -31,12 +31,11 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
+import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
-import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
@@ -72,11 +71,15 @@ import jep.JepException;
  * 05/07/2015   6979       Robert.Blum  Added a method to call the new updateDataList method in the product
  *                                      generators.
  * Nov 17, 2015 3473      Robert.Blum   Moved all python files under HazardServices localization dir.
+ * Dec 16, 2015 14019     Robert.Blum   Updates for new PythonJobCoordinator API.
  * Feb 12, 2016 14923     Robert.Blum   Picking up overrides of EventUtilities directory
  * Mar 02, 2016 14032     Ben.Phillippe Added geoSpatial directory to python path
  * Mar 21, 2016 15640     Robert.Blum   Fixed custom edits not getting put in final product.
  * Mar 30, 2016  8837     Robert.Blum   Passed the current site to the ProductInterface.
  * Oct 07, 2016 21777     Robert.Blum   Fixed double instantiation of python modules.
+ * Feb 23, 2017 29170     Robert.Blum   Product Editor refactor.
+ * Jun 05, 2017 29996     Robert.Blum   Changes for new previous text design.
+ * Jul 10, 2017 35819     Robert.Blum   Reworked how overrides are picked up.
  * </pre>
  * 
  * @author jsanchez
@@ -95,7 +98,7 @@ public class ProductScript extends PythonScriptController {
 
     private static final String DATA_LIST = "dataList";
 
-    private static final String KEY_INFO = "keyInfo";
+    private static final String PRODUCT_PARTS = "productParts";
 
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
@@ -103,15 +106,11 @@ public class ProductScript extends PythonScriptController {
     /** Parameter name in the execute method */
     private static final String EVENT_SET = "eventSet";
 
-    private static final String SITE = "site";
-
     private static final String DIALOG_INPUT_MAP = "dialogInputMap";
 
     private static final String FORMATS = "formats";
 
     private static final String GENERATED_PRODUCT = "generatedProductList";
-
-    private static final String OVERRIDE_PRODUCT_TEXT = "overrideProductText";
 
     /** Method in ProductInterface.py for executing the generators */
     private static final String GENERATOR_EXECUTE_METHOD = "executeGenerator";
@@ -135,27 +134,6 @@ public class ProductScript extends PythonScriptController {
 
     /* python/events/productgen/products directory */
     protected static LocalizationFile productsDir;
-
-    /* python/events/productgen/products directory */
-    protected static LocalizationFile formatsDir;
-
-    /* python/textUtilities directory */
-    protected static LocalizationFile textUtilDir;
-
-    /* python/events/utilities directory */
-    protected static LocalizationFile eventUtilDir;
-
-    private final ILocalizationFileObserver formatsDirObserver;
-
-    private final ILocalizationFileObserver textUtilDirObserver;
-
-    private final ILocalizationFileObserver eventUtilDirObserver;
-
-    private boolean pendingFormatterUpdates = false;
-
-    private boolean pendingTextUtilitiesUpdates = false;
-
-    private boolean pendingEventUtilitiesUpdates = false;
 
     /**
      * Instantiates a ProductScript object.
@@ -182,24 +160,6 @@ public class ProductScript extends PythonScriptController {
         productsDir = PythonBuildPaths
                 .buildLocalizationDirectory(PRODUCTS_DIRECTORY);
         productsDir.addFileUpdatedObserver(this);
-
-        formatsDir = PythonBuildPaths
-                .buildLocalizationDirectory(FORMATS_DIRECTORY);
-        formatsDirObserver = new FormatsDirectoryUpdateObserver();
-        formatsDir.addFileUpdatedObserver(formatsDirObserver);
-
-        IPathManager manager = PathManagerFactory.getPathManager();
-        LocalizationContext baseContext = manager.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        textUtilDir = manager.getLocalizationFile(baseContext,
-                HazardsConfigurationConstants.TEXT_UTILITIES_LOCALIZATION_DIR);
-        textUtilDirObserver = new TextUtilitiesDirectoryUpdateObserver();
-        textUtilDir.addFileUpdatedObserver(textUtilDirObserver);
-
-        eventUtilDir = manager.getLocalizationFile(baseContext,
-                HazardsConfigurationConstants.EVENT_UTILITIES_LOCALIZATION_DIR);
-        eventUtilDirObserver = new EventUtilitiesDirectoryUpdateObserver();
-        eventUtilDir.addFileUpdatedObserver(eventUtilDirObserver);
 
         String scriptPath = PythonBuildPaths
                 .buildDirectoryPath(PRODUCTS_DIRECTORY, site);
@@ -251,12 +211,15 @@ public class ProductScript extends PythonScriptController {
                 return new GeneratedProductList();
             }
 
-            // Run the generator and formatters
-            retVal = formatProduct(product, formats,
-                    (GeneratedProductList) execute(GENERATOR_EXECUTE_METHOD,
-                            INTERFACE, args),
-                    false);
+            // Run the generator
+            GeneratedProductList productList = (GeneratedProductList) execute(
+                    GENERATOR_EXECUTE_METHOD, INTERFACE, args);
 
+            // Populate the product parts with previous text
+            ProductTextUtil.queryProductText(productList);
+
+            // Run the formatters
+            retVal = formatProduct(product, formats, productList);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to execute product generator", e);
@@ -274,7 +237,7 @@ public class ProductScript extends PythonScriptController {
      * @param eventSet
      *            The set of events used by the generator to create the product
      * @param dataList
-     *            The dictionarys from the previous genenrator call
+     *            The dictionaries from the previous genenrator call
      * @param formats
      *            Optional array of formatters to be run after the generator
      * @return GeneratedProductList object containing all products produced by
@@ -294,12 +257,15 @@ public class ProductScript extends PythonScriptController {
                 return new GeneratedProductList();
             }
 
-            // Run the generator update method and formatters
-            retVal = formatProduct(product, formats,
-                    (GeneratedProductList) execute(GENERATOR_UPDATE_METHOD,
-                            INTERFACE, args),
-                    true);
+            // Run the generator update method
+            GeneratedProductList productList = (GeneratedProductList) execute(
+                    GENERATOR_UPDATE_METHOD, INTERFACE, args);
 
+            // Populate the product parts with previous text
+            ProductTextUtil.queryProductText(productList);
+
+            // Run the formatters
+            retVal = formatProduct(product, formats, productList);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to execute product generator update method", e);
@@ -315,30 +281,30 @@ public class ProductScript extends PythonScriptController {
      * @param product
      * @param eventSet
      * @param updatedDataList
-     * @param keyInfo
+     * @param productParts
      * @param formats
      * @return
      */
     public GeneratedProductList generateProductFrom(String product,
-            GeneratedProductList generatedProducts, KeyInfo keyInfo,
-            String[] formats) {
+            GeneratedProductList generatedProducts,
+            List<ProductPart> productParts, String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
         args.put(GENERATED_PRODUCT, generatedProducts);
-        args.put(KEY_INFO, keyInfo);
-        args.put(FORMATS, Arrays.asList(formats));
+        args.put(PRODUCT_PARTS, productParts);
         GeneratedProductList retVal = null;
         try {
             if (this.verifyProductGeneratorIsLoaded(product) == false) {
                 return new GeneratedProductList();
             }
 
-            // Run the generator executeFrom method and formatters
-            retVal = formatProduct(product, formats,
-                    (GeneratedProductList) execute(
-                            GENERATOR_EXECUTE_FROM_METHOD, INTERFACE, args),
-                    false);
+            // Run the generator update method
+            GeneratedProductList productList = (GeneratedProductList) execute(
+                    GENERATOR_EXECUTE_FROM_METHOD, INTERFACE, args);
+
+            // Run the formatters
+            retVal = formatProduct(product, formats, productList);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to update the generated products", e);
@@ -348,7 +314,7 @@ public class ProductScript extends PythonScriptController {
     }
 
     private GeneratedProductList formatProduct(String product, String[] formats,
-            GeneratedProductList retVal, boolean overrideProductText) {
+            GeneratedProductList retVal) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
 
@@ -357,7 +323,6 @@ public class ProductScript extends PythonScriptController {
                 args = new HashMap<String, Object>(getStarterMap(product));
                 args.put(GENERATED_PRODUCT, retVal);
                 args.put(FORMATS, Arrays.asList(formats));
-                args.put(OVERRIDE_PRODUCT_TEXT, overrideProductText);
                 retVal = (GeneratedProductList) execute(FORMATTER_METHOD,
                         INTERFACE, args);
             }
@@ -475,39 +440,6 @@ public class ProductScript extends PythonScriptController {
      */
     public boolean verifyProductGeneratorIsLoaded(String productGeneratorName) {
         processFileUpdates();
-        // If there are pending formatter updates reload the formatters
-        if (pendingFormatterUpdates) {
-            try {
-                reloadFormatters();
-                pendingFormatterUpdates = false;
-            } catch (JepException e) {
-                statusHandler.handle(Priority.WARN,
-                        "Product Formatters were unable to be imported", e);
-            }
-        }
-
-        // If there are pending TextUtilities updates reload the modules
-        if (pendingTextUtilitiesUpdates) {
-            try {
-                reloadTextUtilities();
-                pendingTextUtilitiesUpdates = false;
-            } catch (JepException e) {
-                statusHandler.handle(Priority.WARN,
-                        "Text Utilities were unable to be imported", e);
-            }
-        }
-
-        // If there are pending EventUtilities updates reload the modules
-        if (pendingEventUtilitiesUpdates) {
-            try {
-                reloadEventUtilities();
-                pendingEventUtilitiesUpdates = false;
-            } catch (JepException e) {
-                statusHandler.handle(Priority.WARN,
-                        "Event Utilities were unable to be imported", e);
-            }
-        }
-
         return this.initializeProductGenerator(productGeneratorName);
     }
 
@@ -555,42 +487,11 @@ public class ProductScript extends PythonScriptController {
      * @param name
      * @return
      */
-
     private static String resolveCorrectName(String name) {
         if (name.endsWith(PYTHON_FILE_EXTENSION)) {
             name = name.replace(PYTHON_FILE_EXTENSION, "");
         }
         return name;
-    }
-
-    /**
-     * Reloads the updated formatter modules in the interpreter's "cache".
-     * 
-     * @throws JepException
-     *             If an Error is thrown during python execution.
-     */
-    protected void reloadFormatters() throws JepException {
-        execute("importFormatters", INTERFACE, null);
-    }
-
-    /**
-     * Reloads the updated textUtilities modules in the interpreter's "cache".
-     * 
-     * @throws JepException
-     *             If an Error is thrown during python execution.
-     */
-    protected void reloadTextUtilities() throws JepException {
-        execute("importTextUtility", INTERFACE, null);
-    }
-
-    /**
-     * Reloads the updated eventUtilities modules in the interpreter's "cache".
-     * 
-     * @throws JepException
-     *             If an Error is thrown during python execution.
-     */
-    protected void reloadEventUtilities() throws JepException {
-        execute("importEventUtility", INTERFACE, null);
     }
 
     /**
@@ -600,7 +501,6 @@ public class ProductScript extends PythonScriptController {
      * @param file
      * @return
      */
-
     @SuppressWarnings("unchecked")
     private ProductInfo setMetadata(LocalizationFile file) {
         final String modName = resolveCorrectName(file.getFile().getName());
@@ -634,78 +534,5 @@ public class ProductScript extends PythonScriptController {
             productInfo.setVersion(vers != null ? vers.toString() : "");
         }
         return productInfo;
-    }
-
-    private class FormatsDirectoryUpdateObserver
-            implements ILocalizationFileObserver {
-
-        @Override
-        public void fileUpdated(FileUpdatedMessage message) {
-            IPathManager pm = PathManagerFactory.getPathManager();
-            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
-                    message.getFileName());
-
-            if (message.getChangeType() == FileChangeType.ADDED
-                    || message.getChangeType() == FileChangeType.UPDATED) {
-                if (lf != null) {
-                    lf.getFile();
-                }
-            } else if (message.getChangeType() == FileChangeType.DELETED) {
-                if (lf != null) {
-                    File toDelete = lf.getFile();
-                    toDelete.delete();
-                }
-
-            }
-            pendingFormatterUpdates = true;
-        }
-    }
-
-    private class TextUtilitiesDirectoryUpdateObserver
-            implements ILocalizationFileObserver {
-
-        @Override
-        public void fileUpdated(FileUpdatedMessage message) {
-            IPathManager pm = PathManagerFactory.getPathManager();
-            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
-                    message.getFileName());
-
-            if (message.getChangeType() == FileChangeType.ADDED
-                    || message.getChangeType() == FileChangeType.UPDATED) {
-                if (lf != null) {
-                    lf.getFile();
-                }
-            } else if (message.getChangeType() == FileChangeType.DELETED) {
-                if (lf != null) {
-                    File toDelete = lf.getFile();
-                    toDelete.delete();
-                }
-            }
-            pendingTextUtilitiesUpdates = true;
-        }
-    }
-
-    private class EventUtilitiesDirectoryUpdateObserver
-            implements ILocalizationFileObserver {
-
-        @Override
-        public void fileUpdated(FileUpdatedMessage message) {
-            IPathManager pm = PathManagerFactory.getPathManager();
-            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
-                    message.getFileName());
-
-            if (message.getChangeType() == FileChangeType.ADDED
-                    || message.getChangeType() == FileChangeType.UPDATED) {
-                if (lf != null) {
-                    lf.getFile();
-                }
-            } else if (message.getChangeType() == FileChangeType.DELETED) {
-                if (lf != null) {
-                    File toDelete = lf.getFile();
-                    toDelete.delete();
-                }
-            }
-            pendingEventUtilitiesUpdates = true;
-        }
     }
 }

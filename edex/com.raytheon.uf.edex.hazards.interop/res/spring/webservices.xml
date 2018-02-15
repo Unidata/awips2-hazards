@@ -1,16 +1,14 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jaxws="http://cxf.apache.org/jaxws"
-	xmlns:jaxrs="http://cxf.apache.org/jaxrs"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans 
-    http://www.springframework.org/schema/beans/spring-beans-3.1.xsd   
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:jaxws="http://cxf.apache.org/jaxws"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans.xsd
     http://cxf.apache.org/jaxws
-    http://cxf.apache.org/schemas/jaxws.xsd
-    http://cxf.apache.org/jaxrs
-    http://cxf.apache.org/schemas/jaxrs.xsd">
+    http://cxf.apache.org/schemas/jaxws.xsd">
 
-	<import resource="classpath:META-INF/cxf/cxf.xml" />
-	<import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
-
+    <import resource="classpath:META-INF/cxf/cxf.xml" />
+    <import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
+    
     <bean id="requestRouterRegistry" class="com.raytheon.uf.common.serialization.comm.RequestRouter"
         factory-method="getRouterRegistry" />
 
@@ -25,31 +23,31 @@
         <constructor-arg ref="requestRegistryRouter" />
     </bean>
 
-	<!-- SOAP Service definitions -->
-	<jaxws:server id="HazardEventInteropServices" address="/hazardEventInteropServices"
-		bus="cxf">
-		<jaxws:serviceBean>
-			<ref bean="HazardEventInteropServicesImpl" />
-		</jaxws:serviceBean>
-		<jaxws:inInterceptors>
-			<ref bean="authenticationInterceptor" />
-		</jaxws:inInterceptors>
-		<jaxws:outInterceptors>
-			<ref bean="securityOutInterceptor" />
-		</jaxws:outInterceptors>
-	</jaxws:server>
+    <!-- SOAP Service definitions -->
+    <jaxws:server id="HazardEventInteropServices" address="/hazardEventInteropServices"
+        bus="cxf">
+        <jaxws:serviceBean>
+            <ref bean="HazardEventInteropServicesImpl" />
+        </jaxws:serviceBean>
+        <jaxws:inInterceptors>
+            <ref bean="authenticationInterceptor" />
+        </jaxws:inInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="securityOutInterceptor" />
+        </jaxws:outInterceptors>
+    </jaxws:server>
 
-	<jaxws:server id="PracticeHazardEventInteropServices"
-		address="/hazardEventInteropServices/practice" bus="cxf">
-		<jaxws:serviceBean>
-			<ref bean="PracticeHazardEventInteropServicesImpl" />
-		</jaxws:serviceBean>
-		<jaxws:inInterceptors>
-			<ref bean="authenticationInterceptor" />
-		</jaxws:inInterceptors>
-		<jaxws:outInterceptors>
-			<ref bean="securityOutInterceptor" />
-		</jaxws:outInterceptors>
-	</jaxws:server>
+    <jaxws:server id="PracticeHazardEventInteropServices"
+        address="/hazardEventInteropServices/practice" bus="cxf">
+        <jaxws:serviceBean>
+            <ref bean="PracticeHazardEventInteropServicesImpl" />
+        </jaxws:serviceBean>
+        <jaxws:inInterceptors>
+            <ref bean="authenticationInterceptor" />
+        </jaxws:inInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="securityOutInterceptor" />
+        </jaxws:outInterceptors>
+    </jaxws:server>
 
 </beans>

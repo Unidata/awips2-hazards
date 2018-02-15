@@ -57,6 +57,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to
  *                                      directly mutable session
  *                                      events.
+ * Apr 20, 2018   30227    Chris.Golden Fixed bug with code handling
+ *                                      removal of event version
+ *                                      identifier from selection set.
  * </pre>
  * 
  * @author Chris.Golden
@@ -453,10 +456,11 @@ public class SessionSelectionManager implements ISessionSelectionManager {
          * Remove all versions of the event from the selected set.
          */
         removeEventsFromSelectedEvents(Sets.newHashSet(selectedEventIdentifier),
-                (selectedCurrentAndHistoricalEventIdentifiers.contains(
-                        new Pair<String, Integer>(selectedEventIdentifier,
-                                null)) ? Sets
-                                        .newHashSet(selectedEventIdentifier)
+                (selectedCurrentAndHistoricalEventIdentifiers
+                        .contains(new Pair<String, Integer>(
+                                selectedEventIdentifier, null))
+                                        ? Sets.newHashSet(
+                                                selectedEventIdentifier)
                                         : Collections.<String> emptySet()),
                 selectedCurrentAndHistoricalEventIdentifiers,
                 selectedIndicesForHistoricalEventIdentifiers, originator);
@@ -515,13 +519,15 @@ public class SessionSelectionManager implements ISessionSelectionManager {
                     .remove(selectedEventVersionIdentifier);
             selectedCurrentAndHistoricalEventIdentifiersOrdered
                     .remove(removalIndex);
-            if (selectedEventVersionIdentifier.getSecond() != null) {
-                selectedIndices
-                        .remove(selectedEventVersionIdentifier.getSecond());
-            }
-            if (selectedIndices.isEmpty()) {
-                selectedIndicesForHistoricalEventIdentifiers
-                        .remove(selectedEventVersionIdentifier.getFirst());
+            if (selectedIndices != null) {
+                if (selectedEventVersionIdentifier.getSecond() != null) {
+                    selectedIndices
+                            .remove(selectedEventVersionIdentifier.getSecond());
+                }
+                if (selectedIndices.isEmpty()) {
+                    selectedIndicesForHistoricalEventIdentifiers
+                            .remove(selectedEventVersionIdentifier.getFirst());
+                }
             }
         } else {
             throw new IllegalStateException(

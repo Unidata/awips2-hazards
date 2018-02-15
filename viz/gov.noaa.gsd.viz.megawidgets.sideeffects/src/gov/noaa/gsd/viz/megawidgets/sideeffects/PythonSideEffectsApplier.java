@@ -9,26 +9,22 @@
  */
 package gov.noaa.gsd.viz.megawidgets.sideeffects;
 
-import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Type;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import jep.Jep;
-import jep.JepException;
-import jep.NamingConventionClassEnquirer;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.FileUtil;
+
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
+import jep.Jep;
+import jep.JepException;
+import jep.NamingConventionClassEnquirer;
 
 /**
  * Description: Side effects applier for megawidget managers that uses Python
@@ -101,6 +97,8 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                           properly on the Python side in some
  *                                           cases.
  * May 13, 2015    8161    mduff             Changes for Jep upgrade.
+ * May 22, 2018   15561    Chris.Golden      Replaced use of gson with JsonConverter,
+ *                                           as the latter is used elsewhere.
  * </pre>
  * 
  * @author Chris.Golden
@@ -153,17 +151,11 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * context switches.
      */
     private static final String DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_FUNCTION = "def "
-            + NAME_CLEANUP_FOR_CONTEXT_SWITCH
-            + "():\n"
-            + "   g = globals()\n"
-            + "   for i in g:\n"
-            + "      if not i.startswith('__') "
-            + "and not i == '"
-            + NAME_CLEANUP_FOR_CONTEXT_SWITCH
-            + "' "
+            + NAME_CLEANUP_FOR_CONTEXT_SWITCH + "():\n" + "   g = globals()\n"
+            + "   for i in g:\n" + "      if not i.startswith('__') "
+            + "and not i == '" + NAME_CLEANUP_FOR_CONTEXT_SWITCH + "' "
             + "and not i == 'jep' and not i == '"
-            + NAME_APPLY_INTERDEPENDENCIES_WRAPPER
-            + "' and not i == 'json':\n"
+            + NAME_APPLY_INTERDEPENDENCIES_WRAPPER + "' and not i == 'json':\n"
             + "         g[i] = None\n\n";
 
     /**
@@ -191,12 +183,8 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * Python script used for cleaning up before shutdown.
      */
     private static final String CLEANUP_FOR_SHUTDOWN = NAME_CLEANUP_FOR_SHUTDOWN
-            + "(); "
-            + NAME_CLEANUP_FOR_SHUTDOWN
-            + " = None; "
-            + "import gc; "
-            + "_uncollected_ = gc.collect(2); "
-            + "_uncollected_ = None; "
+            + "(); " + NAME_CLEANUP_FOR_SHUTDOWN + " = None; " + "import gc; "
+            + "_uncollected_ = gc.collect(2); " + "_uncollected_ = None; "
             + "gc = None\n";
 
     /**
@@ -227,12 +215,6 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * {@link #prepareForShutDown()}.
      */
     private static Jep jep;
-
-    /**
-     * Gson converter. As with {@link #jep}, it is created by
-     * {@link #initialize()} and disposed of via {@link #prepareForShutDown()}.
-     */
-    private static Gson gson;
 
     /**
      * Last instance to have had its
@@ -287,11 +269,10 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                     jep.eval(INITIALIZE);
                     jep.eval(DEFINE_APPLY_INTERDEPENDENCIES_WRAPPER_FUNCTION);
                 } catch (JepException e) {
-                    statusHandler.error(
-                            "Internal error while initializing Python "
+                    statusHandler
+                            .error("Internal error while initializing Python "
                                     + "side effects applier.", e);
                 }
-                gson = new Gson();
             }
         }
     }
@@ -303,15 +284,14 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
         synchronized (PythonSideEffectsApplier.class) {
             if ((--requestCounter < 1) && (jep != null)) {
                 lastApplier = null;
-                gson = null;
                 try {
                     jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_FUNCTION);
                     jep.eval(CLEANUP_FOR_SHUTDOWN);
                     jep.close();
                     jep = null;
                 } catch (JepException e) {
-                    statusHandler.error(
-                            "Internal error while preparing for shutdown "
+                    statusHandler
+                            .error("Internal error while preparing for shutdown "
                                     + "of Python side effects applier.", e);
                 }
             }
@@ -320,23 +300,27 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
 
     /**
      * Determine whether the script within the specified file appears to contain
-     * a definition of an Python interdependency script entry point function.
+     * a definition of a Python interdependency script entry point function.
      * This method does not parse the script for any sort of correctness; it
      * simply determines whether such a function appears to be defined, not
      * whether the script would compile.
      * 
      * @param file
      *            File in which to look for the entry point function.
-     * @return True
+     * @return <code>true</code> if the script appears to contain a definition
+     *         of a Python interdependency script entry point function,
+     *         <code>false</code> otherwise.
      */
     public static boolean containsSideEffectsEntryPointFunction(File file) {
         try {
             String script = FileUtil.file2String(file);
-            return APPLY_INTERDEPENDENCIES_ENTRY_POINT_DEFINITION.matcher(
-                    script).matches();
+            return APPLY_INTERDEPENDENCIES_ENTRY_POINT_DEFINITION
+                    .matcher(script).matches();
         } catch (IOException e) {
-            statusHandler.error("Could not read in " + file + " to check for "
-                    + "apply-interdependencies entry point function.", e);
+            statusHandler.error(
+                    "Could not read in " + file + " to check for "
+                            + "apply-interdependencies entry point function.",
+                    e);
         }
         return false;
     }
@@ -424,9 +408,9 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                 try {
                     jep.runScript(scriptFile.getPath());
                 } catch (JepException e) {
-                    statusHandler
-                            .error("Error while loading Python interdependency script.",
-                                    e);
+                    statusHandler.error(
+                            "Error while loading Python interdependency script.",
+                            e);
                     sideEffectsBeingApplied = false;
                     return null;
                 }
@@ -445,25 +429,32 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
              */
             Map<String, Map<String, Object>> resultMap = null;
             try {
-                Object result = jep.invoke(
-                        NAME_APPLY_INTERDEPENDENCIES_WRAPPER,
-                        (triggerIdentifiers == null ? null : gson
-                                .toJson(triggerIdentifiers)), gson
-                                .toJson(mutableProperties),
-                        propertiesMayHaveChanged);
+                Object result = jep
+                        .invoke(NAME_APPLY_INTERDEPENDENCIES_WRAPPER,
+                                (triggerIdentifiers == null ? null
+                                        : JsonConverter
+                                                .toJson(triggerIdentifiers)),
+                                JsonConverter.toJson(mutableProperties),
+                                propertiesMayHaveChanged);
                 if (result != null) {
-                    Type type = new TypeToken<HashMap<String, HashMap<String, Object>>>() {
-                    }.getType();
-                    resultMap = gson.fromJson((String) result, type);
+                    resultMap = JsonConverter.fromJson((String) result);
                 }
             } catch (JepException e) {
-                statusHandler
-                        .error("Python script error occurred;"
+                statusHandler.error(
+                        "Python script error occurred;"
                                 + "Python method applyInterdependencies() should either "
                                 + "return None or else a dictionary mapping "
                                 + "megawidget identifiers to dictionaries holding "
                                 + "name-value pairs for changed mutable properties.",
-                                e);
+                        e);
+            } catch (IOException e) {
+                statusHandler.error(
+                        "Python script error occurred;"
+                                + "Python method applyInterdependencies() should either "
+                                + "return None or else a dictionary mapping "
+                                + "megawidget identifiers to dictionaries holding "
+                                + "name-value pairs for changed mutable properties.",
+                        e);
             }
 
             /*
@@ -487,8 +478,8 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      */
     private void ensureClassInitialized() {
         if (jep == null) {
-            throw new IllegalStateException("PythonSideEffectsApplier class "
-                    + "not initialized.");
+            throw new IllegalStateException(
+                    "PythonSideEffectsApplier class " + "not initialized.");
         }
     }
 }

@@ -17,38 +17,15 @@ class MetaData(CommonMetaData.MetaData):
                 self.immediateCauseValues = 'DM'
 
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+        if self.hazardStatus == "ending":
+            metaData = []
+        else:
             metaData = [
-                        self.getPreviousEditedText(),
-                        self.getEndingSynopsis(),
-                ]
-        elif self.hazardStatus == 'pending':
-                        metaData = [
-                self.getPreviousEditedText(),
                 self.getForceSegment(),
                 self.getImmediateCause(),
                 self.getHiddenFloodSeverity(),
-                self.getBasisStatement(),
-                self.getImpactsStatement(),
-                self.getCTAs(), 
-                    ]
-        else: # issued
-            metaData = [
-                self.getPreviousEditedText(),
-                self.getForceSegment(),
-                self.getImmediateCause(),
-                self.getHiddenFloodSeverity(),
-                self.getBasisStatement(),
-                self.getImpactsStatement(),
-                self.getCTAs(), 
-                    # Preserving CAP defaults for future reference.                   
-#                     self.getCAP_Fields([
-#                                           ("urgency", "Future"),
-#                                           ("severity", "Severe"),
-#                                           ("certainty", "Possible"),
-#                                           ("responseType", "Monitor"),
-#                                         ]) 
-                    ]
+                self.getCTAs(),
+                    ] 
         if setDamnNameLabel is not None:
             if setDamnNameLabel is True:
                 # Ran recommender so already have the Dam/Levee name
@@ -70,28 +47,6 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaSafety(),
             self.ctaStayAway(),
             ]
-
-    def getBasisStatement(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "basisStatement",
-             "label" : "Basis Text:",
-             "expandHorizontally": True,
-             "visibleChars": 60,
-             "lines": 6,
-             "promptText": "Enter basis text",
-            } 
-
-    def getImpactsStatement(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "impactsStatement",
-             "label" : "Impacts Text:",
-             "expandHorizontally": True,
-             "visibleChars": 60,
-             "lines": 6,
-             "promptText": "Enter impacts text",
-            }
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

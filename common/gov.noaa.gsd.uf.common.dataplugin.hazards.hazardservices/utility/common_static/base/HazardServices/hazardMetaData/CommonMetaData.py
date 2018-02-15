@@ -28,10 +28,6 @@
     the Product Generation python code, and does not come out of the MetaData.    
         
 """
-
-from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
-from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
-from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
 from RiverForecastUtils import *
 from HazardConstants import MISSING_VALUE
 
@@ -75,7 +71,6 @@ class MetaData(object):
             self.hazardStatus = "pending"
     
         self.riverForecastUtils = None
-        self.riverForecastManager = None
         self.riverForecastPoint = None
         self.probUtils = ProbUtils()
         self.CENTRAL_PROCESSOR = False
@@ -110,14 +105,43 @@ class MetaData(object):
         # TODO When proposed for a follow up is implemented add more logic
         #      here to return false for the follow up case.
         return self.hazardStatus == "pending" or self.hazardStatus == "proposed"
-    
-    def getPointID(self):
+
+    def getSource(self):
+        choices = self.getSourceChoices()
+        
+        # Ensure that the current source is valid
+        source = self.hazardEvent.get("source", None)
+        identifiers = [choice.get("identifier", "") for choice in choices]
+        if not source or source not in identifiers:
+            source = self.defaultValue(choices)
+            self.hazardEvent.set("source", source)
+
         return {
-             "fieldName": "pointID",
-             "fieldType": "Text",
-             "label": "Forecast Point:",
-             "maxChars": 5,
-             "editable": False,
+            "fieldName": "source",
+            "fieldType":"RadioButtons",
+            "label":"Source:",
+            "values": source,
+            "choices": choices,
+            }
+
+    def getEventType(self):
+        return {
+                 "fieldType":"ComboBox",
+                 "fieldName": "eventType",
+                 "label": "Event type:",
+                 "expandVertically": False,
+                 "values": "thunderEvent",
+                 "choices": self.getEventTypeChoices()
+                }
+    
+    def getRiverLabel(self, param="details"):
+        lid = self.hazardEvent.get("pointID", "")
+        riverGrp = self.hazardEvent.get("groupName", "")
+        return {
+            "fieldName": param + "ForecastPointsRiverLabel",
+            "fieldType": "Label",
+            "label": lid + " - " + riverGrp,
+            "bold": True,
             }
     
     def getBasisAndImpacts(self, fieldName='basisAndImpactsStatement'):
@@ -274,7 +298,6 @@ class MetaData(object):
              "fieldName":"floodRecord",
              "fieldType":"ComboBox",
              "label":"Flood Record Status:",
-             "expandHorizontally": True,
              "choices":[
                       {"displayString": "NO (Record Flood Not Expected)", "identifier": "NO"},
                       {"displayString": "NR (Near Record or Record Flood Expected)", "identifier": "NR"},
@@ -470,12 +493,11 @@ class MetaData(object):
                 "productString":"", }
 
     def enterAmount(self):                
-        return  {"identifier":"rainKnown", "displayString":"",
+        return  {"identifier":"rainKnown", "displayString":"Between",
                  "detailFields": [
                     {
                         "fieldType": "FractionSpinner",
                         "fieldName": "rainSoFarLowerBound",
-                        "label": "Between",
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 99,
@@ -576,18 +598,21 @@ class MetaData(object):
              "values": defaultOn,
             }
 
-    def getLocationsAffected(self):
+    def getLocationsAffected(self, pathcastDefault=True):
+        defidx = 0
         choices = [self.cityList(), self.noLocations()]
         if self.hazardEvent.get("trackPoints") and self.hazardEvent.get("stormMotion"):
             # StormTrack Recommender was used to create hazard
             choices.insert(0, self.pathcast())
+            if not pathcastDefault :
+                defidx = 1
 
         return {
              "fieldType":"RadioButtons",
              "fieldName": "locationsAffectedRadioButton",
              "label": "Locations Affected (4th Bullet)",
              "choices": choices,
-             "values": choices[0].get("identifier"),
+             "values": choices[defidx].get("identifier"),
             }
 
     def damInfo(self):
@@ -608,14 +633,6 @@ class MetaData(object):
     def noLocations(self):
         return {"identifier": "noLocations",
                 "displayString": "None",
-            }
- 
-    def getPreviousEditedText(self, defaultOn=True):
-        return {
-             "fieldType":"CheckBox",
-             "fieldName": "previousEditedTextCheckBox",
-             "label": "Use Previous Edited Text",
-             "values": defaultOn,
             }
 
     def getForceSegment(self):
@@ -695,14 +712,16 @@ class MetaData(object):
                       ]
                      }
  
-    def getRiver(self, damOrLeveeName=None):
-        riverName = self.hazardEvent.get('riverName','')
-        if not riverName and damOrLeveeName:
-            # Attempt to populate the riverName from the dam metadata if available
-            mapsAccessor = MapsDatabaseAccessor()
-            damMetaData = mapsAccessor.getDamInundationMetadata(damOrLeveeName)
-            if damMetaData:
-                riverName = damMetaData.get("riverName", "")
+    def getRiver(self):
+        riverName = ''
+        if hasattr(self, 'damOrLeveeName'):
+            riverName = self.hazardEvent.get('riverName','')
+            if not riverName and self.damOrLeveeName:
+                # Attempt to populate the riverName from the dam metadata if available
+                mapsAccessor = MapsDatabaseAccessor()
+                damMetaData = mapsAccessor.getDamInundationMetadata(self.damOrLeveeName)
+                if damMetaData:
+                    riverName = damMetaData.get("riverName", "")
 
         return {
              "fieldType": "Text",
@@ -774,11 +793,11 @@ class MetaData(object):
                "expandHorizontally": True,
                "pages": [
                             {
-                             "pageName": "Calls to Action (1 or more)",
+                             "pageName": "Calls to Action",
                              "pageFields": [pageFields]
                             }
                          ],
-                "expandedPages": ["Calls to Action (1 or more)"]      
+                "expandedPages": ["Calls to Action"]      
                 }
 
 ####################### 12 Standard Hydro CTAs ############################
@@ -1053,124 +1072,6 @@ class MetaData(object):
                 "displayString": "River Flooding",
                 "productString": '''Flooding on the |* riverName *| river has receded and is no longer expected
 to pose a significant threat. Please continue to heed all road closures.'''}
-        
-    # CAP FIELDS
-    def getCAP_Fields(self, tupleList=None):
-        capFieldsExpandBar = {
-                 
-               "fieldType": "ExpandBar",
-               "fieldName": "CAPBar",
-               "expandHorizontally": True,
-               "pages": [
-                            {
-                             "pageName": "CAP",
-                             "pageFields":self.getCAPFieldEntries()
-                             }
-                         ]
-                }
-         
-        if tupleList is not None:
-            capFieldsExpandBar = self.setCAP_Fields(tupleList)
-         
-        return capFieldsExpandBar
-    
-
-    def getCAPFieldEntries(self):
-        return [ 
-                   { 
-                    'fieldName': 'urgency',
-                    'fieldType':'ComboBox',
-                    'label':'Urgency:',
-                    'expandHorizontally': True,
-                    'values': 'Immediate',
-                    'choices': ['Immediate', 'Expected', 'Future', 'Past', 'Unknown']
-                    },
-                   {     
-                    'fieldName': 'responseType',
-                    'fieldType':'ComboBox',
-                    'label':'Response Type:',
-                    'expandHorizontally': True,
-                    'values': 'Avoid',
-                    'choices': ['Shelter', 'Evacuate', 'Prepare', 'Execute', 'Avoid', 'Monitor', 'Assess', 'AllClear', 'None']
-                    },
-                   { 
-                    'fieldName': 'severity',
-                    'fieldType':'ComboBox',
-                    'labeMenuItemsl':'Severity:',
-                    'expandHorizontally': True,
-                    'values': 'Severe',
-                    'choices': ['Extreme', 'Severe', 'Moderate', 'Minor', 'Unknown']
-                    },
-                   { 
-                    'fieldName': 'certainty',
-                    'fieldType':'ComboBox',
-                    'label':'Certainty:',
-                    'expandHorizontally': True,
-                    'values': 'Likely',
-                    'choices': ['Observed', 'Likely', 'Possible', 'Unlikely', 'Unknown']
-                    },
-                ] + [self.CAP_WEA_Message()]
-
-
-    # Used to be in subclasses                
-    def setCAP_Fields(self, tupleList):
-        # Set the defaults for the CAP Fields
-        # ## NOTE - since we are using a ExpandBar, we have to
-        # ## mind the structure which is a dict of lists 
-        # ## of dicts of lists (seriously)
-         
-        capExpandBar = self.getCAP_Fields()
-        for entry in capExpandBar['pages']:
-            for capFields in entry['pageFields']:
-                for fieldName, values in tupleList:
-                    if capFields["fieldName"] == fieldName:
-                        capFields["values"] = values  
-        return capExpandBar          
-
-                 
-    def CAP_WEA_Message(self):
-        return {                
-                "fieldType":"CheckBoxes",
-                "label":"Activate WEA Text",
-                "fieldName": "activateWEA",
-                "values": self.CAP_WEA_Values(),
-                "choices": [{
-                      "identifier":  "WEA_activated",
-                      "displayString": "",
-                      "productString": "",
-                      "detailFields": [{
-                         'fieldName': 'WEA_Text',
-                         'fieldType':'Text',
-                         'label':'WEA Text (%s is end time/day):',
-                         'values': self.CAP_WEA_Text(),
-                         'length': 90,
-                         }]
-                   }],
-                 }
-         
-    def CAP_WEA_Values(self):
-        return []
-         
-    def CAP_WEA_Text(self):
-        return ''
-           
-    #######################  WEA Messages
-    #
-    #     Tsunami Warning (coming late 2013)    Tsunami danger on the coast.  Go to high ground or move inland. Check local media. -NWS 
-    #     Tornado Warning                       Tornado Warning in this area til hh:mm tzT. Take shelter now. Check local media. -NWS 
-    #     Extreme Wind Warning                  Extreme Wind Warning this area til hh:mm tzT ddd. Take shelter. -NWS
-    #     Flash Flood Warning                   Flash Flood Warning this area til hh:mm tzT. Avoid flooded areas. Check local media. -NWS
-    #     Hurricane Warning                     Hurricane Warning this area til hh:mm tzT ddd. Check local media and authorities. -NWS
-    #     Typhoon Warning                       Typhoon Warning this area til hh:mm tzT ddd. Check local media and authorities. -NWS
-    #     Blizzard Warning                      Blizzard Warning this area til hh:mm tzT ddd. Prepare. Avoid travel. Check media. -NWS
-    #     Ice Storm Warning                     Ice Storm Warning this area til hh:mm tzT ddd. Prepare. Avoid travel. Check media. -NWS
-    #     Dust Storm Warning                    Dust Storm Warning in this area til hh:mm tzT ddd. Avoid travel. Check local media. -NWS
-    #         
-    #     Legend
-    #     hh:mm tzT ddd
-    #     tzT = timezone
-    #     ddd= three letter abbreviation for day of the week 
-    #      
 
     def as_str(self, obj):
         if isinstance(obj, dict):  
@@ -1302,16 +1203,10 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
         if self.riverForecastUtils is None:
              self.riverForecastUtils = RiverForecastUtils()
-        if self.riverForecastManager is None:
-             self.riverForecastManager = RiverForecastManager()
+
+        self.getRiverForecastPoint(pointID, True)
+        PE = self.riverForecastPoint.getPhysicalElement()
         
-        
-        self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
-        PE = self.riverForecastPoint.getPrimaryPE()
-        riverPointID =  self.riverForecastPoint.getLid()
-        riverName =  self.riverForecastPoint.getName()
-        
-        curObs = self.riverForecastUtils.getObservedLevel(self.riverForecastPoint)
         curObs = self.riverForecastUtils.getObservedLevel(self.riverForecastPoint)
         maxFcst = self.riverForecastUtils.getMaximumForecastLevel(self.riverForecastPoint, PE)
 
@@ -1324,18 +1219,6 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             fldStg = MISSING_VALUE
             fldFlow =  self.riverForecastPoint.getFloodFlow()
     
-
-        crestOrImpact = "Crest"
-        label = "\tCurObs\tMaxFcst\tFldStg\tFldFlow\t|\tPE\tBased on PE"
-
-        groupID = self.riverForecastPoint.getGroupId()
-        riverForecastGroup = self.riverForecastManager.getRiverForecastGroup(groupID, False)
-        riverGrp = riverForecastGroup.getGroupName() 
-        
-        point = "\t" + riverPointID + "\t- " + riverName
-
-        lid = self.riverForecastPoint.getLid()
-
         values = OrderedDict()
         values['CurObs'] = '{:<15.2f}'.format(curObs)
         values['MaxFcst'] = '{:<15.2f}'.format(maxFcst)
@@ -1344,12 +1227,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         values['Lookup PE'] = '{:15s}'.format(PE)
         values['Based On Lookup PE'] =  self.basedOnLookupPE
         
-        riverLabel = {
-                      "fieldType": "Label",
-                      "fieldName": parm + "ForecastPointsRiverLabel",
-                      "label": lid + " - " + riverGrp,
-                      "bold": True
-                  }
+        riverLabel = self.getRiverLabel(parm) 
         
         valuesTable = {
                        "fieldType": "Table",
@@ -1378,8 +1256,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
         if self.riverForecastUtils is None:
              self.riverForecastUtils = RiverForecastUtils()
-        self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
-        primaryPE =  self.riverForecastPoint.getPrimaryPE()
+        self.getRiverForecastPoint(pointID, True)
+        primaryPE = self.riverForecastPoint.getPhysicalElement()
         maxLevel =  self.riverForecastUtils.getMaximumForecastLevel( self.riverForecastPoint, primaryPE)
         if maxLevel != MISSING_VALUE:
             choices.append('Max Forecast')
@@ -1601,11 +1479,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         filterValues = {k:filters[k]['values'] for k in filters}
         
         pointID = self.hazardEvent.get("pointID")
-        if  self.riverForecastManager is None:
-             self.riverForecastManager = RiverForecastManager()
+        if self.riverForecastUtils is None:
+            self.riverForecastUtils = RiverForecastUtils()
             
-        self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
-        primaryPE =  self.riverForecastPoint.getPrimaryPE()
+        self.getRiverForecastPoint(pointID, True)
+        primaryPE = self.riverForecastPoint.getPhysicalElement()
         
         impactsTextField = None
         if parm == "impacts":
@@ -1615,18 +1493,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             simTimeMils = SimulatedTime.getSystemTime().getMillis()
             currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
             
-            impactDataList = self.riverForecastManager.getImpactsDataList(pointID, currentTime.month, currentTime.day)
+            impactDataList = self.riverForecastUtils.getImpactsDataList(pointID, currentTime.month, currentTime.day)
             plist = JUtilHandler.javaCollectionToPyCollection(impactDataList)
             
             characterizations, physicalElements, descriptions = self.riverForecastUtils.getImpacts(plist, primaryPE, self.riverForecastPoint, filterValues)
             impactChoices, values = self.makeImpactsChoices(characterizations, physicalElements, descriptions)
-            
-            if len(impactChoices) == 0:
-                # Reset the attribute
-                self.hazardEvent.removeHazardAttribute('impactCheckBoxes')
 
             checkedValues = []
-            
             searchType = filters.get('Search Type')
             searchTypeValue = searchType.get('values')
 
@@ -1668,7 +1541,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                             for impactTuple in tupleList:
                                 value, trend = impactTuple
                                 if value > referenceValue + stageWindowLower and value < referenceValue + stageWindowUpper:
-                                    windowTuples.append(tuple)
+                                    windowTuples.append(impactTuple)
 
                             closest = (-9999, "Rising")
                             delta = 9999
@@ -1694,7 +1567,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                                 if value > highest[0]:
                                     highest = impactTuple;
                             if highest[0] != -9999: 
-                                checkedValues.append(floatMap.get(highest))
+                                checkedValues.append(tupleMap.get(highest))
                     
             selectedForecastPoints = {
                                       "fieldType":"CheckBoxes",
@@ -1703,7 +1576,9 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                                       "choices":  self.sortImpactsChoices(impactChoices, values),
                                       "values" : checkedValues,
                                       "extraData" : { "origList" : checkedValues },
+                                      "overrideOldValues": True
                                       }
+            
         else:
             headerLabel = "Crest to Use"
             selectionLabel = "CrestStg/Flow - CrestDate"
@@ -1896,10 +1771,9 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             if pointID !=  self.riverForecastPoint.getLid():
                 doQuery = True
         if doQuery == True:
-            if  self.riverForecastManager is None:
-                 self.riverForecastManager = RiverForecastManager()
-            self.riverForecastPoint =  self.riverForecastManager.getRiverForecastPoint(pointID, isDeepQuery)
-        return(self.riverForecastPoint)
+            if self.riverForecastUtils is None:
+                self.riverForecastUtils = RiverForecastUtils()
+            self.riverForecastPoint = self.riverForecastUtils.getRiverForecastPoint(pointID, isDeepQuery)
 
     def setDamNameLabel(self, damOrLeveeName):
         return {
@@ -1945,6 +1819,17 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
     def damOrLeveeChoices(self):
         damList = []
+
+        # Add framed text to the list of dam/levee name choices to indicate
+        # that the user can manually type into the combo box if the query fails
+        # or does not contain the desired dam name.
+        framedText =  "|* Enter Dam/Levee Name *|"
+        ids = {}
+        ids["identifier"] = framedText
+        ids["displayString"] = framedText
+        ids["productString"] = framedText
+        damList.append(ids)
+
         try:
             mapsAccessor = MapsDatabaseAccessor()
             damOrLeveeNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
@@ -3193,49 +3078,12 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     # Get any changes required for the rise-crest-fall read-only text fields.
     ufnChanges = applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties)
 
-    # ## originalList is used in multiple cases.  Assign it only once
-    oListTemp = mutableProperties.get("impactCheckBoxes")
-    if oListTemp:
-        originalList = oListTemp['extraData']['origList']
-    else:
-        originalList = None
-    
-
-    # ## For Impacts and Crests interaction
-    impactsCrestsChanges = None
-    if triggerIdentifiers is not None:
-        impactsCrestsChanges = {}
-
-        # Use "originalList is not None" instead of "if originalList" so
-        # that if originalList is empty, the statement will still evaluate
-        # to true.
-        if originalList is not None:
-            currentVals = mutableProperties["impactCheckBoxes"]['values']
-            textFields = [tf for tf in mutableProperties if tf.startswith('impactTextField_')]
-            
-            for tf in textFields:
-                impactsCrestsChanges[tf] = { "enable" : True}
-            
-            offCheckList = list(set(originalList).difference(currentVals))
-    
-            for off in offCheckList:
-                offText = 'impactTextField_' + off.split('_')[-1]
-                impactsCrestsChanges[offText] = { "enable" : False}
-        
-        
-    if triggerIdentifiers is None:
-        impactsCrestsChanges = {}
-        if originalList is not None:
-            impactsCrestsChanges["impactCheckBoxes"] = { "values": originalList }
-
     # Return None if no changes were needed for until-further-notice or for
     # impacts and crests; if changes were needed for only one of these,
     # return those changes; and if changes were needed for both, merge the
     # two dictionaries together and return the result.
     if ufnChanges is not None:
         returnDict.update(ufnChanges)
-    if impactsCrestsChanges is not None:
-        returnDict.update(impactsCrestsChanges)
     
     if len(returnDict):
         return returnDict

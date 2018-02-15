@@ -1,31 +1,11 @@
-import collections
-from KeyInfo import KeyInfo
-import HydroGenerator
-
 '''
 Description: Product Generator for the FFW and FFS products.
-
-SOFTWARE HISTORY
-Date         Ticket#    Engineer    Description
------------- ---------- ----------- --------------------------
-April 5, 2013            Tracy.L.Hansen      Initial creation
-Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
-                                             dictionary
-Oct 24, 2014   4933      Robert.Blum         Implement Product Generation Framework v3
-Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict that was missed in previous checkin.
-Jan 12, 2015   4937      Robert.Blum         Refactor to use new generator class hierarchy 
-                                             introduced with ticket 4937.
-Jan 31, 2015   4937      Robert.Blum         General cleanup and minor bug fixes.
-Mar 23, 2015   7165      Robert.Blum         Code consolidation - removed _prepareSection().
-Apr 16, 2015   7579      Robert.Blum         Updates for amended Product Editor.
-Jun 08, 2016   9620      Robert.Blum         Changed self._purgeHours to a float since purge hours can
-                                             include minutes (15min intervals).
-Jul 06, 2016  18257      Kevin.Bisanz        Added eventSet parameter to executeFrom(..)
-Oct 21, 2016  22489      Robert.Blum         Removed unused flags.
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
 '''
+import collections
+import HydroGenerator
 
 class Product(HydroGenerator.Product):
 
@@ -61,9 +41,9 @@ class Product(HydroGenerator.Product):
     def defineDialog(self, eventSet):
         return {}
 
-    def executeFrom(self, dataList, eventSet, keyInfo=None):
-        if keyInfo is not None:
-            dataList = self.correctProduct(dataList, eventSet, keyInfo, True)
+    def executeFrom(self, dataList, eventSet, productParts=None):
+        if isinstance(productParts, list) and len(productParts) > 0:
+            dataList = self.correctProduct(dataList, eventSet, productParts, True)
         else:
             self.updateExpireTimes(dataList)
         return dataList
@@ -86,9 +66,12 @@ class Product(HydroGenerator.Product):
 
     def _preProcessHazardEvents(self, hazardEvents):
         '''
-        Set Immediate Cause for FF.W.NonConvective prior to VTEC processing
+        Add expirationTime to each event and set
+        immediate cause for FF.W.NonConvective prior to VTEC processing
         '''
         for hazardEvent in hazardEvents:
+            expirationTime = self._tpc.round(hazardEvent.getEndTime())
+            hazardEvent.setExpirationTime(expirationTime)
             if hazardEvent.getHazardType() == 'FF.W.NonConvective':
                 immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'))
                 hazardEvent.set('immediateCause', immediateCause)
@@ -135,7 +118,8 @@ class Product(HydroGenerator.Product):
         productID = productSegmentGroup.productID
         productSegments = productSegmentGroup.productSegments
         if productID == 'FFW':
-            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFW(productSegments))
+            productPartsDict = self._hydroProductParts.productParts_FFW(productSegments)
         elif productID == 'FFS':
-            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFS(productSegments))
-
+            productPartsDict = self._hydroProductParts.productParts_FFS(productSegments)
+        productParts = self.createProductParts(productPartsDict)
+        productSegmentGroup.setProductParts(productParts)

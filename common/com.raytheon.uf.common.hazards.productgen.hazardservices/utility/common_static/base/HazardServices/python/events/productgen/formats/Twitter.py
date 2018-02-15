@@ -1,20 +1,5 @@
 '''
     Description: A Sample Twitter formatter.
-
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Feb 04, 2015    6322    Robert.Blum Initial creation 
-    Mar 20, 2015    7149    Robert.Blum Adjusted addCTAs() to handle a string
-                                        instead of a list.
-    Mar 30, 2015    6959    Robert.Blum Updated createAreaPhrase() to use functions
-                                        in TextProductCommon.
-    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
-    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
-    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
-    Nov 09, 2015    7532    Robert.Blum Changes for multiple hazards/vtecRecords per segment.
-    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
-    Jul 29, 2016   19473    Roger.Ferrel set test mode true for Practice and Test.
 '''
 
 import FormatTemplate
@@ -34,17 +19,14 @@ class Format(FormatTemplate.Formatter):
         self._runMode = self.productDict.get('runMode')
         self._testMode = self._runMode in ['Practice', 'Test']
 
-        # Dictionary that will hold the KeyInfo entries of the
-        # product part text strings to be displayed in the Product
-        # Editor. 
+        # List that will hold the Product Part entries to be 
+        # displayed in the Product Editor. 
         # Since this is just a sample format, no editableParts
         # are defined.
         if editableEntries:
-            self._useProductTextTable = False
-            self._editableParts = editableEntries
+            self.editableParts = editableEntries
         else:
-            self._useProductTextTable = True
-            self._editableParts = OrderedDict()
+            self.editableParts = []
 
         # Setup the Time Zones
         self.timezones = []
@@ -52,12 +34,11 @@ class Format(FormatTemplate.Formatter):
         for segment in segments:
             self.timezones += segment.get('timeZones')
 
-    def execute(self, productDict, editableEntries, overrideProductText):
-        self.overrideProductText = overrideProductText
+    def execute(self, productDict, editableEntries):
         self.productDict = productDict
         self.initialize(editableEntries)
         product = self.createTwitterProduct()
-        return [product], self._editableParts
+        return [product], self.editableParts
 
     def createTwitterProduct(self):
         text = ''

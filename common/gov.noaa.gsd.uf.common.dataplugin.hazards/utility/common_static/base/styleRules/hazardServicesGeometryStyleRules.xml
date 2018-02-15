@@ -361,7 +361,25 @@
 
    <styleRule>
       <paramLevelMatches>
-         <parameter>FF.W</parameter>
+         <parameter>FF.W.BurnScar</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.50" g="1.00" b="0.53" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>FF.W.Convective</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.50" g="1.00" b="0.53" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>FF.W.NonConvective</parameter>
       </paramLevelMatches>
       <hazardStyle>
           <color r="0.50" g="1.00" b="0.53" a="1.0"/>

@@ -199,13 +199,18 @@ class Recommender(RecommenderTemplate.Recommender):
         currentTime = datetime.datetime.now()
         startTime = datetime.datetime.utcfromtimestamp(int(key))
         endTime = datetime.datetime.utcfromtimestamp(int(fcstDict[key]['endTime'])) 
+
+        sessionAttributes = eventSet.getAttributes()
+        caveMode = sessionAttributes.get('runMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
               
-        hazardEvent = EventFactory.createEvent()
+        hazardEvent = EventFactory.createEvent(practice)
         hazardEvent.setCreationTime(currentTime)
         hazardEvent.setStartTime(startTime)
         hazardEvent.setEndTime(endTime)
         hazardEvent.setHazardStatus("pending")
-        hazardEvent.setHazardMode("O")
         
         hazardEvent.setPhenomenon(fcstDict[key]['phenomenon']) 
         

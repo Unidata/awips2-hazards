@@ -28,6 +28,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * May 04, 2016 15584      Kevin.Bisanz Add toString()
  * May 10, 2016 18240      Kevin.Bisanz Add isPointIdInGroup(..)
+ * Feb 08, 2017 28335      Robert.Blum Fixed typo in javaDoc.
  * 
  * </pre>
  * 
@@ -144,7 +145,7 @@ public class RiverForecastGroup {
                     this.ordinal = ((Number) queryValue).intValue();
                     break;
                 case REC_ALL_INCLUDED_FIELD_IDX:
-                    if ("Y".equals((String) queryValue)) {
+                    if ("Y".equals(queryValue)) {
                         this.recommendAllPointsInGroup = true;
                     } else {
                         this.recommendAllPointsInGroup = false;
@@ -206,7 +207,8 @@ public class RiverForecastGroup {
     /**
      * @return the list of river stations in this group.
      */
-    public void setForecastPointList(List<RiverForecastPoint> forecastPointList) {
+    public void setForecastPointList(
+            List<RiverForecastPoint> forecastPointList) {
         this.forecastPointList = forecastPointList;
     }
 
@@ -276,7 +278,7 @@ public class RiverForecastGroup {
     }
 
     /**
-     * SGet the max observed forecast category of all the river points in this
+     * Get the max observed forecast category of all the river points in this
      * river group.
      * 
      * @return maxOMFCategory

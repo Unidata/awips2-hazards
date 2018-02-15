@@ -56,6 +56,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      having different types of events for
  *                                      the events being copied during creation
  *                                      versus the events being manipulated.
+ * Jun 06, 2018 15561     Chris.Golden  Added practice flag for event
+ *                                      construction.
  * </pre>
  * 
  * @author mnash
@@ -67,9 +69,11 @@ public interface IEventManager<T extends IEvent, U extends T, HL extends List<U>
     /**
      * Create an event.
      * 
+     * @param practice
+     *            Flag indicating whether or not practice mode is enabled.
      * @return Created event.
      */
-    public U createEvent();
+    public U createEvent(boolean practice);
 
     /**
      * Create a new event by copying the specified event.

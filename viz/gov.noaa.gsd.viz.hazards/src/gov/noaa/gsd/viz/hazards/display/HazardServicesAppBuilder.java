@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -21,6 +20,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -49,7 +49,6 @@ import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstant
 import com.raytheon.uf.common.hazards.configuration.ServerConfigLookupProxy;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -94,20 +93,21 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
-import com.raytheon.uf.viz.productgen.dialog.ProductViewer;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolParameterDialogSpecifier;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolResultDialogSpecifier;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
+import com.raytheon.viz.ui.simulatedtime.SimulatedTimeOperations;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
@@ -126,7 +126,6 @@ import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
 import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailHandler;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstView;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.product.ProductPresenter;
 import gov.noaa.gsd.viz.hazards.product.ProductView;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
@@ -149,6 +148,7 @@ import gov.noaa.gsd.viz.hazards.ui.QuestionDialog;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import net.engio.mbassy.bus.error.IPublicationErrorHandler;
 import net.engio.mbassy.bus.error.PublicationError;
 
@@ -307,12 +307,23 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             again later.
  * Dec 02, 2016 26624      bkowal              Initialize a {@link ServerConfigLookupProxy} instance.
  * Dec 19, 2016 21504      Robert.Blum         Supplied shell to dialog opening method calls.
+ * Jan 18, 2017 28240      Kevin.Bisanz        Update GFE localization path from python/gfe to
+ *                                             gfe/python.
+ * Jan 18, 2017 27671      dgilling            Implemented updated IQuestionAnswerer interface.
+ * Jan 27, 2017 22308      Robert.Blum         Removed unneeded methods.
+ * Jan 31, 2017 28013      dgilling            Display warning when in SimulatedTime mode.
  * Feb 01, 2017 15556      Chris.Golden        Minor changes to support console refactor, including
  *                                             implementation of the new console handler and
  *                                             hazard detail handler interfaces. Also moved methods
  *                                             from HazardServicesMessageHandler here as appropriate,
  *                                             and removed anything not being used.
  * Feb 13, 2017 28892      Chris.Golden        Removed unneeded code.
+ * Mar 10, 2017 29962      bkowal              Inspect the specified {@link PublicationError} to
+ *                                             identify any non-provided, <code>null</code> fields
+ *                                             before logging an error.
+ * Mar 21, 2017 29996      Robert.Blum         Removed un-needed parameter.
+ * Mar 27, 2017 28013      Kevin.Bisanz        Remove warning when in SimulatedTime mode because
+ *                                             hazards are elapsed on EDEX.
  * Apr 27, 2017 11853      Chris.Golden        Changed name of product editor closing method.
  * Jun 22, 2017 15561      Chris.Golden        Keep track of which descriptor was last used for a
  *                                             perspective due to the current design. Also added flag
@@ -337,6 +348,20 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             contribution code.
  * Feb 06, 2018 46258      Chris.Golden        Fixed null pointer exception bug when checking for
  *                                             hazard conflicts.
+ * Apr 13, 2018 15561      Chris.Golden        Fixed bug that caused zombie dialogs to be resurrected
+ *                                             when attempting to find a parent shell for a message
+ *                                             box. Also fixed error message that sometimes occurred
+ *                                             when closing CAVE with Hazard Services running.
+ * Apr 19, 2018 33787      Chris.Golden        Changed multi-value scale widgets to cache the images
+ *                                             they use for representing themselves visually, and to
+ *                                             reuse said images across instances of the widgets.
+ * May 22, 2018  3782     Chris.Golden         Changed recommender parameter gathering to be much more
+ *                                             flexible, allowing the user to change dialog parameters
+ *                                             together with visual features, and allowing visual
+ *                                             feature changes to be made multiple times before the
+ *                                             execution proceeds. Also refactored tool dialog so that
+ *                                             it does not take raw maps for its parameters, and to be
+ *                                             closer to the MVP design guidelines.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -682,10 +707,6 @@ public class HazardServicesAppBuilder
 
     private IToolParameterGatherer toolParameterGatherer;
 
-    private ISessionRecommenderManager.IDialogParametersReceiver recommenderDialogParametersReceiver;
-
-    private ISessionRecommenderManager.IResultsDisplayCompleteNotifier recommenderDisplayCompleteNotifier;
-
     /**
      * Epoch time in milliseconds of the current frame.
      */
@@ -750,9 +771,25 @@ public class HazardServicesAppBuilder
                 if ((cause != null) && (cause.getCause() != null)) {
                     cause = cause.getCause();
                 }
-                statusHandler.error(error.getListener().getClass() + "."
-                        + error.getHandler().getName() + "(): "
-                        + error.getMessage(), cause);
+                String listenerClassName = StringUtils.EMPTY;
+                String handlerName = StringUtils.EMPTY;
+                String message = StringUtils.EMPTY;
+                if (error != null) {
+                    if (error.getListener() != null
+                            && error.getListener().getClass() != null) {
+                        listenerClassName = error.getListener().getClass()
+                                .toString();
+                    }
+                    if (error.getHandler() != null
+                            && error.getHandler().getName() != null) {
+                        handlerName = error.getHandler().getName();
+                    }
+                    if (error.getMessage() != null) {
+                        message = error.getMessage();
+                    }
+                }
+                statusHandler.error(listenerClassName + "." + handlerName
+                        + "(): " + message, cause);
             }
         });
 
@@ -769,6 +806,12 @@ public class HazardServicesAppBuilder
                 .getFile(localizationContext,
                         HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
                 .getPath();
+        String gfeRootPath = pathManager
+                .getFile(localizationContext,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR)
+                .getPath();
+        String gfePath = FileUtil.join(gfeRootPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR);
         String hazardServicesPythonPath = pathManager
                 .getFile(localizationContext,
                         HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
@@ -825,8 +868,6 @@ public class HazardServicesAppBuilder
         String hazardMetaDataPath = FileUtil.join(hazardServicesPath,
                 HazardsConfigurationConstants.HAZARD_METADATA_DIR);
 
-        String gfePath = FileUtil.join(pythonPath,
-                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR);
         String timePath = FileUtil.join(pythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_TIME_DIR);
         String dataAccessPath = FileUtil.join(pythonPath,
@@ -874,6 +915,27 @@ public class HazardServicesAppBuilder
             public boolean getUserAnswerToQuestion(String question) {
                 return MessageDialog.openQuestion(getBestParentForModalDialog(),
                         "Hazard Services", question);
+            }
+
+            @Override
+            public TriStateBoolean getUserAnswerToQuestionTriState(
+                    String question) {
+                MessageDialog dialog = new MessageDialog(null,
+                        "Hazard Services", null, question,
+                        MessageDialog.QUESTION_WITH_CANCEL,
+                        new String[] { IDialogConstants.YES_LABEL,
+                                IDialogConstants.NO_LABEL,
+                                IDialogConstants.CANCEL_LABEL },
+                        0);
+
+                int returnCode = dialog.open();
+                if (returnCode == 0) {
+                    return TriStateBoolean.TRUE;
+                } else if (returnCode == 1) {
+                    return TriStateBoolean.FALSE;
+                } else {
+                    return TriStateBoolean.CANCEL;
+                }
             }
 
             @Override
@@ -928,6 +990,31 @@ public class HazardServicesAppBuilder
                 }
             }
 
+            @Override
+            public void warnUserAsynchronously(final String title,
+                    final String warning, final Runnable afterClosing) {
+
+                Display.getDefault().asyncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        MessageDialog.openWarning(getBestParentForModalDialog(),
+                                title, warning);
+                        if (afterClosing != null) {
+                            afterClosing.run();
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void warnUserOfSimulatedTimeProblem(String disabledFeature) {
+                SimulatedTimeOperations
+                        .displayFeatureLevelWarning(
+                                PlatformUI.getWorkbench()
+                                        .getActiveWorkbenchWindow().getShell(),
+                                disabledFeature);
+            }
         };
 
         /*
@@ -975,8 +1062,7 @@ public class HazardServicesAppBuilder
         this.productViewerChooser = new IProductViewerChooser() {
 
             @Override
-            public void getProductViewerChooser(
-                    final List<ProductData> productData) {
+            public void getProductViewerChooser() {
                 if (Display.getDefault().getThread() == Thread
                         .currentThread()) {
                     Shell shell = VizWorkbenchManager.getInstance()
@@ -984,7 +1070,10 @@ public class HazardServicesAppBuilder
                     if (productSelectionDialog == null
                             || productSelectionDialog.isDisposed()) {
                         productSelectionDialog = new ProductViewerSelectionDlg(
-                                shell, productPresenter, productData);
+                                shell, productPresenter,
+                                productPresenter.getSessionManager()
+                                        .getEventManager().getEvents(),
+                                true);
                         productSelectionDialog.open();
                     } else {
                         productSelectionDialog.bringToTop();
@@ -994,7 +1083,7 @@ public class HazardServicesAppBuilder
 
                         @Override
                         public void run() {
-                            getProductViewerChooser(productData);
+                            getProductViewerChooser();
                         }
                     });
                 }
@@ -1004,60 +1093,37 @@ public class HazardServicesAppBuilder
         this.toolParameterGatherer = new IToolParameterGatherer() {
 
             @Override
-            public void getToolParameters(final ToolType type,
-                    final Map<String, Serializable> dialogInput,
-                    final ISessionRecommenderManager.IDialogParametersReceiver dialogParametersReceiver) {
-                if (Display.getDefault().getThread() == Thread
-                        .currentThread()) {
-                    Dict dict = new Dict();
-                    for (String parameter : dialogInput.keySet()) {
-                        dict.put(parameter, dialogInput.get(parameter));
-                    }
-                    recommenderDialogParametersReceiver = dialogParametersReceiver;
-                    toolsPresenter.showToolParameterGatherer(type,
-                            dict.toJSONString());
-                } else {
-                    Display.getDefault().asyncExec(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            getToolParameters(type, dialogInput,
-                                    dialogParametersReceiver);
-                        }
-                    });
-                }
+            public void getToolParameters(ToolExecutionIdentifier identifier,
+                    ToolParameterDialogSpecifier dialogSpecifier,
+                    boolean notifyOfIncrementalChanges) {
+                toolsPresenter.showToolParameterGatherer(identifier,
+                        dialogSpecifier, notifyOfIncrementalChanges);
             }
 
             @Override
-            public void getToolSpatialInput(ToolType type,
-                    VisualFeaturesList visualFeatures,
-                    ISessionRecommenderManager.ISpatialParametersReceiver spatialParametersReceiver) {
-                spatialPresenter.setToolVisualFeatures(type, visualFeatures,
-                        spatialParametersReceiver);
+            public void updateToolParameters(ToolExecutionIdentifier identifier,
+                    Map<String, Map<String, Object>> changedMutableProperties) {
+                toolsPresenter.updateToolParameterGatherer(identifier,
+                        changedMutableProperties);
             }
 
             @Override
-            public void showToolResults(final ToolType type,
-                    final Map<String, Serializable> dialogResults,
-                    final ISessionRecommenderManager.IResultsDisplayCompleteNotifier displayCompleteNotifier) {
-                if (Display.getDefault().getThread() == Thread
-                        .currentThread()) {
-                    Dict dict = new Dict();
-                    for (String parameter : dialogResults.keySet()) {
-                        dict.put(parameter, dialogResults.get(parameter));
-                    }
-                    recommenderDisplayCompleteNotifier = displayCompleteNotifier;
-                    toolsPresenter.showToolResults(type, dict.toJSONString());
-                } else {
-                    Display.getDefault().asyncExec(new Runnable() {
+            public void getToolSpatialInput(ToolExecutionIdentifier identifier,
+                    VisualFeaturesList visualFeatures) {
+                spatialPresenter.setToolVisualFeatures(identifier,
+                        visualFeatures);
+            }
 
-                        @Override
-                        public void run() {
-                            showToolResults(type, dialogResults,
-                                    displayCompleteNotifier);
-                        }
-                    });
-                }
+            @Override
+            public void finishToolSpatialInput(
+                    ToolExecutionIdentifier identifier) {
+                spatialPresenter.setToolVisualFeatures(null, null);
+            }
+
+            @Override
+            public void showToolResults(ToolExecutionIdentifier identifier,
+                    ToolResultDialogSpecifier dialogSpecifier) {
+                toolsPresenter.showToolResults(identifier, dialogSpecifier);
             }
         };
 
@@ -1302,6 +1368,9 @@ public class HazardServicesAppBuilder
             List<Shell> primaryModal = new ArrayList<>(children.size());
             List<Shell> applicationModal = new ArrayList<>(children.size());
             for (Shell child : children) {
+                if (child.isVisible() == false) {
+                    continue;
+                }
                 if ((child.getStyle()
                         & (SWT.SYSTEM_MODAL | SWT.APPLICATION_MODAL)) != 0) {
                     applicationModal.add(child);
@@ -1317,9 +1386,14 @@ public class HazardServicesAppBuilder
                             : modeless));
 
             /*
-             * Remember the last parent of the ones chosen above as the one to
-             * be used if no children are found of any of these parents.
+             * If no possible parents were found, simply return the parent
+             * previously found. Otherwise, remember the last parent of the ones
+             * chosen above as the one to be used if no children are found of
+             * any of these parents.
              */
+            if (parents.isEmpty()) {
+                break;
+            }
             parent = parents.get(parents.size() - 1);
 
             /*
@@ -1834,39 +1908,6 @@ public class HazardServicesAppBuilder
     }
 
     /**
-     * Tell the recommender dialog parameter receiver of the specified
-     * parameters provided by the user.
-     * 
-     * @param parameters
-     *            Parameters provided by the user.
-     */
-    public void receiveRecommenderDialogParameters(
-            Map<String, Serializable> parameters) {
-        if (recommenderDialogParametersReceiver != null) {
-            recommenderDialogParametersReceiver
-                    .receiveDialogParameters(parameters);
-        } else {
-            throw new IllegalStateException(
-                    "cannot receive recommender dialog parameters, "
-                            + "as no receiver is registered");
-        }
-    }
-
-    /**
-     * Tell the recommender results display complete notifier that results
-     * display is complete.
-     */
-    public void notifyRecommenderResultsDisplayComplete() {
-        if (recommenderDisplayCompleteNotifier != null) {
-            recommenderDisplayCompleteNotifier.resultsDisplayCompleted();
-        } else {
-            throw new IllegalStateException(
-                    "cannot notify recommender results display complete, "
-                            + "as no notifier is registered");
-        }
-    }
-
-    /**
      * 
      * @return the current settings
      */
@@ -2072,24 +2113,6 @@ public class HazardServicesAppBuilder
         this.productEditorPresenter.showProductEditorDetail(
                 generatedProductsList,
                 this.sessionManager.getConfigurationManager().getSiteID());
-    }
-
-    /**
-     * Opens the Product Viewer to allow a view only way of reviewing issued
-     * products.
-     */
-    public void showProductViewer(
-            List<GeneratedProductList> generatedProductsList) {
-        final ProductViewer productViewer = new ProductViewer(
-                VizWorkbenchManager.getInstance().getCurrentWindow().getShell(),
-                generatedProductsList,
-                this.sessionManager.getConfigurationManager().getHazardTypes());
-        VizApp.runSync(new Runnable() {
-            @Override
-            public void run() {
-                productViewer.open();
-            }
-        });
     }
 
     @Override
@@ -2521,13 +2544,13 @@ public class HazardServicesAppBuilder
 
         // Remove the HazardServicesAppBuilder from the list of
         // PerspectiveListeners.
-        // Exceptions are caught in case CAVE is closing, since the
-        // workbench or window may not be around at this point.
-        try {
-            PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .removePerspectiveListener(this);
-        } catch (Exception e) {
-            statusHandler.error("Error removing Perspective listener.", e);
+        IWorkbench workbench = PlatformUI.getWorkbench();
+        if (workbench != null) {
+            IWorkbenchWindow workbenchWindow = workbench
+                    .getActiveWorkbenchWindow();
+            if (workbenchWindow != null) {
+                workbenchWindow.removePerspectiveListener(this);
+            }
         }
 
         for (HazardServicesPresenter<?> presenter : presenters) {
@@ -2550,6 +2573,11 @@ public class HazardServicesAppBuilder
             statusHandler.error(
                     "Error removing hazard services workbench listener", e);
         }
+
+        /*
+         * Remove any resources left around by multi-value scale widgets.
+         */
+        MultiValueScale.purgeUnusedResources();
 
         // Prepare the Python side effects applier for shutdown.
         PythonSideEffectsApplier.prepareForShutDown();

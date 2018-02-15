@@ -54,23 +54,13 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def initialize(self):
         super(Format, self).initialize()
-        self.initProductPartMethodMapping()
 
         self._productGeneratorName = 'Convective_SIGMET_ProductGenerator' 
         self._domains = Domains.Domains()
         
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'easMessage': self._easMessage,
-            'productHeader': self._productHeader,
-            'narrativeForecastInformation': self._narrativeForecastInformation
-                                }
-        
-    def execute(self, productDict, editableEntries=None, overrideProductText=None):    
+    def execute(self, productDict, editableEntries=None):    
         self.productDict = productDict
-        self._editableParts = OrderedDict()
+        self._editableParts = []
         
         domains = Domains.AviationDomains
         
@@ -87,7 +77,8 @@ class Format(Legacy_Hydro_Formatter.Format):
         
         for eventDict in eventDicts:
             eventID = eventDict.get('eventID')
-            eventNumber = int(eventID[-6:])
+            lastHyphenIndex = eventID.rfind("-")
+            eventNumber = int(eventID[lastHyphenIndex+1:])
             eventNumberList.append(eventNumber)
             
         eventNumberList.sort()

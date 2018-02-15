@@ -21,9 +21,7 @@ package com.raytheon.uf.edex.hazards.registry.services;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -68,13 +66,14 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * May 29, 2015  6895     Ben.Phillippe Refactored Hazard Service data access
  * Aug 04, 2015  6895     Ben.Phillippe Finished HS data access refactor
  * Aug 13, 2015  8836     Chris.Cody    Changes for a configurable Event Id
  * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
- * Jan 20, 2016 14969      kbisanz      Improved exception message in retrieve()
+ * Oct 27, 2015  6617     Robert.Blum   Changed call to get hazardType.
+ * Jan 20, 2016 14969     kbisanz       Improved exception message in retrieve()
  * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records
  * May 06, 2016 18202     Robert.Blum   Changes for operational mode.
  * Feb 01, 2017 15556     Chris.Golden  Changed to always update insert time of
@@ -83,8 +82,13 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
  *                                      query so that it does not carry extra
  *                                      serialized objects with it that are not
  *                                      needed.
+ * Feb 16, 2017 28708     Chris.Golden  Changed to use already defined constants.
+ * Apr 11, 2017 32734     Kevin.Bisanz  Remove unnecessary LinkedHashSet in
+ *                                      retrieve.
  * Apr 13, 2017 33142     Chris.Golden  Added ability to delete all events with
  *                                      a particular event identifier.
+ * Jun 29, 2017 35633     Kevin.Bisanz  Add registry id to log messages for CRUD
+ *                                      methods.
  * </pre>
  * 
  * @author bphillip
@@ -133,7 +137,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "store")
     public HazardEventResponse store(
             @WebParam(name = "events") HazardEvent... events)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         return storeEventList(Arrays.asList(events));
     }
 
@@ -141,20 +145,18 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "storeEventList")
     public HazardEventResponse storeEventList(
             @WebParam(name = "events") List<HazardEvent> events)
-                    throws HazardEventServiceException {
-        statusHandler.info("Creating " + events.size() + " HazardEvents: ");
+            throws HazardEventServiceException {
+        statusHandler.info("Creating " + events.size() + " HazardEvents: "
+                + HazardRegistryServicesUtils.getRegistryId(events));
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
             HazardEventServicesUtil.validateEvents(events);
             for (HazardEvent event : events) {
-                String phensig = HazardEventUtilities.getHazardPhenSig(event);
-                if (event.getSubType() != null
-                        && !event.getSubType().isEmpty()) {
-                    phensig += "." + event.getSubType();
-                }
-                event.addHazardAttribute(HazardConstants.PHEN_SIG, phensig);
-                event.addHazardAttribute("practice", practice);
+                String hazardType = HazardEventUtilities.getHazardType(event);
+                event.addHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE,
+                        hazardType);
+                event.addHazardAttribute(HazardConstants.PRACTICE, practice);
                 event.setInsertTime(new Date());
                 response.addExceptions(registryHandler
                         .storeOrReplaceObject(userName, event).getErrors());
@@ -171,7 +173,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "delete")
     public HazardEventResponse delete(
             @WebParam(name = "events") HazardEvent... events)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         return deleteEventList(Arrays.asList(events));
     }
 
@@ -179,8 +181,9 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "deleteEventList")
     public HazardEventResponse deleteEventList(
             @WebParam(name = "events") List<HazardEvent> events)
-                    throws HazardEventServiceException {
-        statusHandler.info("Deleting " + events.size() + " HazardEvents.");
+            throws HazardEventServiceException {
+        statusHandler.info("Deleting " + events.size() + " HazardEvents: "
+                + HazardRegistryServicesUtils.getRegistryId(events));
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
@@ -202,7 +205,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "deleteAllWithIdentifier")
     public HazardEventResponse deleteAllWithIdentifier(
             @WebParam(name = "identifier") String identifier)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         statusHandler.info("Deleting all copies of hazard event with ID of \""
                 + identifier + "\"");
         HazardEventResponse deleteAllResponse = HazardEventResponse.create();
@@ -304,7 +307,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "update")
     public HazardEventResponse update(
             @WebParam(name = "events") HazardEvent... events)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         return updateEventList(Arrays.asList(events));
     }
 
@@ -312,21 +315,18 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "updateEventList")
     public HazardEventResponse updateEventList(
             @WebParam(name = "events") List<HazardEvent> events)
-                    throws HazardEventServiceException {
-        statusHandler.info("Updating " + events.size() + " HazardEvents: ");
+            throws HazardEventServiceException {
+        statusHandler.info("Updating " + events.size() + " HazardEvents: "
+                + HazardRegistryServicesUtils.getRegistryId(events));
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
             HazardEventServicesUtil.validateEvents(events);
             for (HazardEvent event : events) {
-
-                String phensig = HazardEventUtilities.getHazardPhenSig(event);
-                if (event.getSubType() != null
-                        && !event.getSubType().isEmpty()) {
-                    phensig += "." + event.getSubType();
-                }
-                event.addHazardAttribute(HazardConstants.PHEN_SIG, phensig);
-                event.addHazardAttribute("practice", practice);
+                String hazardType = HazardEventUtilities.getHazardType(event);
+                event.addHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE,
+                        hazardType);
+                event.addHazardAttribute(HazardConstants.PRACTICE, practice);
                 event.setInsertTime(new Date());
                 response.addExceptions(registryHandler
                         .storeOrReplaceObject(userName, event).getErrors());
@@ -343,7 +343,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "retrieveByParams")
     public HazardEventResponse retrieveByParams(
             @WebParam(name = "params") Object... params)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         HazardEventQueryRequest request = null;
         if (params.length % 3 != 0) {
             throw new IllegalArgumentException(
@@ -360,7 +360,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "retrieve")
     public HazardEventResponse retrieve(
             @WebParam(name = "request") HazardEventQueryRequest request)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
         statusHandler.info("Executing Query for HazardEvents:\n " + request);
         HazardEventResponse response = (request.isSizeOnlyRequired()
                 ? HazardEventResponse.createSizeOnlyIncludingAsSpecified(
@@ -371,12 +371,8 @@ public class HazardEventServices implements IHazardEventServices {
             String query = HazardEventServicesUtil.createAttributeQuery(
                     practice, HazardEvent.class, request.getQueryParams(),
                     null);
-            // Workaround to ensure unique results are returned
-            List<Object> objects = dao.executeHQLQuery(query);
-            Collection<RegistryObjectType> registryObjectTypes = new LinkedHashSet<>();
-            for (Object object : objects) {
-                registryObjectTypes.add((RegistryObjectType) object);
-            }
+            List<RegistryObjectType> registryObjectTypes = dao
+                    .executeHQLQuery(query);
             response.setEvents(HazardEventServicesUtil
                     .getContentObjects(registryObjectTypes, HazardEvent.class));
         } catch (Throwable e) {
@@ -387,7 +383,9 @@ public class HazardEventServices implements IHazardEventServices {
                 (request.isSizeOnlyRequired()
                         ? "Retrieved sizes of history lists."
                         : "Retrieved " + response.getEvents().size()
-                                + " HazardEvents."),
+                                + " HazardEvents:"
+                                + HazardRegistryServicesUtils
+                                        .getRegistryId(response.getEvents())),
                 response);
     }
 

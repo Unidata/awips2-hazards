@@ -9,6 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import java.util.Date;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Range;
+
 import gov.noaa.gsd.common.utilities.Sort;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
@@ -17,12 +23,6 @@ import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.IContributionItemU
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
-import java.util.Date;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Range;
 
 /**
  * Description: Interface describing the methods that must be implemented by a
@@ -37,6 +37,8 @@ import com.google.common.collect.Range;
  * Jun 30, 2017   19223    Chris.Golden Added ability to change the text and
  *                                      enabled state of a row menu's menu item
  *                                      after it is displayed.
+ * Apr 17, 2018   32693    Chris.Golden Added code to disallow console context
+ *                                      menus when a preview is ongoing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -115,4 +117,14 @@ public interface IConsoleTree extends IContributionItemUpdater {
      */
     public void setActiveCountdownTimers(
             ImmutableMap<String, CountdownTimer> countdownTimersForEventIdentifiers);
+
+    /**
+     * Set the flag indicating whether or not context-sensitive menus should be
+     * allowed to be shown.
+     * 
+     * @param allowContextMenus
+     *            Flag indicating whether or not context-sensitive menus should
+     *            be allowed to be shown.
+     */
+    public void setAllowContextMenus(boolean allowContextMenus);
 }

@@ -31,9 +31,10 @@ Hydrology_ESF = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        # "pending",
         "issued",
         "ending",
+        "elapsing",
     ],
     "columns": {
         "Event ID": {
@@ -156,6 +157,12 @@ Hydrology_ESF = {
             "sortDir": "none",
             "fieldName": "userName", 
             "type": "string"
+        },
+        "Location Name" : {
+            "type" : "string",
+            "fieldName" : "name",
+            "sortDir" : "ascending",
+            "sortPriority" : 0
         },
     },
     "toolbarTools": [

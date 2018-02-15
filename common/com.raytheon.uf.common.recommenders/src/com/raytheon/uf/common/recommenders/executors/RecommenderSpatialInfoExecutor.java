@@ -19,11 +19,11 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * {@link AbstractRecommenderExecutor} to get the spatial information from the
@@ -33,12 +33,16 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Feb 06, 2013            mnash     Initial creation
- * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
- *                                      info.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Feb 06, 2013            mnash        Initial creation
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog info.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
+ * May 22, 2018  3782      Chris.Golden Changed recommender parameter gathering to be much more
+ *                                      flexible, allowing the user to change dialog parameters
+ *                                      together with visual features, and allowing visual
+ *                                      feature changes to be made multiple times before the
+ *                                      execution proceeds.
  * </pre>
  * 
  * @author mnash
@@ -50,14 +54,22 @@ public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptM
 
     private final EventSet<IEvent> eventSet;
 
+    private final VisualFeaturesList visualFeatures;
+
+    private final boolean collecting;
+
     public RecommenderSpatialInfoExecutor(String recommenderName,
-            EventSet<IEvent> eventSet) {
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
+            boolean collecting) {
         super(recommenderName);
         this.eventSet = eventSet;
+        this.visualFeatures = visualFeatures;
+        this.collecting = collecting;
     }
 
     @Override
     public VisualFeaturesList execute(P script) {
-        return script.getVisualFeatures(recommenderName, eventSet);
+        return script.getVisualFeatures(recommenderName, eventSet,
+                visualFeatures, collecting);
     }
 }

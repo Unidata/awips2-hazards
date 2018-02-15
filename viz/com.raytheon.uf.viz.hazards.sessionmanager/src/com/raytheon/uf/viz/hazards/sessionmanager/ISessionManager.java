@@ -24,19 +24,19 @@ import java.util.List;
 import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.hazards.undoable.IUndoRedoable;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
@@ -72,7 +72,10 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  * Dec 12, 2016 21504      Robert.Blum  Added method to retrieve the new lock manager.
  * Dec 14, 2016 22119      Kevin.Bisanz Add flags to export config, ProductText, and
  *                                      ProductData individually.
+ * Jan 04, 2017 26746      Chris.Golden Made geo map utilities a component of this class.
+ * Jan 12, 2017 28034      mduff        Added getSiteId convenience method.
  * Feb 01, 2017 15556      Chris.Golden Added selection manager.
+ * Feb 16, 2017 28708      mduff        Removed setupEventIdDisplay.
  * Feb 21, 2017 29138      Chris.Golden Added method to get runnable asynchronous
  *                                      scheduler.
  * Apr 13, 2017 33142      Chris.Golden Added tracking of events that have been removed
@@ -181,6 +184,13 @@ public interface ISessionManager<S extends ISettings> extends IUndoRedoable {
      * @return Temporal frame context provider.
      */
     public IFrameContextProvider getFrameContextProvider();
+
+    /**
+     * Get the geographic map utilities.
+     * 
+     * @return Geographic map utilities.
+     */
+    public GeoMapUtilities getGeoMapUtilities();
 
     /**
      * 
@@ -312,14 +322,6 @@ public interface ISessionManager<S extends ISettings> extends IUndoRedoable {
             boolean exportProductText, boolean exportProductData);
 
     /**
-     * Configure the session to update to use the current site identifier.
-     * 
-     * @throws HazardEventServiceException
-     *             If a problem occurs.
-     */
-    public void setupEventIdDisplay() throws HazardEventServiceException;
-
-    /**
      * Receive notification that a command was invoked within the user interface
      * that may require a metadata refresh, a recommender execution, or some
      * other response.
@@ -334,4 +336,11 @@ public interface ISessionManager<S extends ISettings> extends IUndoRedoable {
      */
     public void eventCommandInvoked(IHazardEventView eventView,
             String identifier);
+
+    /**
+     * Get the site id for the session.
+     * 
+     * @return The Site ID
+     */
+    String getSiteId();
 }

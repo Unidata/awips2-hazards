@@ -100,7 +100,6 @@ public class HazardEventVtec {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.UGC_ID)
     protected String ugcZone;
 
     @DynamicSerializeElement
@@ -113,12 +112,10 @@ public class HazardEventVtec {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.PHEN_SIG)
     protected String phensig;
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARD_EVENT_STATUS)
     protected String status;
 
     @DynamicSerializeElement
@@ -133,14 +130,10 @@ public class HazardEventVtec {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARD_EVENT_END_TIME)
-    @SlotAttributeConverter(DateSlotConverter.class)
     protected Date endTime;
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARD_EVENT_START_TIME)
-    @SlotAttributeConverter(DateSlotConverter.class)
     protected Date startTime;
 
     @DynamicSerializeElement
@@ -154,17 +147,14 @@ public class HazardEventVtec {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.PIL)
     protected String pil;
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.VTECSTR)
     protected String vtecstr;
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.SUBTYPE)
     protected String subtype;
 
     @DynamicSerializeElement
@@ -177,12 +167,10 @@ public class HazardEventVtec {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.ACT)
     protected String act;
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.KEY)
     protected String key;
 
     @DynamicSerializeElement
@@ -259,7 +247,6 @@ public class HazardEventVtec {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.POINTID)
     protected String pointID;
 
     public HazardEventVtec() {
@@ -276,19 +263,20 @@ public class HazardEventVtec {
                 .get(HazardConstants.EVENT_TRACKING_NUMBER);
         this.ugcZone = ugcZone;
 
-        extractHVTECValues((Map<String, Object>) attributes
-                .get(HazardConstants.HVTEC));
+        extractHVTECValues(
+                (Map<String, Object>) attributes.get(HazardConstants.HVTEC));
 
         this.phensig = (String) attributes.get(HazardConstants.PHEN_SIG);
         this.status = (String) attributes
                 .get(HazardConstants.HAZARD_EVENT_STATUS);
         this.hdln = (String) attributes.get(HazardConstants.HDLN);
-        this.issueTime = new Date(Long.parseLong(attributes.get(
-                HazardConstants.ISSUE_TIME).toString()) * 1000);
-        this.endTime = new Date(Long.parseLong(attributes.get(
-                HazardConstants.HAZARD_EVENT_END_TIME).toString()) * 1000);
-        this.startTime = new Date(Long.parseLong(attributes.get(
-                HazardConstants.HAZARD_EVENT_START_TIME).toString()) * 1000);
+        this.issueTime = new Date(Long.parseLong(
+                attributes.get(HazardConstants.ISSUE_TIME).toString()) * 1000);
+        this.endTime = new Date(Long.parseLong(attributes
+                .get(HazardConstants.HAZARD_EVENT_END_TIME).toString()) * 1000);
+        this.startTime = new Date(Long.parseLong(attributes
+                .get(HazardConstants.HAZARD_EVENT_START_TIME).toString())
+                * 1000);
         Object segment = attributes.get(HazardConstants.SEG);
         if (segment instanceof Integer) {
             this.seg = (Integer) segment;
@@ -304,12 +292,14 @@ public class HazardEventVtec {
         this.act = (String) attributes.get(HazardConstants.ACT);
         this.key = (String) attributes.get(HazardConstants.KEY);
         if (this.previousStart != null) {
-            this.previousStart = new Date(Long.parseLong(attributes.get(
-                    HazardConstants.PREVIOUS_START).toString()) * 1000);
+            this.previousStart = new Date(Long.parseLong(
+                    attributes.get(HazardConstants.PREVIOUS_START).toString())
+                    * 1000);
         }
         if (this.previousEnd != null) {
-            this.previousEnd = new Date(Long.parseLong(attributes.get(
-                    HazardConstants.PREVIOUS_END).toString()) * 1000);
+            this.previousEnd = new Date(Long.parseLong(
+                    attributes.get(HazardConstants.PREVIOUS_END).toString())
+                    * 1000);
         }
 
     }
@@ -326,7 +316,8 @@ public class HazardEventVtec {
         map.put(HazardConstants.HAZARD_EVENT_STATUS, status);
         map.put(HazardConstants.HDLN, hdln);
         map.put(HazardConstants.ISSUE_TIME, issueTime.getTime() / 1000);
-        map.put(HazardConstants.HAZARD_EVENT_END_TIME, endTime.getTime() / 1000);
+        map.put(HazardConstants.HAZARD_EVENT_END_TIME,
+                endTime.getTime() / 1000);
         map.put(HazardConstants.HAZARD_EVENT_START_TIME,
                 startTime.getTime() / 1000);
         map.put(HazardConstants.SEG, seg);
@@ -371,8 +362,8 @@ public class HazardEventVtec {
             return;
         }
         if (map.get(HazardConstants.FALL_BELOW) != null) {
-            this.fallBelow = new Date(Long.parseLong(map.get(
-                    HazardConstants.FALL_BELOW).toString()) * 1000);
+            this.fallBelow = new Date(Long.parseLong(
+                    map.get(HazardConstants.FALL_BELOW).toString()) * 1000);
         }
         this.floodRecord = (String) map.get(HazardConstants.FLOOD_RECORD);
         if (this.floodRecord == null) {
@@ -383,15 +374,16 @@ public class HazardEventVtec {
             this.immediateCause = DEFAULT_IMMEDIATE_CAUSE;
         }
         if (map.get(HazardConstants.RISE_ABOVE) != null) {
-            this.riseAbove = new Date(Long.parseLong(map.get(
-                    HazardConstants.RISE_ABOVE).toString()) * 1000);
+            this.riseAbove = new Date(Long.parseLong(
+                    map.get(HazardConstants.RISE_ABOVE).toString()) * 1000);
         }
         if (map.get(HazardConstants.CREST) != null) {
-            this.crest = new Date(Long.parseLong(map.get(HazardConstants.CREST)
-                    .toString()) * 1000);
+            this.crest = new Date(
+                    Long.parseLong(map.get(HazardConstants.CREST).toString())
+                            * 1000);
         }
-        this.floodSeverity = String.valueOf(map
-                .get(HazardConstants.FLOOD_SEVERITY_CATEGORY));
+        this.floodSeverity = String
+                .valueOf(map.get(HazardConstants.FLOOD_SEVERITY_CATEGORY));
         this.pointID = (String) map.get(HazardConstants.POINTID);
         if (this.pointID == null) {
             this.pointID = DEFAULT_POINT_ID;

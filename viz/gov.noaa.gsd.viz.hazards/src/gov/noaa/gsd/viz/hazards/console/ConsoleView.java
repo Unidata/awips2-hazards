@@ -72,8 +72,10 @@ import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 import gov.noaa.gsd.viz.hazards.toolbar.TextComboAction;
 import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
+import gov.noaa.gsd.viz.hazards.ui.CommandInvocationHandlerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.StateChangeHandlerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
@@ -162,6 +164,14 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           toolbar buttons can be arranged as this
  *                                           view sees fit, instead of being ordered
  *                                           by their contributors.
+ * Apr 17, 2018   32693    Chris.Golden      Added code to disallow console context
+ *                                           menus when a preview is ongoing.
+ * May 01, 2018   15561    Chris.Golden      Changed to use delegates for command
+ *                                           invocation and state change handlers,
+ *                                           instead of duplicating capabilities by
+ *                                           reimplementing the thread-aware
+ *                                           capabilities of said delegates within
+ *                                           this class.
  * </pre>
  * 
  * @author Chris.Golden
@@ -414,15 +424,9 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
 
         @Override
         public void run() {
-            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    if (commandInvocationHandler != null) {
-                        commandInvocationHandler.commandInvoked(command);
-                    }
-                }
-            });
+            if (commandInvocationHandler != null) {
+                commandInvocationHandler.commandInvoked(command);
+            }
         }
     }
 
@@ -464,16 +468,9 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
 
         @Override
         public void run() {
-            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    if (toggleStateChangeHandler != null) {
-                        toggleStateChangeHandler.stateChanged(toggle,
-                                isChecked());
-                    }
-                }
-            });
+            if (toggleStateChangeHandler != null) {
+                toggleStateChangeHandler.stateChanged(toggle, isChecked());
+            }
         }
     }
 
@@ -1264,6 +1261,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             allActions.addAll(actionsForIdentifiers
                     .get(ISettingsView.FILTERS_PULLDOWN_IDENTIFIER));
             allActions.addAll(actionsForIdentifiers
+                    .get(ISettingsView.FILTER_INDICATORS_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
                     .get(IToolsView.TOOLS_PULLDOWN_IDENTIFIER));
             allActions.addAll(actionsForIdentifiers
                     .get(IProductView.PRODUCT_PULL_DOWN_IDENTIFIER));
@@ -1586,6 +1585,17 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
+    public void setAllowContextMenus(final boolean allowContextMenus) {
+        executeOnCreatedViewPart(new Runnable() {
+
+            @Override
+            public void run() {
+                getViewPart().setAllowContextMenus(allowContextMenus);
+            }
+        });
+    }
+
+    @Override
     public final void setSettingsName(final String settingsName) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
@@ -1623,19 +1633,22 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     @Override
     public void setCommandInvocationHandler(
             ICommandInvocationHandler<Command> commandInvocationHandler) {
-        this.commandInvocationHandler = commandInvocationHandler;
+        this.commandInvocationHandler = new CommandInvocationHandlerDelegate<>(
+                commandInvocationHandler, RUNNABLE_ASYNC_SCHEDULER);
     }
 
     @Override
     public void setToggleChangeHandler(
             IStateChangeHandler<Toggle, Boolean> toggleStateChangeHandler) {
-        this.toggleStateChangeHandler = toggleStateChangeHandler;
+        this.toggleStateChangeHandler = new StateChangeHandlerDelegate<>(
+                toggleStateChangeHandler, RUNNABLE_ASYNC_SCHEDULER);
     }
 
     @Override
     public void setVtecModeChangeHandler(
             IStateChangeHandler<String, VtecFormatMode> vtecModeStateChangeHandler) {
-        this.vtecModeStateChangeHandler = vtecModeStateChangeHandler;
+        this.vtecModeStateChangeHandler = new StateChangeHandlerDelegate<>(
+                vtecModeStateChangeHandler, RUNNABLE_ASYNC_SCHEDULER);
     }
 
     @Override

@@ -1,6 +1,7 @@
 #
 # AWIPS II EDEX Hazard Services spec file
 #
+%define _additional_list %{_topdir}/BUILD/additional.list
 %define __prelink_undo_cmd %{nil}
 # Turn off the brp-python-bytecompile script
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
@@ -105,9 +106,12 @@ fi
 
 #create a list of all files packaged for /awips2/edex/data/utility
 UTILITY=/awips2/edex/data/utility
+# Create additional list and add the file if utility files are found.
+touch %{_additional_list}
 if [ -d %{_build_root}/$UTILITY ]; then
    cd %{_build_root}/$UTILITY
    find . -type f > %{_build_root}/awips2/edex/util_filelist.%{name}.txt
+   echo "%config(missingok) /awips2/edex/util_filelist.%{name}.txt" > %{_additional_list}
 fi
 
 %pre
@@ -131,7 +135,7 @@ fi
 %clean
 rm -rf ${RPM_BUILD_ROOT}
 
-%files
+%files -f %{_additional_list}
 %defattr(644,awips,fxalpha,755)
 %dir /awips2
 %dir /awips2/edex

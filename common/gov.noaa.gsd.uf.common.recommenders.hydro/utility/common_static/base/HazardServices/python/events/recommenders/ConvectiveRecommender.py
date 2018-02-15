@@ -152,7 +152,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
 
         ### Make sure we are getting the latest PHIConfig info each time we run.
-        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
         self.practice = (False if caveMode == 'OPERATIONAL' else True)
         self.initialize(self.practice)
 
@@ -190,12 +190,12 @@ class Recommender(RecommenderTemplate.Recommender):
 
         LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
         
+        returnMergedEventSet = EventSetFactory.createEventSet(None)
         
         if len(mergedEventSet.events) > 0:
             
             st = time.time()
             swathRec = SwathRecommender()
-            returnMergedEventSet = EventSetFactory.createEventSet(None)
             returnMergedEventSet.setAttributes(mergedEventSet.getAttributes())
             resultEventSet = swathRec.execute(mergedEventSet, None, None)
             returnMergedEventSet.addAll(resultEventSet.getEvents())
@@ -386,7 +386,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def getCurrentEvents(self, eventSet):
         siteID = eventSet.getAttributes().get('siteID')        
 
-        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
         practice = True
         if caveMode == 'OPERATIONAL':
             practice = False
@@ -418,12 +418,11 @@ class Recommender(RecommenderTemplate.Recommender):
         
         sys.stdout.flush()
         probSevereTime = values.get('startTime', self.dataLayerTime)
-        hazardEvent = EventFactory.createEvent()
+        hazardEvent = EventFactory.createEvent(self.practice)
         hazardEvent.setCreationTime(probSevereTime)
         self.setEventTimes(hazardEvent, values)
         
         hazardEvent.setHazardStatus("pending")
-        hazardEvent.setHazardMode("O")        
         
         hazardEvent.setPhenomenon("Prob_Severe")
         

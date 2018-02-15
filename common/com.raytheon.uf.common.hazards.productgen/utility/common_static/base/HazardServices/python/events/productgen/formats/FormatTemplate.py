@@ -20,18 +20,6 @@
 
 #
 # The abstract formatter module that all other generators will be drawn from.  
-#  
-#    
-#     SOFTWARE HISTORY
-#    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    02/18/13                      jsanchez       Initial Creation.
-#    12/11/13        2266          jsanchez       Added abstract method formatFrom.
-#    01/19/2015      5109          bphillip       Added _getEditableParts method
-#    01/19/2015      7579          Robert.Blum    Removed getEditableParts method
-#    03/21/2016     15640          Robert.Blum    Updated method signature of execute.
-#
 #
 
 import abc
@@ -43,13 +31,11 @@ class Formatter(object):
         return
     
     @abc.abstractmethod
-    def execute(self, productDict, editableEntries, overrideProductText):
+    def execute(self, productDict, editableEntries):
         """
         Subclasses need to override this method.
         @param productDict: dictionary values provided by the product generator
-        @param editableEntries: dictionary of productPart to custom text from the Product Editor
-        @param overrideProductText: flag used in determining whether or not to use saved text
-                                    from the productText table.
+        @param editableEntries: List of productPart objects for the Product Editor
         @return: Abstract method does not return anything
         """
         return

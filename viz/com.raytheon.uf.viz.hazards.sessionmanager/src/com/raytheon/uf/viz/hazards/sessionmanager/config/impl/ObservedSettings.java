@@ -35,9 +35,9 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.eclipse.core.runtime.Assert;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
@@ -93,10 +93,16 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 22, 2018 25765     Chris.Golden  Added "priority for drag-and-drop geometry
  *                                      edit" flag to make geometry editing from
  *                                      the spatial display more flexible.
+ * May 01, 2018 15561      Chris.Golden Renamed "delegate" member variable to
+ *                                      "principal", as the former name was
+ *                                      misleading. Also changed BaseHazardEvent
+ *                                      to SessionHazardEvent.
  * May 04, 2018 50032     Chris.Golden  Added "additionalFilters" and
  *                                      "visibleAdditionalFilters" properties.
  *                                      Also made the copying of lists and sets
  *                                      less shallow.
+ * Jun 06, 2018 15561     Chris.Golden  Added practice flag for hazard event
+ *                                      construction.
  * </pre>
  * 
  * @author bsteffen
@@ -116,7 +122,7 @@ public class ObservedSettings implements ISettings {
 
     private SessionConfigurationManager configManager;
 
-    private Settings delegate;
+    private Settings principal;
 
     /**
      * For JAXB serialization.
@@ -128,7 +134,7 @@ public class ObservedSettings implements ISettings {
 
     public ObservedSettings(SessionConfigurationManager configManager,
             ISettings other) {
-        delegate = new Settings(other);
+        principal = new Settings(other);
         Assert.isNotNull(configManager);
         setStaticSettingsID(getSettingsID());
         this.configManager = configManager;
@@ -257,122 +263,122 @@ public class ObservedSettings implements ISettings {
 
     @Override
     public String getSettingsID() {
-        return delegate.getSettingsID();
+        return principal.getSettingsID();
     }
 
     @Override
     public Set<String> getVisibleTypes() {
-        return getSetCopy(delegate.getVisibleTypes());
+        return getSetCopy(principal.getVisibleTypes());
     }
 
     @Override
     public Set<String> getVisibleStatuses() {
-        return getSetCopy(delegate.getVisibleStatuses());
+        return getSetCopy(principal.getVisibleStatuses());
     }
 
     @Override
     public List<Object> getAdditionalFilters() {
-        return getListCopy(delegate.getAdditionalFilters());
+        return getListCopy(principal.getAdditionalFilters());
     }
 
     @Override
     public Map<String, Object> getVisibleAdditionalFilters() {
-        return getMapCopy(delegate.getVisibleAdditionalFilters());
+        return getMapCopy(principal.getVisibleAdditionalFilters());
     }
 
     @Override
     public List<Tool> getToolbarTools() {
-        return getToolbarToolsCopy(delegate.getToolbarTools());
+        return getToolbarToolsCopy(principal.getToolbarTools());
     }
 
     @Override
     public Long getDefaultTimeDisplayDuration() {
-        return delegate.getDefaultTimeDisplayDuration();
+        return principal.getDefaultTimeDisplayDuration();
     }
 
     @Override
     public MapCenter getMapCenter() {
-        return getMapCenterCopy(delegate.getMapCenter());
+        return getMapCenterCopy(principal.getMapCenter());
     }
 
     @Override
     public String getDefaultCategory() {
-        return delegate.getDefaultCategory();
+        return principal.getDefaultCategory();
     }
 
     @Override
     public String getDefaultType() {
-        return delegate.getDefaultType();
+        return principal.getDefaultType();
     }
 
     @Override
     public Set<String> getPossibleSites() {
-        return getSetCopy(delegate.getPossibleSites());
+        return getSetCopy(principal.getPossibleSites());
     }
 
     @Override
     public Set<String> getVisibleSites() {
-        return getSetCopy(delegate.getVisibleSites());
+        return getSetCopy(principal.getVisibleSites());
     }
 
     @Override
     public String getDisplayName() {
-        return delegate.getDisplayName();
+        return principal.getDisplayName();
     }
 
     @Override
     public Long getDefaultDuration() {
-        return delegate.getDefaultDuration();
+        return principal.getDefaultDuration();
     }
 
     @Override
     public TimeResolution getTimeResolution() {
-        return delegate.getTimeResolution();
+        return principal.getTimeResolution();
     }
 
     @Override
     public DragAndDropGeometryEditSource getPriorityForDragAndDropGeometryEdits() {
-        return delegate.getPriorityForDragAndDropGeometryEdits();
+        return principal.getPriorityForDragAndDropGeometryEdits();
     }
 
     @Override
     public List<String> getVisibleColumns() {
-        return getListCopy(delegate.getVisibleColumns());
+        return getListCopy(principal.getVisibleColumns());
     }
 
     @Override
     public Map<String, Column> getColumns() {
-        return getColumnsCopy(delegate.getColumns());
+        return getColumnsCopy(principal.getColumns());
     }
 
     @Override
     public String getStaticSettingsID() {
-        return delegate.getStaticSettingsID();
+        return principal.getStaticSettingsID();
     }
 
     @Override
     public Boolean getAddToSelected() {
-        return delegate.getAddToSelected();
+        return principal.getAddToSelected();
     }
 
     @Override
     public Set<String> getPerspectiveIDs() {
-        return getSetCopy(delegate.getPerspectiveIDs());
+        return getSetCopy(principal.getPerspectiveIDs());
     }
 
     @Override
     public String getEventIdDisplayType() {
-        return delegate.getEventIdDisplayType();
+        return principal.getEventIdDisplayType();
     }
 
     @Override
     public Boolean getDeselectAfterIssuing() {
-        return delegate.getDeselectAfterIssuing();
+        return principal.getDeselectAfterIssuing();
     }
 
     @Override
     public Tool getTool(String toolName) {
-        return delegate.getTool(toolName);
+        return principal.getTool(toolName);
     }
 
     @Override
@@ -813,7 +819,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setSettingsID(String settingsID, boolean notify,
             IOriginator originator) {
         if (changed(settingsID, getSettingsID())) {
-            delegate.setSettingsID(settingsID);
+            principal.setSettingsID(settingsID);
             settingsChangedIdentifier(notify, originator);
             return EnumSet.of(Type.IDENTIFIER);
         }
@@ -823,7 +829,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setVisibleTypes(Set<String> visibleTypes,
             boolean notify, IOriginator originator) {
         if (changed(visibleTypes, getVisibleTypes())) {
-            delegate.setVisibleTypes(getSetCopy(visibleTypes));
+            principal.setVisibleTypes(getSetCopy(visibleTypes));
             settingsChanged(notify, Type.FILTERS, originator);
             return EnumSet.of(Type.FILTERS);
         }
@@ -833,7 +839,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setVisibleStatuses(Set<String> visibleStatuses,
             boolean notify, IOriginator originator) {
         if (changed(visibleStatuses, getVisibleStatuses())) {
-            delegate.setVisibleStatuses(getSetCopy(visibleStatuses));
+            principal.setVisibleStatuses(getSetCopy(visibleStatuses));
             settingsChanged(notify, Type.FILTERS, originator);
             return EnumSet.of(Type.FILTERS);
         }
@@ -843,7 +849,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setAdditionalFilters(List<Object> additionalFilters,
             boolean notify, IOriginator originator) {
         if (changed(additionalFilters, getAdditionalFilters())) {
-            delegate.setAdditionalFilters(getListCopy(additionalFilters));
+            principal.setAdditionalFilters(getListCopy(additionalFilters));
             Set<Type> changed = EnumSet.of(Type.ADDITIONAL_FILTERS,
                     Type.FILTERS);
             settingsChanged(notify, changed, originator);
@@ -856,7 +862,7 @@ public class ObservedSettings implements ISettings {
             Map<String, Object> visibleAdditionalFilters, boolean notify,
             IOriginator originator) {
         if (changed(visibleAdditionalFilters, getVisibleAdditionalFilters())) {
-            delegate.setVisibleAdditionalFilters(
+            principal.setVisibleAdditionalFilters(
                     getMapCopy(visibleAdditionalFilters));
             settingsChanged(notify, Type.FILTERS, originator);
             return EnumSet.of(Type.FILTERS);
@@ -867,7 +873,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setToolbarTools(List<Tool> toolbarTools, boolean notify,
             IOriginator originator) {
         if (changed(toolbarTools, getToolbarTools())) {
-            delegate.setToolbarTools(getToolbarToolsCopy(toolbarTools));
+            principal.setToolbarTools(getToolbarToolsCopy(toolbarTools));
             settingsChanged(notify, Type.TOOLS, originator);
             return EnumSet.of(Type.TOOLS);
         }
@@ -879,7 +885,7 @@ public class ObservedSettings implements ISettings {
             IOriginator originator) {
         if (changed(defaultTimeDisplayDuration,
                 getDefaultTimeDisplayDuration())) {
-            delegate.setDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
+            principal.setDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
             settingsChanged(notify, Type.DEFAULT_DISPLAY_DURATION, originator);
             return EnumSet.of(Type.DEFAULT_DISPLAY_DURATION);
         }
@@ -889,7 +895,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setTimeResolution(TimeResolution timeResolution,
             boolean notify, IOriginator originator) {
         if (changed(timeResolution, getTimeResolution())) {
-            delegate.setTimeResolution(timeResolution);
+            principal.setTimeResolution(timeResolution);
             settingsChanged(notify, Type.TIME_RESOLUTION, originator);
             return EnumSet.of(Type.TIME_RESOLUTION);
         }
@@ -901,7 +907,7 @@ public class ObservedSettings implements ISettings {
             boolean notify, IOriginator originator) {
         if (changed(priorityForDragAndDropGeometryEdits,
                 getPriorityForDragAndDropGeometryEdits())) {
-            delegate.setPriorityForDragAndDropGeometryEdits(
+            principal.setPriorityForDragAndDropGeometryEdits(
                     priorityForDragAndDropGeometryEdits);
             settingsChanged(notify,
                     Type.PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS, originator);
@@ -913,7 +919,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setMapCenter(MapCenter mapCenter, boolean notify,
             IOriginator originator) {
         if (changed(mapCenter, getMapCenter())) {
-            delegate.setMapCenter(getMapCenterCopy(mapCenter));
+            principal.setMapCenter(getMapCenterCopy(mapCenter));
             settingsChanged(notify, Type.MAP_CENTER, originator);
             return EnumSet.of(Type.MAP_CENTER);
         }
@@ -923,7 +929,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setDefaultCategory(String defaultCategory,
             boolean notify, IOriginator originator) {
         if (changed(defaultCategory, getDefaultCategory())) {
-            delegate.setDefaultCategory(defaultCategory);
+            principal.setDefaultCategory(defaultCategory);
             settingsChanged(notify, Type.DEFAULT_CATEGORY, originator);
             return EnumSet.of(Type.DEFAULT_CATEGORY);
         }
@@ -933,7 +939,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setDefaultType(String defaultType, boolean notify,
             IOriginator originator) {
         if (changed(defaultType, getDefaultType())) {
-            delegate.setDefaultType(defaultType);
+            principal.setDefaultType(defaultType);
             settingsChanged(notify, Type.DEFAULT_TYPE, originator);
             return EnumSet.of(Type.DEFAULT_TYPE);
         }
@@ -943,7 +949,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setPossibleSites(Set<String> possibleSites,
             boolean notify, IOriginator originator) {
         if (changed(possibleSites, getPossibleSites())) {
-            delegate.setPossibleSites(getSetCopy(possibleSites));
+            principal.setPossibleSites(getSetCopy(possibleSites));
             settingsChanged(notify, Type.POSSIBLE_SITES, originator);
             return EnumSet.of(Type.POSSIBLE_SITES);
         }
@@ -953,7 +959,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setVisibleSites(Set<String> visibleSites,
             boolean notify, IOriginator originator) {
         if (changed(visibleSites, getVisibleSites())) {
-            delegate.setVisibleSites(getSetCopy(visibleSites));
+            principal.setVisibleSites(getSetCopy(visibleSites));
             settingsChanged(notify, Type.FILTERS, originator);
             return EnumSet.of(Type.FILTERS);
         }
@@ -963,7 +969,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setDisplayName(String displayName, boolean notify,
             IOriginator originator) {
         if (changed(displayName, getDisplayName())) {
-            delegate.setDisplayName(displayName);
+            principal.setDisplayName(displayName);
             settingsChanged(notify, Type.DISPLAY_NAME, originator);
             return EnumSet.of(Type.DISPLAY_NAME);
         }
@@ -973,7 +979,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setDefaultDuration(Long defaultDuration, boolean notify,
             IOriginator originator) {
         if (changed(defaultDuration, getDefaultDuration())) {
-            delegate.setDefaultDuration(defaultDuration);
+            principal.setDefaultDuration(defaultDuration);
             settingsChanged(notify, Type.DEFAULT_EVENT_DURATION, originator);
             return EnumSet.of(Type.DEFAULT_EVENT_DURATION);
         }
@@ -983,7 +989,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setVisibleColumns(List<String> visibleColumns,
             boolean notify, IOriginator originator) {
         if (changed(visibleColumns, getVisibleColumns())) {
-            delegate.setVisibleColumns(getListCopy(visibleColumns));
+            principal.setVisibleColumns(getListCopy(visibleColumns));
             settingsChanged(notify, Type.VISIBLE_COLUMNS, originator);
             return EnumSet.of(Type.VISIBLE_COLUMNS);
         }
@@ -993,7 +999,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setColumns(Map<String, Column> columns, boolean notify,
             IOriginator originator) {
         if (changed(columns, getColumns())) {
-            delegate.setColumns(getColumnsCopy(columns));
+            principal.setColumns(getColumnsCopy(columns));
             settingsChanged(notify, Type.COLUMN_DEFINITIONS, originator);
             return EnumSet.of(Type.COLUMN_DEFINITIONS);
         }
@@ -1003,7 +1009,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setStaticSettingsID(String staticSettingsID,
             boolean notify, IOriginator originator) {
         if (changed(staticSettingsID, getStaticSettingsID())) {
-            delegate.setStaticSettingsID(staticSettingsID);
+            principal.setStaticSettingsID(staticSettingsID);
             settingsChanged(notify, Type.STATIC_IDENTIFIER, originator);
             return EnumSet.of(Type.STATIC_IDENTIFIER);
         }
@@ -1013,7 +1019,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setAddToSelected(Boolean addToSelected, boolean notify,
             IOriginator originator) {
         if (changed(addToSelected, getAddToSelected())) {
-            delegate.setAddToSelected(addToSelected);
+            principal.setAddToSelected(addToSelected);
             settingsChanged(notify, Type.ADD_TO_SELECTED, originator);
             return EnumSet.of(Type.ADD_TO_SELECTED);
         }
@@ -1023,7 +1029,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setEventIdDisplayType(String eventIdDisplayType,
             boolean notify, IOriginator originator) {
         if (changed(eventIdDisplayType, getEventIdDisplayType())) {
-            delegate.setEventIdDisplayType(eventIdDisplayType);
+            principal.setEventIdDisplayType(eventIdDisplayType);
             settingsChanged(notify, Type.EVENT_IDENTIFIER_DISPLAY_TYPE,
                     originator);
             return EnumSet.of(Type.EVENT_IDENTIFIER_DISPLAY_TYPE);
@@ -1034,7 +1040,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setPerspectiveIDs(Set<String> perspectiveIDs,
             boolean notify, IOriginator originator) {
         if (changed(perspectiveIDs, getPerspectiveIDs())) {
-            delegate.setPerspectiveIDs(getSetCopy(perspectiveIDs));
+            principal.setPerspectiveIDs(getSetCopy(perspectiveIDs));
             settingsChanged(notify, Type.PERSPECTIVE_IDENTIFIERS, originator);
             return EnumSet.of(Type.PERSPECTIVE_IDENTIFIERS);
         }
@@ -1044,7 +1050,7 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setDeselectAfterIssuing(Boolean deselectAfterIssuing,
             boolean notify, IOriginator originator) {
         if (changed(deselectAfterIssuing, getDeselectAfterIssuing())) {
-            delegate.setDeselectAfterIssuing(deselectAfterIssuing);
+            principal.setDeselectAfterIssuing(deselectAfterIssuing);
             settingsChanged(notify, Type.DESELECT_AFTER_ISSUING, originator);
             return EnumSet.of(Type.DESELECT_AFTER_ISSUING);
         }
@@ -1061,7 +1067,7 @@ public class ObservedSettings implements ISettings {
     public List<HazardCategoryAndTypes> getHazardCategoriesAndTypes() {
         Map<String, HazardCategoryAndTypes> typeMap = new HashMap<String, HazardCategoryAndTypes>();
         for (String type : getVisibleTypes()) {
-            IHazardEvent event = new BaseHazardEvent();
+            IHazardEvent event = new SessionHazardEvent(true);
             HazardEventUtilities.populateEventForHazardType(event, type);
             String cat = configManager.getHazardCategory(event);
             HazardCategoryAndTypes hcat = typeMap.get(cat);

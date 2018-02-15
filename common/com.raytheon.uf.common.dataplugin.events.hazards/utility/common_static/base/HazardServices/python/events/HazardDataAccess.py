@@ -37,6 +37,8 @@
 #                                                 version of HazardEventManager.
 #    03/16/17       29138          Chris.Golden   Added method to retrieve
 #                                                 latest historical version.
+#    02/23/18       28387          Chris.Golden   Use new method to get events
+#                                                 by site ID and phenomenons.
 #
 
 import JUtil
@@ -57,9 +59,9 @@ def getMostRecentHistoricalHazardEvent(eventId, practice):
         return None
     return JUtil.javaObjToPyVal(events[-1])
 
-def getHazardEventsBySite(siteID, practice):
+def getHazardEventsBySite(siteID, practice, phenomenons=None):
     manager = HazardEventManager(practice)
-    hazardEventMap = manager.getLatestBySiteID(siteID, True)
+    hazardEventMap = manager.getLatestByPhenomenonsAndSiteID(phenomenons, siteID, True)
     if ((hazardEventMap == None) or (hazardEventMap.size() == 0)):
         return []
     hazardEvents = []
@@ -74,13 +76,14 @@ def getHazardEventsBySite(siteID, practice):
 # caller, as well as the site identifier and the hazard mode, get the list
 # of events including the ones passed in but augmented with any from the
 # database, but filtering out ended and elapsed events before returning the
-# list. 
-def getCurrentEvents(eventSet):
+# list. Also filter out any events that do not match the specified
+# phenomenons, if any are specified.
+def getCurrentEvents(eventSet, phenomenons=None):
     
     # Get the site identifier, and determine whether or not practice mode is
     # in effect.
     siteID = eventSet.getAttributes().get('siteID')        
-    caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+    caveMode = eventSet.getAttributes().get('runMode','PRACTICE').upper()
     practice = True
     if caveMode == 'OPERATIONAL':
         practice = False
@@ -92,7 +95,7 @@ def getCurrentEvents(eventSet):
 
     # Get the events from the database for this site, and add any that are
     # not already in the passed-in event set to the list of current events.
-    databaseEvents = getHazardEventsBySite(siteID, practice) 
+    databaseEvents = getHazardEventsBySite(siteID, practice, phenomenons) 
     eventIDs = [event.getEventID() for event in currentEvents]
     for event in databaseEvents:
         if event.getEventID() not in eventIDs:

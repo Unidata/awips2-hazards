@@ -9,11 +9,10 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
+import java.util.List;
 
-import gov.noaa.gsd.common.utilities.JsonConverter;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+
 import jep.JepException;
 
 /**
@@ -25,6 +24,7 @@ import jep.JepException;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 08, 2016   13788    Chris.Golden Initial creation.
+ * Apr 17, 2017   33082    Robert.Blum  Validates multiple events.
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
  *                                      mutable session events.
  * </pre>
@@ -38,42 +38,35 @@ public class ValidateScriptExecutor
     // Private Static Constants
 
     /**
-     * Name of the variable used to store the hazard event in Python before
+     * Name of the variable used to store the hazard events in Python before
      * invoking the validate function.
      */
-    private static final String HAZARD_EVENT = "hazardEvent";
+    private static final String HAZARD_EVENTS = "hazardEvents";
 
     /**
      * String used to invoke the validate function.
      */
     private static final String INVOKE_FUNCTION = "HazardServicesMetaDataRetriever.validate("
-            + HAZARD_EVENT + ")";
-
-    // Private Static Variables
-
-    /**
-     * Status handler, for displaying notifications to the user.
-     */
-    private static IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ValidateScriptExecutor.class);
+            + HAZARD_EVENTS + ")";
 
     // Private Variables
 
     /**
-     * Hazard event to be validated.
+     * List of Hazard Events to be validated.
      */
-    private final IReadableHazardEvent hazardEvent;
+    private final List<? extends IReadableHazardEvent> hazardEvents;
 
     // Public Constructors
 
     /**
      * Construct a standard instance.
      * 
-     * @param hazardEvent
-     *            Hazard event to be validated.
+     * @param hazardEvents
+     *            Hazard events to be validated.
      */
-    public ValidateScriptExecutor(IReadableHazardEvent hazardEvent) {
-        this.hazardEvent = hazardEvent;
+    public ValidateScriptExecutor(
+            List<? extends IReadableHazardEvent> hazardEvents) {
+        this.hazardEvents = hazardEvents;
     }
 
     // Protected Methods
@@ -92,13 +85,7 @@ public class ValidateScriptExecutor
     @Override
     public String doExecute(ContextSwitchingPythonEval script)
             throws JepException {
-        script.set(HAZARD_EVENT, hazardEvent);
-        String result = (String) script.getValue(INVOKE_FUNCTION);
-        try {
-            return JsonConverter.fromJson(result);
-        } catch (Exception e) {
-            statusHandler.error("Could not validate hazard event.", e);
-            return null;
-        }
+        script.set(HAZARD_EVENTS, hazardEvents);
+        return (String) script.getValue(INVOKE_FUNCTION);
     }
 }

@@ -19,22 +19,20 @@
  **/
 package com.raytheon.uf.viz.productgen.dialog;
 
-import org.eclipse.swt.SWT;
+import java.util.List;
+
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.widgets.Composite;
 
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.ProductPart;
 
 /**
  * 
- * Abstract data editor class. Currently, there are two implementations of this
- * class. The first begin the ProductDataEditor. The GUI for this editor is
- * created by the Megawidgets library and contains the editable data that can be
- * modified by the user. The second implementation is the
- * FormattedTextDataEditor. This editor contains the formatted text from the
- * formatter. The text in this editor may be freehand edited by the user based
- * on which product parts are editable.
+ * Abstract data editor class. Currently, there is one implementation of this
+ * class, the ProductDataEditor. The GUI for this editor is created by the
+ * Megawidgets library and contains the editable data that can be modified by
+ * the user.
  * 
  * <pre>
  * 
@@ -54,37 +52,16 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 07/28/2015   9687       Robert.Blum  Moved buttons to ProductDataEditor since they were not
  *                                      common to all subclasses.
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
+ * Feb 23, 2017 29170      Robert.Blum  Product Editor refactor.
+ * Apr 03, 2017 32572      Roger.Ferrel Added {@link #getIncompleteRequiredFields()}.
+ * Jun 05, 2017 29996      Robert.Blum  Created abstract parent class.
  * 
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
-public abstract class AbstractDataEditor extends CTabItem {
-
-    /** The number of buttons on the GUI */
-    private static final int BUTTON_COUNT = 0;
-
-    /** Horizontal spacing between Save and Undo buttons */
-    protected static final int HORIZONTAL_BUTTON_SPACING = 65;
-
-    /** The composite which holds the editor */
-    protected Composite editorPane;
-
-    /** The composite which holds the buttons */
-    protected Composite editorButtonPane;
-
-    /** The parent product dialog instance to which this data editor belongs */
-    protected AbstractProductDialog productDialog;
-
-    /** The generated product associated with this data editor */
-    protected IGeneratedProduct product;
-
-    /** Container holding the editable keys for this product */
-    protected EditableKeys editableKeys;
-
-    /** The product CTabItem to which this data editor belongs */
-    protected CTabItem productTab;
+public abstract class AbstractDataEditor extends AbstractProductTab {
 
     /**
      * Creates a new Data Editor
@@ -99,24 +76,10 @@ public abstract class AbstractDataEditor extends CTabItem {
      *            Style hints
      */
     protected AbstractDataEditor(AbstractProductDialog productDialog,
-            CTabItem productTab,
-            IGeneratedProduct product, CTabFolder parent, int style) {
-        super(parent, style);
-        this.productDialog = productDialog;
-        this.productTab = productTab;
-        this.product = product;
-
-        // Initialize the composite which will hold the data editor
-        editorPane = new Composite(parent, SWT.NONE);
-        ProductEditorUtil.setLayoutInfo(editorPane, 1, false, SWT.FILL,
-                SWT.FILL, true, true);
-        setControl(editorPane);
+            CTabItem productTab, IGeneratedProduct product, CTabFolder parent,
+            int style) {
+        super(productDialog, productTab, product, parent, style);
     }
-
-    /**
-     * Refreshes the tab contents
-     */
-    public abstract void refresh();
 
     /**
      * Checks if this data editor has unsaved changes
@@ -126,11 +89,9 @@ public abstract class AbstractDataEditor extends CTabItem {
     public abstract boolean hasUnsavedChanges();
 
     /**
-     * Checks if this editor contains editable information
-     * 
-     * @return True if this editor contains editable information, else false
+     * Saves any modified values.
      */
-    public abstract boolean isDataEditable();
+    public abstract void saveModifiedValues();
 
     /**
      * Checks if the user has completed all required fields
@@ -140,70 +101,25 @@ public abstract class AbstractDataEditor extends CTabItem {
     public abstract boolean requiredFieldsCompleted();
 
     /**
-     * Saves any modified values
+     * Checks to see if there are any required fields that needs to be
+     * completed.
      */
-    public abstract void saveModifiedValues();
+    public abstract List<ProductPart> getIncompleteRequiredFields();
 
     /**
-     * Reverts all changes back to original state
-     */
-    public abstract void revertValues();
-
-    /**
-     * Undoes the last modification to a value
-     */
-    public abstract void undoModification();
-
-    /**
-     * Called by initialize. This method allows subclasses of AbstractDataEditor
-     * to make GUI contributes prior to adding the buttons on the bottom of the
-     * editor panel
-     */
-    protected abstract void initializeSubclass();
-
-    /**
-     * Gets whether there are modifications which can be undone
+     * Gets the number of undo actions that remain.
      * 
-     * @return True if modifications are available to be undone
-     */
-    protected abstract boolean undosRemaining();
-
-    /**
-     * Returns the number of actions that can be undone
-     * 
-     * @return The number of actions that can be undone
+     * @return
      */
     protected abstract int getUndosRemaining();
-
-    /**
-     * Updates the text on the buttons.
-     */
-    protected abstract void updateButtonState();
-
-
-    /**
-     * Initializes the GUI components for this data editor. Delegates to the
-     * initializeSubclass method so the subclass may add any GUI contributes
-     * first. Then adds and disables the buttons to the data editor
-     */
-    protected void initialize() {
-
-        // Create the data editor specific GUI components
-        initializeSubclass();
-
-        // Put the buttons on the bottom of the data editor
-        if (this.getButtonCount() > 0) {
-            createEditorButtons(editorPane);
-        }
-    }
 
     /**
      * Allow for updating the tab label with an "*" to visually show that the
      * tab has unsaved changes.
      */
     protected void updateTabLabel() {
-        String prevLabel = this.getText();
-        String prevProductLabel = this.productTab.getText();
+        String prevLabel = getText();
+        String prevProductLabel = productTab.getText();
         if (hasUnsavedChanges()) {
             // Add the asterisk to the tab label
             if (prevLabel.startsWith("*") == false) {
@@ -220,25 +136,4 @@ public abstract class AbstractDataEditor extends CTabItem {
             productTab.setText(prevProductLabel);
         }
     }
-
-    /**
-     * Creates common AbstractDataEditor buttons
-     * 
-     * @param editorPane
-     *            The parent composite
-     */
-    protected void createEditorButtons(Composite editorPane) {
-        // Do Nothing - no common buttons between all AbstractDataEditors
-    }
-
-    /**
-     * Retrieves the number of buttons present on the editor GUI. The default
-     * value is 0.
-     * 
-     * @return The number of buttons present on the button composite
-     */
-    protected int getButtonCount() {
-        return BUTTON_COUNT;
-    }
-
 }

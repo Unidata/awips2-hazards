@@ -39,11 +39,14 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
  *                                      expiration product.
  * Mar 30, 2016  8837      Robert.Blum  Added changeSite() for service backup.
+ * Sep 19, 2016 16871      Robert.Blum  Added hazardElapsed().
  * Dec 12, 2016 21504      Robert.Blum  Updates for hazard locking.
  * Apr 05, 2017 32733      Robert.Blum  Removed unused parameter.
  * Apr 27, 2017 11853      Chris.Golden Made names of methods more consistent, and
  *                                      added a method to check to see if the
  *                                      product editor is open.
+ * May 17, 2017 34152      Robert.Blum  Fix Product Generation case that results
+ *                                      in invalid products.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
  * Jan 17, 2018 33428      Chris.Golden Changed to work with new, more flexible
@@ -120,4 +123,12 @@ public interface IProductEditorView<I, C, E extends Enum<E>>
      * locked and the products are no longer valid.
      */
     public void handleHazardEventLock();
+
+    /**
+     * Closes a Product Editor after displaying the supplied error.
+     * 
+     * @param title
+     * @param msg
+     */
+    public void closeEditorWithError(String title, String msg);
 }

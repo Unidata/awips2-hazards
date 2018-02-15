@@ -35,19 +35,19 @@ import org.eclipse.core.runtime.Assert;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.ISessionHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.SessionHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.undoable.IUndoRedoable;
 import com.raytheon.uf.common.message.WsId;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventCreationTimeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventExpirationTimeModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIdentifierModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIssuanceCountModification;
@@ -60,10 +60,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.IllegalEventModificatio
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.vividsolutions.jts.geom.Geometry;
 
-import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
@@ -158,6 +156,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      no change occurred).
  * Dec 19, 2016 21504      Robert.Blum  Changed from user name and workstation to
  *                                      instances of WsId.
+ * Jan 26, 2017 21635      Roger.Ferrel Add issueSite.
  * Feb 01, 2017 15556      Chris.Golden Added "visible in history list" flag, and
  *                                      record of insert time. Also fixed setting
  *                                      of status to not persist the hazard event
@@ -168,6 +167,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      are now visible). Also added public
  *                                      method to allow setting of status with
  *                                      persistence optional.
+ * Feb 16, 2017 28708      Chris.Golden Changed to use refactored version of
+ *                                      HazardServicesEventIdUtil.
  * Mar 16, 2017 15528      Chris.Golden Fixed modification flag to be set properly
  *                                      when appropriate event attributes or
  *                                      fields change.
@@ -191,12 +192,20 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      are no longer exposed to others besides
  *                                      those in the same package.
  * Jan 26, 2018 33428      Chris.Golden Added issuance count.
+ * Mar 23, 2018 11864      Chris.Golden Added expiration time as field.
+ * May 01, 2018 15561      Chris.Golden Renamed "delegate" member variable to
+ *                                      "principal", as the former name was
+ *                                      misleading. Also changed BaseHazardEvent
+ *                                      to SessionHazardEvent.
+ * May 14, 2018 33572      Chris.Golden Fixed problem of hazard areas not being
+ *                                      updated before conflicts are checked
+ *                                      following a geometry modification.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
+public class ObservedHazardEvent implements ISessionHazardEvent, IUndoRedoable {
 
     /**
      * Logging mechanism.
@@ -206,7 +215,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
     private final SessionEventManager eventManager;
 
-    private final IHazardEvent delegate;
+    private final ISessionHazardEvent principal;
 
     /**
      * Undo stack. Supports undo operations on this hazard event.
@@ -241,87 +250,116 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
      */
     private volatile boolean modifiedNotAllowedToChange = false;
 
+    public ObservedHazardEvent(IReadableHazardEvent event,
+            SessionEventManager eventManager) {
+        principal = new SessionHazardEvent(event);
+        Assert.isNotNull(eventManager);
+        this.eventManager = eventManager;
+    }
+
+    protected ObservedHazardEvent() {
+        eventManager = null;
+        principal = null;
+    }
+
     @Override
     public Date getStartTime() {
-        return delegate.getStartTime();
+        return principal.getStartTime();
     }
 
     @Override
     public Date getEndTime() {
-        return delegate.getEndTime();
+        return principal.getEndTime();
+    }
+
+    @Override
+    public Date getCreationTime() {
+        return principal.getCreationTime();
+    }
+
+    @Override
+    public Date getInsertTime() {
+        return principal.getInsertTime();
+    }
+
+    @Override
+    public Date getExpirationTime() {
+        return principal.getExpirationTime();
     }
 
     @Override
     public IAdvancedGeometry getGeometry() {
-        return delegate.getGeometry();
+        return principal.getGeometry();
     }
 
     @Override
     public Geometry getFlattenedGeometry() {
-        return delegate.getFlattenedGeometry();
+        return principal.getFlattenedGeometry();
     }
 
     @Override
     public Geometry getProductGeometry() {
-        return delegate.getProductGeometry();
+        return principal.getProductGeometry();
     }
 
     @Override
     public VisualFeature getVisualFeature(String identifier) {
-        return delegate.getVisualFeature(identifier);
+        return principal.getVisualFeature(identifier);
     }
 
     @Override
     public VisualFeaturesList getVisualFeatures() {
-        return delegate.getVisualFeatures();
+        return principal.getVisualFeatures();
     }
 
     @Override
     public String getSiteID() {
-        return delegate.getSiteID();
+        return principal.getSiteID();
+    }
+
+    @Override
+    public String getIssueSiteID() {
+        return principal.getIssueSiteID();
     }
 
     @Override
     public String getEventID() {
-        return delegate.getEventID();
+        return principal.getEventID();
     }
 
-    /**
-     * Return a filtered Event Id String
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.
-     *      HazardServicesEventIdUtil
-     * 
-     * @return the eventID using filtering from HazardServicesEventIdUtil
-     */
     @Override
     public String getDisplayEventID() {
-        return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
+        return principal.getDisplayEventID();
     }
 
     @Override
     public HazardStatus getStatus() {
-        return delegate.getStatus();
+        return principal.getStatus();
+    }
+
+    @Override
+    public HazardStatus getPreExpiredStatus() {
+        return principal.getPreExpiredStatus();
     }
 
     @Override
     public int getIssuanceCount() {
-        return delegate.getIssuanceCount();
+        return principal.getIssuanceCount();
     }
 
     @Override
     public String getPhenomenon() {
-        return delegate.getPhenomenon();
+        return principal.getPhenomenon();
     }
 
     @Override
     public String getSignificance() {
-        return delegate.getSignificance();
+        return principal.getSignificance();
     }
 
     @Override
     public String getSubType() {
-        return delegate.getSubType();
+        return principal.getSubType();
     }
 
     @Override
@@ -335,40 +373,18 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     }
 
     @Override
-    public Date getCreationTime() {
-        return delegate.getCreationTime();
-    }
-
-    @Override
-    public ProductClass getHazardMode() {
-        return delegate.getHazardMode();
-    }
-
-    @Override
     public Source getSource() {
-        return delegate.getSource();
+        return principal.getSource();
     }
 
     @Override
     public WsId getWsId() {
-        return delegate.getWsId();
+        return principal.getWsId();
     }
 
     @Override
     public Serializable getHazardAttribute(String key) {
-        return delegate.getHazardAttribute(key);
-    }
-
-    protected ObservedHazardEvent() {
-        eventManager = null;
-        delegate = null;
-    }
-
-    public ObservedHazardEvent(IReadableHazardEvent event,
-            SessionEventManager eventManager) {
-        delegate = new BaseHazardEvent(event);
-        Assert.isNotNull(eventManager);
-        this.eventManager = eventManager;
+        return principal.getHazardAttribute(key);
     }
 
     private final boolean changed(Object newObj, Object oldObj) {
@@ -387,7 +403,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
     @Override
     public Map<String, Serializable> getHazardAttributes() {
-        Map<String, Serializable> attr = delegate.getHazardAttributes();
+        Map<String, Serializable> attr = principal.getHazardAttributes();
 
         /*
          * Do not allow modification because listeners would need to be fired.
@@ -396,7 +412,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
          * immutable maps.
          */
         Map<String, Serializable> map = new HashMap<>(
-                delegate.getHazardAttributes());
+                principal.getHazardAttributes());
         map.values().removeAll(Collections.singleton(null));
         attr = ImmutableMap.copyOf(map);
         return attr;
@@ -405,6 +421,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     @Override
     public void setSiteID(String site) {
         setSiteID(site, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setIssueSiteID(String issueSite) {
+        setIssueSiteID(issueSite, true, Originator.OTHER);
     }
 
     @Override
@@ -447,8 +468,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     }
 
     @Override
-    public void setCreationTime(Date date) {
-        setCreationTime(date, true, Originator.OTHER);
+    public void setStartTime(Date date) {
+        setStartTime(date, true, Originator.OTHER);
     }
 
     @Override
@@ -457,13 +478,23 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     }
 
     @Override
-    public void setStartTime(Date date) {
-        setStartTime(date, true, Originator.OTHER);
+    public void setTimeRange(Date startTime, Date endTime) {
+        setTimeRange(startTime, endTime, true, Originator.OTHER);
     }
 
     @Override
-    public void setTimeRange(Date startTime, Date endTime) {
-        setTimeRange(startTime, endTime, true, Originator.OTHER);
+    public void setCreationTime(Date date) {
+        setCreationTime(date, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setInsertTime(Date date) {
+        principal.setInsertTime(date);
+    }
+
+    @Override
+    public void setExpirationTime(Date date) {
+        setExpirationTime(date, true, Originator.OTHER);
     }
 
     @Override
@@ -475,7 +506,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     public void setProductGeometry(Geometry geometry) {
         geometry = AdvancedGeometryUtilities
                 .getJtsGeometryAsCollection(geometry);
-        delegate.setProductGeometry(geometry);
+        principal.setProductGeometry(geometry);
     }
 
     @Override
@@ -486,11 +517,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     @Override
     public void setVisualFeatures(VisualFeaturesList visualFeatures) {
         setVisualFeatures(visualFeatures, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setHazardMode(ProductClass mode) {
-        setHazardMode(mode, true, Originator.OTHER);
     }
 
     @Override
@@ -527,6 +553,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         setSiteID(siteID, true, originator);
     }
 
+    public void setIssueSiteID(String issueSite, IOriginator originator) {
+        setIssueSiteID(issueSite, true, originator);
+    }
+
     public void setEventID(String eventID, IOriginator originator) {
         setEventID(eventID, true, originator);
     }
@@ -561,21 +591,25 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         setHazardType(phenomenon, significance, subtype, true, originator);
     }
 
-    public void setCreationTime(Date creationTime, IOriginator originator) {
-        setCreationTime(creationTime, true, originator);
+    public void setStartTime(Date startTime, IOriginator originator) {
+        setStartTime(startTime, true, originator);
     }
 
     public void setEndTime(Date endTime, IOriginator originator) {
         setEndTime(endTime, true, originator);
     }
 
-    public void setStartTime(Date startTime, IOriginator originator) {
-        setStartTime(startTime, true, originator);
-    }
-
     public void setTimeRange(Date startTime, Date endTime,
             IOriginator originator) {
         setTimeRange(startTime, endTime, true, originator);
+    }
+
+    public void setCreationTime(Date creationTime, IOriginator originator) {
+        setCreationTime(creationTime, true, originator);
+    }
+
+    public void setExpirationTime(Date expirationTime, IOriginator originator) {
+        setExpirationTime(expirationTime, true, originator);
     }
 
     public void setGeometry(IAdvancedGeometry geometry,
@@ -591,11 +625,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     public void setVisualFeatures(VisualFeaturesList visualFeatures,
             IOriginator originator) {
         setVisualFeatures(visualFeatures, true, originator);
-    }
-
-    public void setHazardMode(ProductClass productClass,
-            IOriginator originator) {
-        setHazardMode(productClass, true, originator);
     }
 
     public void setSource(Source source, IOriginator originator) {
@@ -632,7 +661,26 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     protected boolean setSiteID(String site, boolean notify,
             IOriginator originator) {
         if (changed(getSiteID(), site)) {
-            delegate.setSiteID(site);
+            principal.setSiteID(site);
+            if (notify) {
+                IHazardEventView eventView = eventManager
+                        .getViewForSessionEvent(this);
+                if (eventView != null) {
+                    eventManager.hazardEventModified(
+                            new SessionEventModified(eventManager, eventView,
+                                    new EventOriginModification(), originator));
+                }
+                handleModification();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    protected boolean setIssueSiteID(String issueSite, boolean notify,
+            IOriginator originator) {
+        if (changed(getIssueSiteID(), issueSite)) {
+            principal.setIssueSiteID(issueSite);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -651,7 +699,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     protected boolean setEventID(String eventId, boolean notify,
             IOriginator originator) {
         if (changed(getEventID(), eventId)) {
-            delegate.setEventID(eventId);
+            principal.setEventID(eventId);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -679,7 +727,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                     && (status != HazardStatus.ENDED)) {
                 persist = false;
             }
-            delegate.setStatus(status);
+            principal.setStatus(status);
             if (notify) {
 
                 /*
@@ -706,7 +754,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     protected boolean setIssuanceCount(int count, boolean notify,
             IOriginator originator) {
         if (getIssuanceCount() != count) {
-            delegate.setIssuanceCount(count);
+            principal.setIssuanceCount(count);
             if (notify) {
 
                 /*
@@ -732,7 +780,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             IOriginator originator) {
         if (changed(getPhenomenon(), phenomenon)) {
             if (eventManager.canEventTypeBeChanged(this)) {
-                delegate.setPhenomenon(phenomenon);
+                principal.setPhenomenon(phenomenon);
                 if (notify) {
                     IHazardEventView eventView = eventManager
                             .getViewForSessionEvent(this);
@@ -756,7 +804,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             IOriginator originator) {
         if (changed(getSignificance(), significance)) {
             if (eventManager.canEventTypeBeChanged(this)) {
-                delegate.setSignificance(significance);
+                principal.setSignificance(significance);
                 if (notify) {
                     IHazardEventView eventView = eventManager
                             .getViewForSessionEvent(this);
@@ -781,7 +829,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
         if (changed(getSubType(), subtype)) {
             if (eventManager.canEventTypeBeChanged(this)) {
-                delegate.setSubType(subtype);
+                principal.setSubType(subtype);
                 if (notify) {
                     IHazardEventView eventView = eventManager
                             .getViewForSessionEvent(this);
@@ -831,31 +879,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         return changed;
     }
 
-    protected boolean setCreationTime(Date date, boolean notify,
+    protected boolean setStartTime(Date date, boolean notify,
             IOriginator originator) {
-
-        if (getCreationTime() == null) {
-            delegate.setCreationTime(date);
-            if (notify) {
-                IHazardEventView eventView = eventManager
-                        .getViewForSessionEvent(this);
-                if (eventView != null) {
-                    eventManager.hazardEventModified(new SessionEventModified(
-                            eventManager, eventView,
-                            new EventCreationTimeModification(), originator));
-                }
-                handleModification();
-            }
-            return true;
-        }
-        return false;
-    }
-
-    protected boolean setEndTime(Date date, boolean notify,
-            IOriginator originator) {
-
-        if (changed(getEndTime(), date)) {
-            delegate.setEndTime(date);
+        if (changed(getStartTime(), date)) {
+            principal.setStartTime(date);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -871,10 +898,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         return false;
     }
 
-    protected boolean setStartTime(Date date, boolean notify,
+    protected boolean setEndTime(Date date, boolean notify,
             IOriginator originator) {
-        if (changed(getStartTime(), date)) {
-            delegate.setStartTime(date);
+
+        if (changed(getEndTime(), date)) {
+            principal.setEndTime(date);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -910,6 +938,45 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         return changed;
     }
 
+    protected boolean setCreationTime(Date date, boolean notify,
+            IOriginator originator) {
+        if (getCreationTime() == null) {
+            principal.setCreationTime(date);
+            if (notify) {
+                IHazardEventView eventView = eventManager
+                        .getViewForSessionEvent(this);
+                if (eventView != null) {
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, eventView,
+                            new EventCreationTimeModification(), originator));
+                }
+                handleModification();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    protected boolean setExpirationTime(Date date, boolean notify,
+            IOriginator originator) {
+
+        if (changed(getExpirationTime(), date)) {
+            principal.setExpirationTime(date);
+            if (notify) {
+                IHazardEventView eventView = eventManager
+                        .getViewForSessionEvent(this);
+                if (eventView != null) {
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, eventView,
+                            new EventExpirationTimeModification(), originator));
+                }
+                handleModification();
+            }
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Set the geometry to be that specified.
      * 
@@ -927,7 +994,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             IOriginator originator) {
         if (changed(getGeometry(), geometry)) {
             pushToStack("setGeometry", IAdvancedGeometry.class, getGeometry());
-            delegate.setGeometry(geometry);
+            principal.setGeometry(geometry);
 
             /*
              * Since the new modification not from undo/redo, clear the redo
@@ -936,6 +1003,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             if ((undoInProgress == false) && (redoInProgress == false)) {
                 redoStack.clear();
             }
+
+            eventManager.handleEventGeometryChange(this);
 
             if (notify) {
                 IHazardEventView eventView = eventManager
@@ -971,7 +1040,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             IOriginator originator) {
         if (changed(visualFeature,
                 getVisualFeature(visualFeature.getIdentifier()))) {
-            boolean result = delegate.setVisualFeature(visualFeature);
+            boolean result = principal.setVisualFeature(visualFeature);
             if (result && notify) {
 
                 /*
@@ -1015,7 +1084,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         if (listChanged(oldVisualFeatures, visualFeatures)) {
             Set<String> changedIdentifiers = getIdentifiersOfChanged(
                     oldVisualFeatures, visualFeatures);
-            delegate.setVisualFeatures(visualFeatures);
+            principal.setVisualFeatures(visualFeatures);
             if (notify) {
 
                 /*
@@ -1122,29 +1191,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         return changedIdentifiers;
     }
 
-    protected boolean setHazardMode(ProductClass mode, boolean notify,
-            IOriginator originator) {
-        if (changed(getHazardMode(), mode)) {
-            delegate.setHazardMode(mode);
-            if (notify) {
-                IHazardEventView eventView = eventManager
-                        .getViewForSessionEvent(this);
-                if (eventView != null) {
-                    eventManager.hazardEventModified(
-                            new SessionEventModified(eventManager, eventView,
-                                    new EventOriginModification(), originator));
-                }
-                handleModification();
-            }
-            return true;
-        }
-        return false;
-    }
-
     protected boolean setSource(Source source, boolean notify,
             IOriginator originator) {
         if (changed(getSource(), source)) {
-            delegate.setSource(source);
+            principal.setSource(source);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -1163,7 +1213,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     protected boolean setWsId(WsId wsId, boolean notify,
             IOriginator originator) {
         if (changed(getWsId(), wsId)) {
-            delegate.setWsId(wsId);
+            principal.setWsId(wsId);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -1188,11 +1238,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                 originalAttributes = new HashMap<>();
                 for (String changedKey : changedKeys) {
                     originalAttributes.put(changedKey,
-                            delegate.getHazardAttribute(changedKey));
+                            principal.getHazardAttribute(changedKey));
 
                 }
             }
-            delegate.setHazardAttributes(attributes);
+            principal.setHazardAttributes(attributes);
             if (notify) {
                 Map<String, Serializable> modifiedAttributes = new HashMap<>();
                 for (String changedKey : changedKeys) {
@@ -1212,7 +1262,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                 }
                 if (Sets.intersection(changedKeys,
                         eventManager.getHazardAttributesAffectingModifyFlag(
-                                delegate.getEventID()))
+                                principal.getEventID()))
                         .isEmpty() == false) {
                     handleModification();
                 }
@@ -1285,7 +1335,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                     originalAttributes = new HashMap<>();
                     for (String changedKey : changedKeys) {
                         originalAttributes.put(changedKey,
-                                delegate.getHazardAttribute(changedKey));
+                                principal.getHazardAttribute(changedKey));
 
                     }
                 }
@@ -1294,7 +1344,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             for (String changedKey : changedKeys) {
                 modifiedAttributes.put(changedKey, attributes.get(changedKey));
             }
-            delegate.addHazardAttributes(modifiedAttributes);
+            principal.addHazardAttributes(modifiedAttributes);
             if (notify) {
                 if (eventView != null) {
                     eventManager.hazardEventAttributeModified(
@@ -1306,7 +1356,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                 }
                 if (Sets.intersection(changedKeys,
                         eventManager.getHazardAttributesAffectingModifyFlag(
-                                delegate.getEventID()))
+                                principal.getEventID()))
                         .isEmpty() == false) {
                     handleModification();
                 }
@@ -1320,10 +1370,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             boolean notify, IOriginator originator) {
 
         if (changed(value, getHazardAttribute(key))) {
-            Serializable oldValue = (notify ? delegate.getHazardAttribute(key)
+            Serializable oldValue = (notify ? principal.getHazardAttribute(key)
                     : null);
-            delegate.removeHazardAttribute(key);
-            delegate.addHazardAttribute(key, value);
+            principal.removeHazardAttribute(key);
+            principal.addHazardAttribute(key, value);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -1337,7 +1387,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                                             originator));
                 }
                 if (eventManager.getHazardAttributesAffectingModifyFlag(
-                        delegate.getEventID()).contains(key)) {
+                        principal.getEventID()).contains(key)) {
                     handleModification();
                 }
             }
@@ -1349,9 +1399,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     protected boolean removeHazardAttribute(String key, boolean notify,
             IOriginator originator) {
 
-        Serializable oldValue = delegate.getHazardAttribute(key);
+        Serializable oldValue = principal.getHazardAttribute(key);
         if (oldValue != null) {
-            delegate.removeHazardAttribute(key);
+            principal.removeHazardAttribute(key);
             if (notify) {
                 IHazardEventView eventView = eventManager
                         .getViewForSessionEvent(this);
@@ -1365,7 +1415,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                                             originator));
                 }
                 if (eventManager.getHazardAttributesAffectingModifyFlag(
-                        delegate.getEventID()).contains(key)) {
+                        principal.getEventID()).contains(key)) {
                     handleModification();
                 }
             }
@@ -1385,11 +1435,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
             try {
                 undoInProgress = true;
-                IAdvancedGeometry oldGeometry = delegate.getGeometry();
                 method.invoke(this, value);
-                if (Utils.equal(oldGeometry, delegate.getGeometry()) == false) {
-                    eventManager.handleEventGeometryChangeFromUndoOrRedo(this);
-                }
                 success = true;
             } catch (Exception e) {
                 statusHandler.error(
@@ -1412,11 +1458,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
             try {
                 redoInProgress = true;
-                IAdvancedGeometry oldGeometry = delegate.getGeometry();
                 method.invoke(this, value);
-                if (Utils.equal(oldGeometry, delegate.getGeometry()) == false) {
-                    eventManager.handleEventGeometryChangeFromUndoOrRedo(this);
-                }
                 success = true;
             } catch (Exception e) {
                 statusHandler.error(
@@ -1531,17 +1573,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
     @Override
     public String toString() {
-        return delegate.toString();
-    }
-
-    @Override
-    public void setInsertTime(Date date) {
-        delegate.setInsertTime(date);
-
-    }
-
-    @Override
-    public Date getInsertTime() {
-        return delegate.getInsertTime();
+        return principal.toString();
     }
 }

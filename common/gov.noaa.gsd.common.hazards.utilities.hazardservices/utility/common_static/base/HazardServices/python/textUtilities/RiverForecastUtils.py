@@ -18,38 +18,24 @@
 # further licensing information.
 # #
 
-'''
 
- @since: April 2015
- @author: Raytheon Hazard Services Team
+import JUtil
 
- History:
- Date         Ticket#    Engineer    Description
- ------------ ---------- ----------- --------------------------
- May 08, 2015  6562      Chris.Cody  Initial Creation: Restructure River Forecast Points/Recommender
-                                     Legacy functions and constants imported from RiverForecastPoints.py
- May 21, 2015  8112      Chris.Cody  Python reads 0 values from Java methods as None. The return type is lost.
- Jun 25, 2015  8313      Benjamin.Phillippe Fixed situation with missing stage date
- Jul 09, 2015  9359      Chris.Cody  Correct problem with currentDate being unset
- Jul 14, 2015  9425      Chris.Cody  Correct python issue with objects in Java List
- Mar 02, 2016 11898      Robert.Blum Fixed Trend value dictionary to be correct case.
- Mar 28, 2016 15920      Thomas.Gurney  Make impacts search display all impact statements.
- May 04, 2016  15584     Kevin.Bisanz Update to handle PE encoded in impact and
-                                      account for flow based river point.
- May 24, 2016  15584     Kevin.Bisanz Renamed getFlowUnits(..) to getStageFlowUnits(..).
- Jun 23, 2016 19537      Chris.Golden Changed to use UTC when converting from epoch time to datetime.
- Aug 15, 2016  20622     Robert.Blum  Fixed duplicate fieldName value megawidget error.
- Sep 15, 2016  19147     Robert.Blum  Replaced fromtimestamp() with utcfromtimestamp().
- Nov 03, 2016  23171     Robert.Blum  Refactored to fix issues with determining the 
-                                      correct Historical Crest to select.
- Nov 07, 2016  23171     Robert.Blum  Addidtional fix for "Crest To Use" to correctly
-                                      apply the max depth below flood stage value.
-'''
+from RiverForecastPointHandler import pyRiverForecastPointToJavaRiverForecastPoint, javaRiverForecastPointToPyRiverForecastPoint
+JUtil.registerPythonToJava(pyRiverForecastPointToJavaRiverForecastPoint)
+JUtil.registerJavaToPython(javaRiverForecastPointToPyRiverForecastPoint)
+
+from RiverForecastGroupHandler import pyRiverForecastGroupToJavaRiverForecastGroup, javaRiverForecastGroupToPyRiverForecastGroup
+JUtil.registerPythonToJava(pyRiverForecastGroupToJavaRiverForecastGroup)
+JUtil.registerJavaToPython(javaRiverForecastGroupToPyRiverForecastGroup)
+
+from HydrographHandler import pyHydrographToJavaHydrograph, javaHydrographToPyHydrograph
+JUtil.registerPythonToJava(pyHydrographToJavaHydrograph)
+JUtil.registerJavaToPython(javaHydrographToPyHydrograph)
 
 from com.raytheon.uf.common.time import SimulatedTime
-from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
-from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
 from com.raytheon.uf.common.hazards.hydro import RiverHydroConstants
+from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 
 from sets import Set
 
@@ -101,7 +87,7 @@ class RiverForecastUtils(object):
     RECENT_IN_STAGE_FLOW_WINDOW = "Recent in Stage/Flow Window"
 
     def __init__(self):
-        pass
+        self._riverForecastManager = RiverForecastManager()
      ###############################################################
      #
      # Forecast Group Template Variables
@@ -143,21 +129,18 @@ class RiverForecastUtils(object):
 
 
     def getStageFlowName(self, primaryPE):
-
         if primaryPE[0] == PE_Q:
             return 'flow'
         else:
             return 'stage'
 
     def isPrimaryPeStage(self, primaryPE):
-
         if primaryPE[0] == PE_H:
            return True
         else:
            return False
 
     def isPrimaryPeFlow(self, primaryPE):
-
         if primaryPE[0] == PE_Q:
            return True
         else:
@@ -627,5 +610,356 @@ class RiverForecastUtils(object):
                 for riverForecastPoint in riverForecastPointList:
                     riverForecastPointID = riverForecastPoint.getLid()
                     if pointID == riverForecastPointID:
-                        return riverForecastPoint
+                        return JUtil.javaObjToPyVal(riverForecastPoint)
         return None
+
+    def getAreaInundationCoordinates(self):
+        '''
+        Retrieve a Map of LID (Gauge Id) to a string containing Lat/Lon coords
+        for area Flood Inundation.
+        
+        @return: A Map with the gauge 'lid' as the key and a string of latitude and longitude values as the value.
+        '''
+        return self._riverForecastManager.getAreaInundationCoordinates()
+    
+    def getAreaInundationCoordinatesForLid(self, lid):
+        '''
+        Retrieve Lat/Lon Flood Inundation for a specific River Forecast Point LID
+        
+        @param lid: River forecast point identifier
+        @return: A string of latitude and longitude values.
+        '''
+        return self._riverForecastManager.getAreaInundationCoordinates(lid)
+    
+    def getHydrologicServiceAreaIdForGage(self, lid):
+        '''
+        Retrieve the Hydrologic Service Area Id for a specific River Forecast Point LID
+        
+        @param lid: River forecast point identifier
+        
+        @return: The retrieved Hydrologic Service Area (HSA) ID
+        '''
+        return self._riverForecastManager.getHydrologicServiceAreaIdForGage(lid)
+    
+    def getAllRiverForecastGroupList(self, isSubDataNeeded):
+        '''
+        Retrieve a List of ALL RiverForecastGroup data. This is a variable depth query.
+        
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        
+        @return: List containing all RiverForecastGroup Data
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getAllRiverForecastGroupList(isSubDataNeeded))
+    
+    def getRiverForecastGroup(self, groupId, isSubDataNeeded):
+        '''
+        Retrieve a River Forecast Group for a given River Forecast Group Identifier
+        value. This is a variable depth query.
+        
+        @param groupId: RiverForecastGroup Group Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        
+        @return: Retrieved RiverForecastGroup object
+        '''
+        
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getRiverForecastGroup(groupId, isSubDataNeeded))
+    
+    def getRiverForecastGroupForRiverForecastPoint(self, lid, isSubDataNeeded):
+        '''
+        Retrieve a River Forecast Group parent for a RiverForecastPoint LID value. This is a Variable Depth query.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        
+        @return: Retrieved RiverForecastGroup object
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getRiverForecastGroupForRiverForecastPoint(lid, isSubDataNeeded))
+    
+    def getHydrologicServiceAreaIdList(self):
+        '''
+        Retrieve a List of ALL Hydrologic Service Area Id values. This is a SHALLOW QUERY.
+        
+        @return: List containing all Hydrologic Service Area IDs.
+        '''
+        return self._riverForecastManager.getHydrologicServiceAreaIdList()
+    
+    def getHsaRiverForecastPointList(self, hsaId, isSubDataNeeded):
+        '''
+        Retrieve a List of RiverForecastPoint object for a given Hydrologic Service
+        Area (HSA) value.
+        
+        @param hsaId: Hydrological Service Area Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return: List containing RiverForecastPoint data objects
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getHsaRiverForecastPointList(hsaId, isSubDataNeeded))
+    
+    def getHsaRiverForecastGroupList(self, hsaId, isSubDataNeeded):
+        '''
+        Get a List of RiverForecastPoint object for a given Hydrologic Service
+        Area (HSA) value. This is a Variable Depth query.
+        
+        @param hsaId: Hydrological Service Area Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return: List containing RiverForecastGroup data objects
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getHsaRiverForecastGroupList(hsaId, isSubDataNeeded))
+    
+    def getGroupRiverForecastPointList(self, groupId, isSubDataNeeded):
+        '''
+        Get a List of RiverForecastPoint objects for a given River Forecast Group
+        Id value. This is a Variable Depth query.
+        
+        @param groupId: RiverForecastGroup Group Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return List containing RiverForecastPoint data objects 
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getGroupRiverForecastPointList(groupId, isSubDataNeeded))
+    
+    def getRiverForecastPointList(self, lidList, isSubDataNeeded):
+        '''
+        Get a List of RiverForecastPoint objects for a given list of LID values.
+        This is a Variable Depth query.
+        
+        @param lidList: List of RiverForecastPoint Identifiers
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return: List containing RiverForecastPoint data objects 
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getRiverForecastPointList(lidList, isSubDataNeeded))
+    
+    def getRiverForecastPoint(self, lid, isSubDataNeeded):
+        '''
+        Get a single RiverForecastPoint object. This is a Variable Depth query.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return: The retrieved RiverForecastPoint
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getRiverForecastPoint(lid, isSubDataNeeded))
+    
+    def getRiverForecastGroupRiverForecastPointList(self, groupId, isSubDataNeeded):
+        '''
+        Retrieve a list of RiverForecastPoint objects for a given, parent River
+        Forecast Group Identifier.
+        
+        @param groupdId: RiverForecastGroup Group Identifier
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return: List of retrieved RiverForecastPoint objects
+        '''
+        return JUtil.javaObjToPyVal(self._riverForecastManager.getRiverForecastGroupRiverForecastPointList(groupId, isSubDataNeeded))
+    
+    def getRiverForecastPointCurrentObservation(self, riverForecastPoint, currentSystemTime):
+        '''
+        Compute RiverForecastPoint Observation data values.
+        
+        @param riverForecastPoint: RiverForecastPoint to compute values for.
+        @param currentSystemTime: Set System time for observation.
+        @return: The populated riverForecastPoint
+        '''
+        self._riverForecastManager.getRiverForecastPointCurrentObservation(riverForecastPoint.toJavaObj(), currentSystemTime)
+        return riverForecastPoint
+    
+    def getHydrographObservedData(self, riverForecastPoint, currentSystemTime):
+        '''
+        Retrieve and set Hydrograph Observed data for a RiverForecastPoint.
+        
+        @param riverForecastPoint: RiverForecastPoint to compute values for.
+        @param currentSystemTime: Set System time for observation.
+        @return: The populated riverForecastPoint
+        '''
+        self._riverForecastManager.getHydrographObservedData(riverForecastPoint.toJavaObj(), currentSystemTime)
+        return riverForecastPoint
+
+    def getRiverForecastPointHydrographForecast(self, riverForecastPoint, currentSystemTime):
+        '''
+        Retrieve and set Hydrograph Forecast data for a RiverForecastPoint.
+        
+        @param riverForecastPoint: RiverForecastPoint to fill and compute data
+        @param currentSystemTime: Current System observation time
+        @return: The populated riverForecastPoint
+        '''
+        self._riverForecastManager.getRiverForecastPointHydrographForecast(riverForecastPoint.toJavaObj(), currentSystemTime)
+        return riverForecastPoint
+
+    def getRiverForecastPointRiverStationInfo(self, lid):
+        '''
+        Retrieve RiverStationInfo for the specified RiverForecastPoint Identifier
+        
+        @param lid: RiverForecastPoint Identifier
+        @return: The retrieved RiverStationInfo
+        '''
+        return self._riverForecastManager.getRiverForecastPointRiverStationInfo(lid)
+    
+    def getRiverForecastPointRiverStationInfoList(self, lidList):
+        '''
+        Get a List of RiverStationInfo objects for a given list of RiverForecastPoint LID values.
+        
+        @param lidList: RiverForecastPoint Identifier list of values
+        @return: List of RiverStationInfo objects
+        '''
+        return self._riverForecastManager.getRiverForecastPointRiverStationInfoList(lidList)
+    
+    def getRiverForecastPointRiverStatus(self, lid, physicalElement):
+        '''
+        Get a List of RiverStatus objects for a given RiverForecastPoint LID and Physical Element value.
+        
+        @param lid: RiverForecastPoint Identifier value
+        @param physicalElement: PhysicalElement value
+        @return: List of RiverStatus objects 
+        '''
+        return self._riverForecastManager.getRiverForecastPointRiverStatus(lid, physicalElement)
+    
+    def getRiverForecastPointCountyStateListForLids(self, lidList):
+        '''
+        Get a List of CountyStateData objects for a given list of RiverForecastPoint LID values.
+        
+        @param lidList: RiverForecastPoint Identifier list of values
+        @return List of CountyStateData objects
+        '''
+        return self._riverForecastManager.getRiverForecastPointCountyStateList(lidList)
+    
+    def getRiverForecastPointCountyStateListForLid(self, lid):
+        '''
+        Get a CountyStateData object for a given RiverForecastPoint LID value.
+        
+        @param lid: RiverForecastPoint Identifier
+        @return: List of CountyStateData objects
+        '''
+        return self._riverForecastManager.getRiverForecastPointCountyStateList(lid)
+    
+    def getImpactsDataList(self, lid, month, day):
+        '''
+        Get a list of Impact value, Impact detail pairs for a River Forecast Point and given month and day.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param month: Numeric month
+        @param day: Numeric day of month
+        @return: List of Impact Pairs (Value,Detail)
+        '''
+        return self._riverForecastManager.getImpactsDataList(lid, month, day)
+    
+    def getFloodStatementDataList(self, lid, month, day):
+        '''
+        Get a List of Flood Statement FloodStmtData objects for a River Forecast Point and given month and day.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param month: Numeric month
+        @param day: Numeric day of month
+        @return: List of FloodStmtData objects
+        '''
+        return self._riverForecastManager.getFloodStatementDataList(lid, month, day)
+    
+    def getRiverForecastPointRiverZoneInfo(self, lid):
+        '''
+        Retrieve a RiverForecastZoneInfo object for the given LID (Point Id)
+        
+        @param lid: River Forecast Point Id (LID)
+        @return: List of RiverPointZoneInfo objects
+        '''
+        return self._riverForecastManager.getRiverForecastPointRiverZoneInfo(lid)
+    
+    def getRiverForecastCrestHistory(self, lid, physicalElement, crestTypeList=None):
+        '''
+        Get a List of Crest History objects for a given LID and Physical Element
+        pair. Only Record (R) crest history values are queried.
+        
+        @param lid: River Forecast Point Identifier
+        @param physicalElement: Physical Element value
+        @param crestTypeList: List of valid (prelim) values [optional]
+        @return: List of CrestHistory objects
+        '''
+        if crestTypeList is None:
+            return self._riverForecastManager.getRiverForecastCrestHistory(lid, physicalElement)
+        else:
+            return self._riverForecastManager.getRiverForecastCrestHistory(lid, physicalElement, crestTypeList)
+        
+    def getLidToCountyDataMap(self, lidList):
+        '''
+        Query for a Map of Lid (Point ID) to CountyStateData objects.
+        
+        @param lidList: List of RiverForecastPoint Identifier values
+        @return: A Map of all input Lid values to their corresponding CountyStateData objects
+        '''
+        return self._riverForecastManager.getLidToCountyDataMap(lidList)
+    
+    def getCountyForecastGroup(self, state, county, isSubDataNeeded):
+        '''
+        Get a River Forecast County with its List of RiverForecastPoint objects
+        and computed data for a given State Abbreviation and County Name values.
+        
+        @param state: 2 letter State abbreviation
+        @param county: Name of county (First letter capitalized)
+        @param isSubDataNeeded: Flag indicating whether this is a Deep query (true) or a Shallow query (false)
+        @return: the retrieved CountyForecastGroup object
+        '''
+        return self._riverForecastManager.getCountyForecastGroup(state, county, isSubDataNeeded)
+    
+    def getTopRankedTypeSource(self, lid, physicalElement, duration, extremum):
+        '''
+        Retrieve the top ranked type source for the given parameters.
+        
+        @param lid: River Forecast Point Id (Point ID)
+        @param physicalElement: River Forecast Physical Element
+        @param duration: Duration of measurement
+        @param extremum: e.g. Z, X
+        @return: Type Source for given parameters or None 
+        '''
+        return self._riverForecastManager.getTopRankedTypeSource(lid, physicalElement, duration, extremum)
+    
+    def getForecastTimeSeries(self, lid, physicalElement, fcstValidBeginTime, fcstValidEndTime, basisBeginTime, useLatestForecast):
+        '''
+        Retrieve Hydrograph Forecast data for the given parameters.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param physicalElement: Physical Element identifier
+        @param fcstValidBeginTime: The lower bound of time window to retrieve Time Series data for (in millis)
+        @param fcstValidEndTime: The upper bound of the time window to retrieve Time Series data for (in millis)
+        @param basisBeginTime: Forecast Basis Begin Time (in millis)
+        @param useLatestForecast: Flag to use Only the Latest Forecast value when true
+        @return: A full HydrographForecast object with SHEF Forecast Time Series data
+        '''
+        hydrograph = self._riverForecastManager.getForecastTimeSeries(lid, physicalElement, fcstValidBeginTime, fcstValidEndTime, basisBeginTime, useLatestForecast)
+        return JUtil.javaObjToPyVal(hydrograph)
+    
+    def getPrecipTimeSeries(self, lid, physicalElement, typeSource, obsBeginTime, obsEndTime):
+        '''
+        Retrieve Hydrograph Precip data for the given parameters.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param physicalElement: Physical Element identifier
+        @param typeSource: The SHEF Type Source code
+        @param obsBeginTime: The lower bound of time window to retrieve observations for
+        @param obsEndTime: The upper bound of the time window to retrieve observations for. (Current System Time)
+        @return: A full HydrographForecast object with SHEF Forecast Time Series data
+        '''
+        hydrograph = self._riverForecastManager.getPrecipTimeSeries(lid, physicalElement, typeSource, obsBeginTime, obsEndTime)
+        return JUtil.javaObjToPyVal(hydrograph)
+    
+    def getObservedTimeSeries(self, lid, physicalElement, typeSource, startTime, endTime):
+        '''
+        Retrieve Hydrograph Observed data for the given parameters.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param physicalElement: Physical Element identifier
+        @param typeSource: The SHEF Type Source code
+        @param startTime: The lower bound of time window to retrieve observations for
+        @param endTime: The upper bound of the time window to retrieve observations for. (Current System Time)
+        @return: A full HydrographForecast object with SHEF Forecast Time Series data
+        '''
+        hydrograph = self._riverForecastManager.getObservedTimeSeries(lid, physicalElement, typeSource, startTime, endTime)
+        return JUtil.javaObjToPyVal(hydrograph)
+    
+    def getPhysicalElementValue(self, lid, physicalElement, duration, typeSource, extremum, timeArg, currentTime_ms):
+        '''
+        Retrieves the given physical element value for a river forecast point.
+        
+        @param lid: RiverForecastPoint Identifier
+        @param physicalElement: Physical Element identifier
+        @param duration: Duration of measurement
+        @param typeSource: The SHEF Type Source code
+        @param extremum: e.g. Z, X
+        @param timeArg: The time specification dayOffset|hhmm|interval e.g. 0|1200|1
+        @param currentTime_ms: current time in milliseconds
+        @return: Dictionary containing the retrieved physical element value and associated validtime
+        '''
+        return self._riverForecastManager.getPhysicalElementValue(lid, physicalElement, duration, typeSource, extremum, timeArg, currentTime_ms)

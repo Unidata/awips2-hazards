@@ -30,6 +30,7 @@ import org.eclipse.swt.graphics.RGB;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
+import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataquery.db.QueryResult;
 import com.raytheon.uf.common.geospatial.MapUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -79,6 +80,11 @@ import com.vividsolutions.jts.io.WKBReader;
  * Dec 2011                Bryon.Lawrence  Initial creation.
  * Jul 25, 2016   19537    Chris.Golden    Completely revamped, adding comments
  *                                         and cleaning up throughout.
+ * Jun 07, 2017   34206    Kevin.Bisanz    Add userData on Geometry to uniquely
+ *                                         identify it.
+ * Jun 27, 2017   14789    Robert.Blum     Select by Area now has a configurable
+ *                                         color.
+ * Jun 29, 2017   34206    Kevin.Bisanz    Revert previous change under this ticket.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -88,11 +94,6 @@ public class SelectByAreaDbMapResource extends
         AbstractDbMapResource<SelectByAreaDbMapResourceData, MapDescriptor> {
 
     // Private Static Constants
-
-    /**
-     * RGB values for white.
-     */
-    private static final RGB RGB_COLOR_WHITE = new RGB(255, 255, 255);
 
     /**
      * Maps database name.
@@ -142,10 +143,11 @@ public class SelectByAreaDbMapResource extends
          * @param target
          *            Graphics target.
          */
-        public LabelNode(String label, Point coordinates, IGraphicsTarget target) {
+        public LabelNode(String label, Point coordinates,
+                IGraphicsTarget target) {
             this.label = label;
-            this.location = getDescriptor().worldToPixel(
-                    new double[] { coordinates.getCoordinate().x,
+            this.location = getDescriptor()
+                    .worldToPixel(new double[] { coordinates.getCoordinate().x,
                             coordinates.getCoordinate().y });
             DrawableString drawableString = new DrawableString(label, null);
             drawableString.font = font;
@@ -500,8 +502,8 @@ public class SelectByAreaDbMapResource extends
             if (requestQueue.size() == QUEUE_LIMIT) {
                 requestQueue.poll();
             }
-            requestQueue.add(new Request(target, query, labelField,
-                    shadingField));
+            requestQueue
+                    .add(new Request(target, query, labelField, shadingField));
 
             /*
              * Stop (if necessary) and start the job.
@@ -529,9 +531,9 @@ public class SelectByAreaDbMapResource extends
                     /*
                      * Submit the query and get the result.
                      */
-                    QueryResult mappedResult = DirectDbQuery
-                            .executeMappedQuery(request.getQuery(),
-                                    MAPS_DATABASE_NAME, QueryLanguage.SQL);
+                    QueryResult mappedResult = DirectDbQuery.executeMappedQuery(
+                            request.getQuery(), MAPS_DATABASE_NAME,
+                            QueryLanguage.SQL);
 
                     /*
                      * Clear the geometries.
@@ -583,17 +585,16 @@ public class SelectByAreaDbMapResource extends
                          * Get the geometry from the result.
                          */
                         Geometry geometry = null;
-                        Object geometryObject = mappedResult.getRowColumnValue(
-                                j, 0);
+                        Object geometryObject = mappedResult
+                                .getRowColumnValue(j, 0);
                         if (geometryObject instanceof byte[]) {
                             geometry = wkbReader.read((byte[]) geometryObject);
                         } else {
-                            statusHandler.handle(
-                                    Priority.ERROR,
+                            statusHandler.handle(Priority.ERROR,
                                     "Expected byte[] but received "
                                             + geometryObject.getClass()
-                                                    .getName() + ": "
-                                            + geometryObject.toString()
+                                                    .getName()
+                                            + ": " + geometryObject.toString()
                                             + "\n  query=\""
                                             + request.getQuery() + "\"");
                         }
@@ -614,8 +615,8 @@ public class SelectByAreaDbMapResource extends
                              */
                             String label;
                             if (labelObject instanceof BigDecimal) {
-                                label = Double.toString(((Number) labelObject)
-                                        .doubleValue());
+                                label = Double.toString(
+                                        ((Number) labelObject).doubleValue());
                             } else {
                                 label = labelObject.toString();
                             }
@@ -636,18 +637,18 @@ public class SelectByAreaDbMapResource extends
                                         @Override
                                         public int compare(Geometry g1,
                                                 Geometry g2) {
-                                            return (int) Math.signum(g2
-                                                    .getEnvelope().getArea()
-                                                    - g1.getEnvelope()
-                                                            .getArea());
+                                            return (int) Math.signum(
+                                                    g2.getEnvelope().getArea()
+                                                            - g1.getEnvelope()
+                                                                    .getArea());
                                         }
                                     });
 
                             for (Geometry polygon : geometries) {
                                 Point point = polygon.getInteriorPoint();
                                 if (point.getCoordinate() != null) {
-                                    LabelNode node = new LabelNode(label,
-                                            point, request.getTarget());
+                                    LabelNode node = new LabelNode(label, point,
+                                            request.getTarget());
                                     newLabels.add(node);
                                 }
                             }
@@ -663,10 +664,10 @@ public class SelectByAreaDbMapResource extends
                             resultGeometries.add(geometry);
 
                             if (request.getShadingField() != null) {
-                                geometry.setUserData(mappedResult
-                                        .getRowColumnValue(j, request
-                                                .getShadingField()
-                                                .toLowerCase()));
+                                geometry.setUserData(
+                                        mappedResult.getRowColumnValue(j,
+                                                request.getShadingField()
+                                                        .toLowerCase()));
                             }
 
                             /*
@@ -682,17 +683,17 @@ public class SelectByAreaDbMapResource extends
                      * needed, the shaded shape as well.
                      */
                     newOutlineShape.allocate(numPoints);
+                    JTSCompiler.JTSGeometryData jtsGeometryData = jtsCompiler
+                            .createGeometryData();
+                    jtsGeometryData.setPointStyle(PointStyle.CROSS);
                     for (Geometry geometry : resultGeometries) {
                         RGB color = null;
                         Object shadedField = geometry.getUserData();
                         if (shadedField != null) {
                             color = request.getColor(shadedField);
+                            jtsGeometryData.setGeometryColor(color);
                         }
                         try {
-                            JTSCompiler.JTSGeometryData jtsGeometryData = jtsCompiler
-                                    .createGeometryData();
-                            jtsGeometryData.setGeometryColor(color);
-                            jtsGeometryData.setPointStyle(PointStyle.CROSS);
                             jtsCompiler.handle(geometry, jtsGeometryData);
                         } catch (VizException e) {
                             statusHandler.handle(Priority.PROBLEM,
@@ -759,6 +760,11 @@ public class SelectByAreaDbMapResource extends
     private List<Geometry> selectedGeometries;
 
     /**
+     * Color to be used for edit operations.
+     */
+    private Color editColor;
+
+    /**
      * Outline shape for the resource.
      */
     private IWireframeShape outlineShape;
@@ -817,13 +823,16 @@ public class SelectByAreaDbMapResource extends
      *            Data about this resource.
      * @param loadProperties
      *            Load properties for the resource.
+     * @param editColor
+     *            Color to be used for edit operations.
      */
     public SelectByAreaDbMapResource(SelectByAreaDbMapResourceData data,
-            LoadProperties loadProperties) {
+            LoadProperties loadProperties, Color editColor) {
         super(data, loadProperties);
         originalGeometries = new CopyOnWriteArrayList<Geometry>();
         selectedGeometries = Collections.emptyList();
         queryJob = new MapQueryJob();
+        this.editColor = editColor;
     }
 
     // Public Methods
@@ -916,13 +925,16 @@ public class SelectByAreaDbMapResource extends
                 .getShadingField();
         IShadedShape groupShape = null;
         if (selectedGeometries.size() > 0) {
-            groupShape = target.createShadedShape(false, getDescriptor()
-                    .getGridGeometry());
+            groupShape = target.createShadedShape(false,
+                    getDescriptor().getGridGeometry());
             JTSCompiler groupCompiler = new JTSCompiler(groupShape, null,
                     getDescriptor());
             JTSCompiler.JTSGeometryData jtsGeometryData = groupCompiler
                     .createGeometryData();
-            jtsGeometryData.setGeometryColor(RGB_COLOR_WHITE);
+            jtsGeometryData
+                    .setGeometryColor(new RGB((int) editColor.getRed() * 255,
+                            (int) editColor.getGreen() * 255,
+                            (int) editColor.getBlue() * 255));
             jtsGeometryData.setPointStyle(PointStyle.CROSS);
             for (Geometry geometry : selectedGeometries) {
                 groupCompiler.handle((Geometry) geometry.clone(),
@@ -943,9 +955,12 @@ public class SelectByAreaDbMapResource extends
          */
         if (((simpLev < lastSimpLev)
                 || (isLabeled && (labelField.equals(lastLabelField) == false))
-                || (isShaded && (shadingField.equals(lastShadingField) == false))
-                || (lastExtent == null) || (lastExtent.getEnvelope().contains(
-                clipToProjExtent(screenExtent).getEnvelope()) == false))
+                || (isShaded
+                        && (shadingField.equals(lastShadingField) == false))
+                || (lastExtent == null)
+                || (lastExtent.getEnvelope()
+                        .contains(clipToProjExtent(screenExtent)
+                                .getEnvelope()) == false))
                 && (paintProps.isZooming() == false)) {
             PixelExtent expandedExtent = getExpandedExtent(screenExtent);
             String query = buildQuery(expandedExtent, simpLev);
@@ -1030,13 +1045,12 @@ public class SelectByAreaDbMapResource extends
              * so no need to do that in this class.
              */
             if (font == null) {
-                font = target
-                        .initializeFont(target.getDefaultFont().getFontName(),
-                                (float) (10 * labelMagnification), null);
+                font = target.initializeFont(
+                        target.getDefaultFont().getFontName(),
+                        (float) (10 * labelMagnification), null);
             }
             double screenToWorldRatio = paintProps.getView().getExtent()
-                    .getWidth()
-                    / paintProps.getCanvasBounds().width;
+                    .getWidth() / paintProps.getCanvasBounds().width;
 
             double offsetX = getCapability(LabelableCapability.class)
                     .getxOffset() * screenToWorldRatio;
@@ -1082,14 +1096,15 @@ public class SelectByAreaDbMapResource extends
                     /*
                      * Get the drawable's extent.
                      */
-                    IExtent strExtent = new PixelExtent(
-                            node.getLocation()[0],
+                    IExtent strExtent = new PixelExtent(node.getLocation()[0],
                             node.getLocation()[0]
-                                    + (node.getBoundingBox().getWidth() * screenToWorldRatio),
+                                    + (node.getBoundingBox().getWidth()
+                                            * screenToWorldRatio),
                             node.getLocation()[1],
                             node.getLocation()[1]
-                                    + ((node.getBoundingBox().getHeight() - node
-                                            .getBoundingBox().getY()) * screenToWorldRatio));
+                                    + ((node.getBoundingBox().getHeight()
+                                            - node.getBoundingBox().getY())
+                                            * screenToWorldRatio));
 
                     /*
                      * If this label has the same text as the previous one,
@@ -1155,9 +1170,9 @@ public class SelectByAreaDbMapResource extends
                 query.append("' AND f_geometry_column LIKE '");
                 query.append(resourceData.getGeomField());
                 query.append("_%';");
-                List<Object[]> results = DirectDbQuery
-                        .executeQuery(query.toString(), MAPS_DATABASE_NAME,
-                                QueryLanguage.SQL);
+                List<Object[]> results = DirectDbQuery.executeQuery(
+                        query.toString(), MAPS_DATABASE_NAME,
+                        QueryLanguage.SQL);
 
                 /*
                  * Get the results and interpret them as floating point numbers.
@@ -1165,9 +1180,9 @@ public class SelectByAreaDbMapResource extends
                 levels = new double[results.size()];
                 int i = 0;
                 for (Object[] obj : results) {
-                    String s = ((String) obj[0]).substring(
-                            resourceData.getGeomField().length() + 1).replace(
-                            '_', '.');
+                    String s = ((String) obj[0])
+                            .substring(resourceData.getGeomField().length() + 1)
+                            .replace('_', '.');
                     levels[i++] = Double.parseDouble(s);
                 }
 
@@ -1205,9 +1220,9 @@ public class SelectByAreaDbMapResource extends
                 query.append("' AND f_table_name='");
                 query.append(table);
                 query.append("' LIMIT 1;");
-                List<Object[]> results = DirectDbQuery
-                        .executeQuery(query.toString(), MAPS_DATABASE_NAME,
-                                QueryLanguage.SQL);
+                List<Object[]> results = DirectDbQuery.executeQuery(
+                        query.toString(), MAPS_DATABASE_NAME,
+                        QueryLanguage.SQL);
 
                 /*
                  * Get the type from the result.
@@ -1256,8 +1271,8 @@ public class SelectByAreaDbMapResource extends
         try {
             Envelope e = getDescriptor().pixelToWorld(extent,
                     descriptor.getCRS());
-            ReferencedEnvelope ref = new ReferencedEnvelope(e, getDescriptor()
-                    .getCRS());
+            ReferencedEnvelope ref = new ReferencedEnvelope(e,
+                    getDescriptor().getCRS());
             envelope = ref.transform(MapUtil.LATLON_PROJECTION, true);
         } catch (Exception e) {
             throw new VizException("Error transforming extent", e);
@@ -1268,9 +1283,8 @@ public class SelectByAreaDbMapResource extends
          * simple level.
          */
         DecimalFormat decimalFormat = new DecimalFormat("0.######");
-        String suffix = "_"
-                + StringUtils.replaceChars(decimalFormat.format(simpLev), '.',
-                        '_');
+        String suffix = "_" + StringUtils
+                .replaceChars(decimalFormat.format(simpLev), '.', '_');
         String geometryField = resourceData.getGeomField() + suffix;
 
         /*

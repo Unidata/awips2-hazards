@@ -11,24 +11,14 @@ class Format(Legacy_Hydro_Formatter.Format):
     def initialize(self):
     #def initialize(self, editableEntries) :
         super(Format, self).initialize()
-        self.initProductPartMethodMapping()
         #super(Format, self).initialize(editableEntries)
         
-    def initProductPartMethodMapping(self):
-        self.productPartMethodMapping = {
-            'wmoHeader': self._wmoHeader,
-            'ugcHeader': self._ugcHeader,
-            'easMessage': self._easMessage,
-            'productHeader': self._productHeader,
-            'narrativeForecastInformation': self._narrativeForecastInformation
-                                }
-        
     #def execute(self, productDict):
-    def execute(self, productDict, editableEntries=None, overrideProductText=None):    
+    def execute(self, productDict, editableEntries=None):    
         self.productDict = productDict
         #self.initialize()
         #self._editableParts = {}
-        self._editableParts = OrderedDict()
+        self._editableParts = []
         #self._editableProductParts = self._getEditableParts(productDict)
         legacyText = productDict.get('text')
         #legacyText = self._createTextProduct()

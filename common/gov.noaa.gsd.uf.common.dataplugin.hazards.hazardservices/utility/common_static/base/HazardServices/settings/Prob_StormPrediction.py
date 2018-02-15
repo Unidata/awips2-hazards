@@ -57,6 +57,7 @@ Prob_StormPrediction = {
         "proposed",
         #"pending",
         "issued",
+        "elapsing",
         "elapsed",
         "ending",
         "ended"

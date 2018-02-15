@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.tools.ToolExecutionIdentifier;
 
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.VisualFeature;
@@ -28,6 +28,7 @@ import gov.noaa.gsd.common.visuals.VisualFeature;
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
  * Aug 28, 2016   19537    Chris.Golden Added toString() method.
  * Sep 27, 2017   38072    Chris.Golden Removed unneeded tool identifier.
+ * May 22, 2018    3782    Chris.Golden Changed to use tool execution identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,9 +40,9 @@ public class ToolVisualFeatureEntityIdentifier
     // Private Variables
 
     /**
-     * Tool type.
+     * Tool execution identifier.
      */
-    private final ToolType toolType;
+    private final ToolExecutionIdentifier toolIdentifier;
 
     /**
      * Visual feature identifier.
@@ -53,26 +54,27 @@ public class ToolVisualFeatureEntityIdentifier
     /**
      * Construct a standard instance.
      * 
-     * @param toolType
-     *            Type of the tool.
+     * @param toolIdentifier
+     *            Tool execution identifier.
      * @param visualFeatureIdentifier
      *            Visual feature identifier.
      */
-    public ToolVisualFeatureEntityIdentifier(ToolType toolType,
+    public ToolVisualFeatureEntityIdentifier(
+            ToolExecutionIdentifier toolIdentifier,
             String visualFeatureIdentifier) {
-        this.toolType = toolType;
+        this.toolIdentifier = toolIdentifier;
         this.visualFeatureIdentifier = visualFeatureIdentifier;
     }
 
     // Public Methods
 
     /**
-     * Get the tool type.
+     * Get the tool execution identifier.
      * 
-     * @return Tool type.
+     * @return Tool execution identifier.
      */
-    public ToolType getToolType() {
-        return toolType;
+    public ToolExecutionIdentifier getToolIdentifier() {
+        return toolIdentifier;
     }
 
     @Override
@@ -86,8 +88,9 @@ public class ToolVisualFeatureEntityIdentifier
             return false;
         }
         ToolVisualFeatureEntityIdentifier otherIdentifier = (ToolVisualFeatureEntityIdentifier) other;
-        return (((toolType == otherIdentifier.toolType) || ((toolType != null)
-                && toolType.equals(otherIdentifier.toolType)))
+        return (((toolIdentifier == otherIdentifier.toolIdentifier)
+                || ((toolIdentifier != null) && toolIdentifier
+                        .equals(otherIdentifier.toolIdentifier)))
                 && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier)
                         || ((visualFeatureIdentifier != null)
                                 && visualFeatureIdentifier.equals(
@@ -96,7 +99,8 @@ public class ToolVisualFeatureEntityIdentifier
 
     @Override
     public int hashCode() {
-        return (int) (((toolType == null ? 0L : (long) toolType.hashCode())
+        return (int) (((toolIdentifier == null ? 0L
+                : (long) toolIdentifier.hashCode())
                 + (visualFeatureIdentifier == null ? 0L
                         : (long) visualFeatureIdentifier.hashCode()))
                 % Integer.MAX_VALUE);
@@ -104,7 +108,7 @@ public class ToolVisualFeatureEntityIdentifier
 
     @Override
     public String toString() {
-        return getToolType() + " (visual feature = \""
+        return getToolIdentifier() + " (visual feature = \""
                 + getVisualFeatureIdentifier() + "\")";
     }
 }

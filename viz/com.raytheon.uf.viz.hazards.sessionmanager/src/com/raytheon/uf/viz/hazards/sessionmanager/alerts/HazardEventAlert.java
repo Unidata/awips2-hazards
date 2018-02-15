@@ -9,8 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
-
 /**
  * Description: The basic {@link IHazardEventAlert}
  * 
@@ -20,8 +18,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEven
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
- * Aug 03, 2015   8836     Chris.Cody  Changes for a configurable Event Id
- * 
+ * Aug 03, 2015   8836     Chris.Cody   Changes for a configurable Event Id
+ * Feb 16, 2017  28708     Chris.Golden Changed to return raw event identifier.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -37,7 +35,7 @@ public class HazardEventAlert extends HazardAlert implements IHazardEventAlert {
 
     @Override
     public String getEventID() {
-        return HazardServicesEventIdUtil.getDisplayId(eventID);
+        return eventID;
     }
 
 }

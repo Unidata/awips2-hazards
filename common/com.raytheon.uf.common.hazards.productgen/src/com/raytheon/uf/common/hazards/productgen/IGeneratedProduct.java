@@ -46,6 +46,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * Apr 16, 2015 7579       Robert.Blum  Changed type on editableEntries field and added
  *                                      addEditableEntry().
  * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
+ * Jun 05, 2017 29996      Robert.Blum  Changes for new previous text design.
  * </pre>
  * 
  * @author jsanchez
@@ -60,12 +61,10 @@ public interface IGeneratedProduct {
     public Map<String, List<Serializable>> getEntries();
 
     public void setEntries(Map<String, List<Serializable>> entries);
-    
-    public void setEditableEntries(List<EditableEntryMap> editableEntries);
 
-    public void addEditableEntry(EditableEntryMap editableEntry);
+    public void setEditableEntries(List<ProductPart> editableEntries);
 
-    public List<EditableEntryMap> getEditableEntries();
+    public List<ProductPart> getEditableEntries();
 
     public Map<String, Serializable> getData();
 

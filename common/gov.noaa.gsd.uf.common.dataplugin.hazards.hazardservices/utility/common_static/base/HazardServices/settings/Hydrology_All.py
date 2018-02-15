@@ -30,7 +30,7 @@ Hydrology_All = {
         "FL.Y",
         "FL.A",
         "FL.W",
-        #"HY.O",
+        "HY.O",
         "HY.S"
     ],
     "hazardCategoriesAndTypes": [
@@ -47,7 +47,7 @@ Hydrology_All = {
         "FL.Y",
         "FL.A",
         "FL.W",
-        #"HY.O",
+        "HY.O",
         "HY.S"
         ]
         }
@@ -74,6 +74,7 @@ Hydrology_All = {
         "issued",
         "elapsed",
         "ending",
+        "elapsing",
     ],
     "columns": {
         "Event ID": {
@@ -198,6 +199,12 @@ Hydrology_All = {
             "sortDir": "none",
             "fieldName": "userName", 
             "type": "string"
+        },
+        "Location Name" : {
+            "type" : "string",
+            "fieldName" : "name",
+            "sortDir" : "ascending",
+            "sortPriority" : 0
         },
     },
     "toolbarTools": [
