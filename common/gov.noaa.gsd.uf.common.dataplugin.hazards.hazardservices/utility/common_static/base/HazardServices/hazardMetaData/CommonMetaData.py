@@ -2092,7 +2092,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
-        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, self.getCaveUser(), modify=False)
+        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, self.probUtils.getCaveUser(self.userName, self.workStation), modify=False)
         mws = self.initializeObject(activate, activateModify) 
         #activate = self.hazardEvent.get('activate', False)      
         #activateModify = self.hazardEvent.get('activateModify', False)      
@@ -2132,20 +2132,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fields": mws
         }        
         return grp
-
-
-    def getCaveUser(self):
-        
-        if self.userName and self.workStation:
-            return self.userName + ':' + self.workStation
-        return None
     
     def initializeObject(self, activate, activateModify):        
         if self.hazardEvent.get('objectID') is None:
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
             self.hazardEvent.set('manuallyCreated', True)
-            self.hazardEvent.set('owner', self.getCaveUser())
+            self.hazardEvent.set('owner', self.probUtils.getCaveUser(self.userName, self.workStation))
         print "CM calling setActivation"
         #print '\n\nCM - manuallyCreated?', self.hazardEvent.get('manuallyCreated'), ' <<<\n\n'
         #self.flush()
@@ -2315,7 +2308,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "numColumns":3,
             "fields": [
                         self.getModifyButton(activateModify),
-                        self.getCancelButton(),
+                        self.getCancelButton(activate),
                         self.getCopyButton(),
                     ]
         }        
@@ -2361,11 +2354,16 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         }        
         return grp
     
-    def getCancelButton(self): 
-        if self.hazardStatus == 'issued' and not self.hazardEvent.get('geometryAutomated'): # old: self.hazardEvent.get('automationLevel') in ['userOwned', 'attributesOnly']:
-            enable = True
-        else:
-            enable = False              
+    def getCancelButton(self, activate): 
+        
+#         if self.hazardStatus == 'issued' and not self.hazardEvent.get('geometryAutomated'): # old: self.hazardEvent.get('automationLevel') in ['userOwned', 'attributesOnly']:
+#             enable = True
+#         else:
+#             enable = False
+
+        # we want the "End Object" button to be in sync with other editing buttons
+        enable = activate
+              
         grp = {
             "fieldType": "Button",
             "fieldName": "cancelButton",
@@ -2964,7 +2962,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
                 "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail",
                 "convectiveStormCharsTorn", "convectiveObjectDir", "convectiveObjectSpdKts",
-                "convectiveObjectDirUnc", "convectiveObjectSpdKtsUnc"]
+                "convectiveObjectDirUnc", "convectiveObjectSpdKtsUnc", "cancelButton"]
 
     # Set of megawidgets that are related to motion automation.
     megawidgetsRelatedToMotionAutomation = set(["resetMotionVector", "convectiveObjectDir",

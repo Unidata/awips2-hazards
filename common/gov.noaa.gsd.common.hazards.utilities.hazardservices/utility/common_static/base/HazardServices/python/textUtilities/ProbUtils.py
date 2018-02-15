@@ -36,8 +36,7 @@ class ProbUtils(object):
     def __init__(self):
         self.setUpDomain()
         self._previousDataLayerTime = None
-        
-    
+
     def handleObjectIDNaming(self,hazardEvent):
         
         hazardObjectID = hazardEvent.get('objectID', hazardEvent.getDisplayEventID())
@@ -59,7 +58,6 @@ class ProbUtils(object):
         
         return hazardEvent.get('objectID')
     
-        
     def processEvents(self, eventSet, writeToFile=False):
         if writeToFile and not os.path.exists(self.OUTPUTDIR):
             try:
@@ -174,7 +172,8 @@ class ProbUtils(object):
         firstIdx = 0
         if event.getStatus().upper() == 'ISSUED': 
             firstIdx =  next(i for i,j in enumerate(forecastTimes) if j[0]/1000 >= int(currentTime.strftime('%s')))
-        probTrend = self.getInterpolatedProbTrendColors(event)
+        #probTrend = self.getInterpolatedProbTrendColors(event)
+        probTrend = self.getGraphProbs(event)
         
         probGridSwath = self.makeGrid(forecastPolys[firstIdx:], probTrend[firstIdx:], self.lons, self.lats, 
                                  self.xMin1, self.xMax1, self.yMax1, self.yMin1)
@@ -190,7 +189,8 @@ class ProbUtils(object):
         if not forecastPolys:
            return
         
-        probTrend = self.getInterpolatedProbTrendColors(event)
+        #probTrend = self.getInterpolatedProbTrendColors(event)
+        probTrend = self.getGraphProbs(event)
         probGridSwath = self.makeGrid(forecastPolys, probTrend, self.lons, self.lats, 
                                  self.xMin1, self.xMax1, self.yMax1, self.yMin1)
         
@@ -228,6 +228,8 @@ class ProbUtils(object):
         #print '\n\n[PU]: colorsList', colorsList
         probTrend = [entry.get('y') for entry in colorsList]
         #print '\t[PU]: probTrend', probTrend
+        
+        duration = self.getDurationMinutes(event)
 
         probTrendTimeInterval = int(event.get('convectiveProbabilityTrendIncrement', 5))
         
@@ -242,12 +244,15 @@ class ProbUtils(object):
         # interpreters was causing some strange errors.
         # print '\t[PU]: probTrendTimeIntervals', probTrendTimeIntervals
         
-        oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
-
-        oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
+        #oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
+        #print "PU: OneminuteTimeIntervals--Old:", oneMinuteTimeIntervals
+        oneMinuteTimeIntervalsNew = self.getIntervalMinutes(duration)
+        
+        #oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
+        oneMinuteProbs = np.interp(oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)
 
         if returnOneMinuteTime:
-            return {'oneMinuteProbs':oneMinuteProbs, 'oneMinuteTimeIntervals': oneMinuteTimeIntervals}
+            return {'oneMinuteProbs':oneMinuteProbs, 'oneMinuteTimeIntervals': oneMinuteTimeIntervalsNew}
         else:
             return oneMinuteProbs
 
@@ -442,6 +447,10 @@ class ProbUtils(object):
         event.setEndTime(endTime)
         
     def getDurationSecs(self, event, truncateAtZero=False):
+        
+        # we may not want to truncate the forecastpoly for manual event
+        if truncateAtZero and not (event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated')):
+            return self.getDurationMinutes(event) * 60
         return self.getDurationMinutes(event, truncateAtZero) * 60
 
     def getDurationMinutes(self, event, truncateAtZero=False):
@@ -465,15 +474,17 @@ class ProbUtils(object):
             
         # Check for zero value prior to endTime
         graphVals = event.get("convectiveProbTrendGraph")
+        inc = event.get('convectiveProbabilityTrendIncrement', 5)
         if graphVals is not None:
             # Determine the zero value to set the endTime 
             zeroIndex = None
             for i in range(len(graphVals)):
-                if graphVals[i] < 1:
+                if graphVals[i]['y'] < 1:
                     zeroIndex = i
                     break
             if zeroIndex and zeroIndex != len(graphVals)-1:
-                endTime_minutes = TimeUtils.roundDatetime(startTime_minutes + zeroIndex * self.timeStep()/60)
+                #endTime_minutes = TimeUtils.roundDatetime(startTime_minutes + zeroIndex * self.timeStep()/60)
+                endTime_minutes = TimeUtils.roundDatetime(startTime_minutes+datetime.timedelta(minutes=zeroIndex * inc ))
         return endTime_minutes
     
     def convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
@@ -550,29 +561,43 @@ class ProbUtils(object):
         intervalDict = self.getInterpolatedProbTrendColors(event, returnOneMinuteTime=True)
         oneMinuteProbs = intervalDict.get('oneMinuteProbs')
         oneMinuteTimeIntervals = intervalDict.get('oneMinuteTimeIntervals')
-        ### New list of zeros as a placeholder
-        updatedProbs = zeros = np.zeros(len(oneMinuteTimeIntervals), dtype='i4')
+#         ### New list of zeros as a placeholder
+#         updatedProbs = zeros = np.zeros(len(oneMinuteTimeIntervals), dtype='i4')
+#         
+#         ### Find where the 1-min times > diff
+#         indices = np.where(oneMinuteTimeIntervals>=minsDiff)
+#         ### Get the probs corresponding with remaining time
+#         remainingProbs = oneMinuteProbs[indices]
+#         ### put those remaining probs to FRONT of zeros array
+#         updatedProbs[0:len(remainingProbs)] = remainingProbs
+#         print "YG--updatedProbs---", updatedProbs
+#         ### Sample at increment 
+#         fiveMinuteUpdatedProbs = updatedProbs[::inc].tolist()
+#         #LogUtils.logMessage('Updated', fiveMinuteUpdatedProbs)
+
+#         if len(fiveMinuteUpdatedProbs) == len(graphVals):
+#             for i in range(len(graphVals)):
+#                 graphVals[i]['y'] = fiveMinuteUpdatedProbs[i]
+#         ### Otherwise, using original inc-times, if we have mismatch in length of probs, 
+#         ### inform user and return original
+#         else:
+#             sys.stderr.write('\n\tError updating ProbTrendGraph. Returning default')
+#             self.flush()
         
-        ### Find where the 1-min times > diff
-        indices = np.where(oneMinuteTimeIntervals>=minsDiff)
+        # re-write the copy of aging off probs
+        # New list of zeros as a placeholder
+        fiveMinuteIntervals = np.array([entry.get('x') for entry in graphVals])      
+        fiveMinuteProbs = np.interp(fiveMinuteIntervals, oneMinuteTimeIntervals, oneMinuteProbs)          
+        indices = np.where(fiveMinuteIntervals>=minsDiff)
         ### Get the probs corresponding with remaining time
-        remainingProbs = oneMinuteProbs[indices]
+        remainingProbs = fiveMinuteProbs[indices]
         ### put those remaining probs to FRONT of zeros array
-        updatedProbs[0:len(remainingProbs)] = remainingProbs
-        ### Sample at increment 
-        fiveMinuteUpdatedProbs = updatedProbs[::inc].tolist()
-        #LogUtils.logMessage('Updated', fiveMinuteUpdatedProbs)
-        
+        fiveMinuteProbs[0:len(remainingProbs)] = remainingProbs
+        fiveMinuteProbs[len(remainingProbs):] = 0
         ### update original times with shifted probs, if length of arrays match
-        if len(fiveMinuteUpdatedProbs) == len(graphVals):
-            for i in range(len(graphVals)):
-                graphVals[i]['y'] = fiveMinuteUpdatedProbs[i]
-        ### Otherwise, using original inc-times, if we have mismatch in length of probs, 
-        ### inform user and return original
-        else:
-            sys.stderr.write('\n\tError updating ProbTrendGraph. Returning default')
-            self.flush()
-                        
+        for i in range(len(graphVals)):
+            graphVals[i]['y'] = fiveMinuteProbs[i]
+                
         ### Challenge is to get the graph to show the "rounded up" value, but we 
         ### don't want to muck with the duration, so still uncertain the best way
         newGraphVals = self.getGraphProbsBasedOnDuration(event)
@@ -625,6 +650,42 @@ class ProbUtils(object):
     
     def displayMsTime(self, time_ms):
         return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))
+
+    def getIntervalMinutes(self, duration):
+        
+        tenMinuteIntervals = []
+        fiveMinuteIntervals = []
+        oneMinuteIntervals = []
+        
+        stepForDuration = self.timeStep(duration)/60
+        if stepForDuration == 10:
+            tenMinuteIntervals = range(120, duration+1, 10)
+            fiveMinuteIntervals = range(60, 120, 5)
+            oneMinuteIntervals = range(60)
+        elif stepForDuration == 5:
+            fiveMinuteIntervals = range(60, duration+1, 5)
+            oneMinuteIntervals = range(60)
+        else:
+            oneMinuteIntervals = range(min(60, duration)+1)
+        
+        return np.array(oneMinuteIntervals + fiveMinuteIntervals + tenMinuteIntervals)
+        
+    def reCalcInterpolatedProb(self, event):
+        
+        print "PU---Re-calculating interpolated prob..."
+        duration = self.getDurationMinutes(event)
+        probVals = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
+        probTrend = [entry.get('y') for entry in probVals]
+            
+        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5 )
+            
+        ### Add 1 to duration to get "inclusive" 
+        probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval        
+        oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
+        self.oneMinuteTimeIntervalsNew = self.getIntervalMinutes(duration)
+                        
+        #oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
+        self.oneMinuteProbs = np.interp(self.oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)            
         
     def getInterpolatedProbTrendColor(self, event, interval, numIvals):
         '''
@@ -632,23 +693,30 @@ class ProbUtils(object):
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
         
         '''
-        duration = self.getDurationMinutes(event)
-        probVals = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
-        probTrend = [entry.get('y') for entry in probVals]
+
+        # interpolation is done once when necessary        
+
+#         duration = self.getDurationMinutes(event)
+#         probVals = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
+#         probTrend = [entry.get('y') for entry in probVals]
+#              
+#         probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5 )
+#              
+#         ### Add 1 to duration to get "inclusive" 
+#         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval        
+#         oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
+#                         
+#         oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
         
-        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5 )
-        
-        ### Add 1 to duration to get "inclusive" 
-        probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
-        oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
-        
-        if interval >= len(oneMinuteTimeIntervals):
-            print "ProbUtils Warning: Oops1: interval >= len(oneMinuteTimeIntervals)", interval, len(oneMinuteTimeIntervals)
+#         if interval >= len(oneMinuteTimeIntervals):
+#             print "ProbUtils Warning: Oops1: interval >= len(oneMinuteTimeIntervals)", interval, len(oneMinuteTimeIntervals)
+#             ### Return white dot
+#             return self.getProbTrendColor(-1)
+        if interval >= len(self.oneMinuteTimeIntervalsNew):
+            print "ProbUtils Warning: Oops1: interval >= len(oneMinuteTimeIntervalsNew)", interval, len(self.oneMinuteTimeIntervalsNew)
             ### Return white dot
             return self.getProbTrendColor(-1)
-        
-        oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
-        prob = oneMinuteProbs[interval]
+        prob = self.oneMinuteProbs[interval]
         
         return self.getProbTrendColor(prob)
 
@@ -949,7 +1017,10 @@ class ProbUtils(object):
             totalSecs = timeIntervals[0]
         self.prevDirVal = None
         
-        for i in range(len(timeIntervals)):
+        # looks like there is an extra polygon created behind the last interval
+        # which may not be wanted
+#        for i in range(len(timeIntervals)):
+        for i in range(len(timeIntervals)-1):
             secs = timeIntervals[i]
             origDirVal = dirVal
             
@@ -981,10 +1052,12 @@ class ProbUtils(object):
             intervalShapes.append(intervalShape)
             
             st = self.convertFeatureTime(startTime_ms, secs)
-            if i < len(timeIntervals)-1:
-                endSecs = timeIntervals[i+1] - secs
-            else:
-                endSecs = self.timeStep(101)
+#             if i < len(timeIntervals)-1:
+#                 endSecs = timeIntervals[i+1] - secs
+#             else:
+#                 endSecs = self.timeStep()
+            endSecs = timeIntervals[i+1] - secs
+            
             et = self.convertFeatureTime(startTime_ms, secs+endSecs)
             intervalTimes.append((st, et))                    
                     
@@ -993,7 +1066,9 @@ class ProbUtils(object):
             event.addHazardAttribute('forecastTimes',intervalTimes) 
         else:
             event.addHazardAttribute('upstreamPolys',intervalShapes)       
-            event.addHazardAttribute('upstreamTimes',intervalTimes)     
+            event.addHazardAttribute('upstreamTimes',intervalTimes)   
+            
+        print "PU---CreateIntervalPoly--intervalTimes --", intervalTimes  
 
     def getIntervalShape(self, secs, totalSecs, shape, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
                          timeDirection, presetMethod):
@@ -1163,16 +1238,19 @@ class ProbUtils(object):
         currentOwner = event.get("owner", None)
         
         #if caveUser and caveUser != currentOwner:
-        if caveUser and currentOwner and (caveUser.lower() != currentOwner.lower()):
-            print "Cave user is not the event owner, cannot modify event", caveUser, currentOwner
-            activate = False
-            activateModify = False
-            print "PU Setting activate, activateModify", activate, activateModify
-            self.flush()            
-            if modify:
-                event.set('activate', activate)
-                event.set('activateModify', activateModify)            
-            return activate, activateModify
+        if caveUser and currentOwner:
+            lowerUser = caveUser.lower()
+            lowerOwner = currentOwner.lower()
+            if lowerUser.find(lowerOwner) < 0 and lowerOwner.find(lowerUser)< 0:
+                print "Cave user is not the event owner, cannot modify event", caveUser, currentOwner
+                activate = False
+                activateModify = False
+                print "PU Setting activate, activateModify", activate, activateModify
+                self.flush()            
+                if modify:
+                    event.set('activate', activate)
+                    event.set('activateModify', activateModify)            
+                return activate, activateModify
         
         #automationLevel = event.get('automationLevel')
         status = event.getStatus()
@@ -1224,9 +1302,9 @@ class ProbUtils(object):
         # Time step for forecast polygons and track points
         # input index is the index of minutes
         # return the total of seconds...
-        if (index <= 60):
+        if (index < 60):
             return 60
-        elif (index <= 120):
+        elif (index < 120):
             return 5*60
         else:
             return 10*60
@@ -1282,4 +1360,15 @@ class ProbUtils(object):
         self.initial_lrLat = domainDict.get(cu.domainLRLatKey)
         self.lowThreshold = domainDict.get(cu.lowThreshKey)
         sys.stdout.flush()
+        
+    def getCaveUser(self, userName, workStation):
+        # To turn off Ownership, return None
+        return None
+        # To turn on Ownership, do the following:
+#         if userName and workStation:
+#             if "ewp" in workStation and len(workStation.split('.')) == 1:
+#                 workStation += ".hwt.nssl"
+#             return userName + ':' + workStation
+#         return None
+
 

@@ -53,7 +53,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def getOwners(self, ownerToExclude = None):
        
-        owners = ["Greg.Stumpf", "Kevin.Manross", "Yujun.Guo", "awips",]
+        owners = ["awips", "Greg.Stumpf", "Kevin.Manross", "Yujun.Guo",]
         
         if ownerToExclude:
             newOwners = []
@@ -67,9 +67,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
     def getWorkstations(self):
        
-        workstations = ["Snow", "Max", "Zoidberg", "Farnsworth"]
+        workstations = ["Snow", "Max", "Zoidberg", "Farnsworth",]
+        ewpWorkStations = ["ewp"+str(i+1)+".hwt.nssl" for i in range(14)]
         
-        return workstations
+        return ewpWorkStations + workstations
 
     def isEqualOwner(self, owner1, owner2):
         #
@@ -123,7 +124,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     if not self.isEqualOwner(caveUser, newOwner):
                         # put up dialog for caveUser:
                         if forceTakenFlag:
-                            str = newOwner + " has taken over the ownership of event " + event.getEventID()+"!"                        
+                            str = newOwner + " has taken the ownership of event " + event.getEventID()+"!"                        
                         else:
                             str = "Do you want "+ newOwner + " to take over event " + event.getEventID()+"?"
                     else:
@@ -131,7 +132,11 @@ class Recommender(RecommenderTemplate.Recommender):
                         continue
                 else:
                     if self.isEqualOwner(caveUser, newOwner):
-                        str = "Do you want to take over event " + event.getEventID()+"?"
+                        # put up dialog for caveUser:
+                        if forceTakenFlag:
+                            str = "You are being forced to take ownership of event " + event.getEventID()+"!"                        
+                        else:                        
+                            str = "Do you want to take over event " + event.getEventID()+"?"
                     else:
                         # caveUser is not the newOwner either
                         continue
@@ -256,13 +261,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 if ownerChangeRequest:
                     if dialogInputMap.get("__dismissChoice__") == "accept":  
                         event.set('owner', ownerChangeRequest)
-                        event.set('ownerChangeRequest', None)
-                        resultEventSet.add(event)
-                        resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)   
-                    elif dialogInputMap.get("__dismissChoice__") == "ok":
-                        event.set("ownerChangeRequest", None)
-                        resultEventSet.add(event)
-                        resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True) 
+                    # following code is executed for all choices: "accept", "decline", and "ok"
+                    event.set('ownerChangeRequest', None)
+                    resultEventSet.add(event)
+                    resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)   
         else: # trigger is None
             if not self.selectedEvent or self.totalSelectedEvents > 1:
                 return resultEventSet

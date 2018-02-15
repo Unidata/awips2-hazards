@@ -208,10 +208,7 @@ class Recommender(RecommenderTemplate.Recommender):
         userName = eventSetAttrs.get('userName')
         workStation = eventSetAttrs.get('workStation') 
         # for automated event, username / workstation may not be present
-        if userName and workStation:  
-            self.caveUser = userName + ":" + workStation
-        else:
-            self.caveUser = None
+        self.caveUser = self.probUtils.getCaveUser(userName, workStation)
         print "caveUser is ", self.caveUser
         
         # IF there are any editable objects, we do not want to set the selected time ahead for
@@ -262,7 +259,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
                 print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
-                print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
                 self.flush()
                 
                 # We shouldn't need to regenerate visual features each
@@ -275,7 +271,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 # not be uncommented; instead, we need to figure out
                 # why visual features are not being generated properly
                 # so as to work whether selected or not.
+
                 # self.setVisualFeatures(event)
+
                 resultEventSet.add(event)
                 continue
             
@@ -445,6 +443,8 @@ class Recommender(RecommenderTemplate.Recommender):
             self.probUtils.setActivation(event)
             self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
             self.advanceForecastPolys(event, eventSetAttrs)         
+            graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+            event.set('convectiveProbTrendGraph', graphProbs)
             self.setVisualFeatures(event)
             resultEventSet.add(event)
             return False
@@ -851,6 +851,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #                     index = i-1
 #                 else:
 #                     index = 0
+
                 break
                 
         # Reset geometry to new interior start time shape
@@ -919,8 +920,8 @@ class Recommender(RecommenderTemplate.Recommender):
                    #and self.latestDataLayerTime > self.eventSt_ms:
                     i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
                 else:
-                    i += timeStep
                     timeStep = self.probUtils.timeStep(i/60)
+                    i += timeStep
         print "SR getIntervalPolys", timeDirection, timeIntervals
         self.flush()
         if timeIntervals:
@@ -1058,6 +1059,7 @@ class Recommender(RecommenderTemplate.Recommender):
             return
         
         features = []
+        
         startTime_ms = self.dataLayerTimes[0]
         featuresDisplay = self.featuresDisplay()
         
@@ -1098,11 +1100,14 @@ class Recommender(RecommenderTemplate.Recommender):
         geometry = event.getGeometry()
                 
         features = []
+        # calculate the trend for forecast visual features
+        self.probUtils.reCalcInterpolatedProb(event)        
+        
         # Forecast Polygons, Track Points, Relocated Forecast 
         numIntervals = len(forecastPolys)
         
         # Prob Label
-        probTrendValues = self.probUtils.getInterpolatedProbTrendColors(event)
+        probTrendValues = self.probUtils.getInterpolatedProbTrendColors(event)       
         self.label = str(event.get('objectID')) + " " + event.getHazardType()
         
         # Border thickness
@@ -1226,6 +1231,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   (polySt_ms, polyEt_ms): AdvancedGeometry.createShapelyWrapper(centroid, 0)
                    }
             }
+
 #            if featuresDisplay.get('dashedPolyCentroid') and self.selectedHazard:
             if featuresDisplay.get('dashedPolyCentroid'):
                 features.append(centroidFeature)
@@ -1604,7 +1610,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def printFeatures(self, event, label, features):
         print label, event.getEventID(), " = ", str(len(features)), ' ----'
         self.flush()
-        # for feature in features:
+        #for feature in features:
         #    print feature
 
     def printEventSet(self, label, eventSet, eventLevel=1):            
