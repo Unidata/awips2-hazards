@@ -66,8 +66,8 @@ class MetaData(object):
     def initialize(self, hazardEvent, metaDict):
         self.hazardEvent = hazardEvent
         self.metaDict = metaDict
-        self.userName = metaDict.get('userName')
-        self.workStation = metaDict.get('workStation')
+        userName = metaDict.get('userName')
+        workStation = metaDict.get('workStation')
                 
         if self.hazardEvent:
             self.hazardStatus = self.hazardEvent.getStatus().lower()
@@ -87,6 +87,9 @@ class MetaData(object):
             self.RECOMMENDER = ""
         else:
             self.RECOMMENDER = "SwathRecommender"
+            
+        self.caveUser = self.probUtils.getCaveUser(userName, workStation)
+        print "CM---caveUser--", self.caveUser
 
     # This validate method is an interface to allow subclasses (MetaData_*.py)
     # to define what it means for the meta-data to be valid, allowing for 
@@ -2092,7 +2095,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
-        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, self.probUtils.getCaveUser(self.userName, self.workStation), modify=False)
+        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, self.caveUser, modify=False)
         mws = self.initializeObject(activate, activateModify) 
         #activate = self.hazardEvent.get('activate', False)      
         #activateModify = self.hazardEvent.get('activateModify', False)      
@@ -2138,7 +2141,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
             self.hazardEvent.set('manuallyCreated', True)
-            self.hazardEvent.set('owner', self.probUtils.getCaveUser(self.userName, self.workStation))
+            self.hazardEvent.set('owner', self.caveUser)
         print "CM calling setActivation"
         #print '\n\nCM - manuallyCreated?', self.hazardEvent.get('manuallyCreated'), ' <<<\n\n'
         #self.flush()
@@ -2167,6 +2170,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "fieldName": "manuallyCreatedStatus",
              "values": self.hazardEvent.get('manuallyCreated', True)
              },
+
+            {
+            "fieldType": "HiddenField",
+            "fieldName": "owner",
+            "doesNotAffectModifyFlag": True,
+            "values": self.hazardEvent.get("owner", None)
+            },  
  
             {
             "fieldType": "HiddenField",
@@ -2174,7 +2184,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "modifyRecommender": 'OwnershipTool',
             "doesNotAffectModifyFlag": True,
             "values": self.hazardEvent.get("ownerChangeRequest", None)
-            }  
+            },  
 
         ]        
         return mwList
@@ -2854,6 +2864,31 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     def convectiveFilter(myIterable, prefix):
         return [tf for tf in myIterable if tf.startswith(prefix)]
 
+    def getCaveUser():
+        import socket
+        import getpass
+        
+        return  getpass.getuser()+":"+socket.gethostname()
+    
+    def isEqualOwner(owner1, owner2):
+        #
+        # assume the owner is composed of username:workstation
+        # sometimes the workstation maybe different for the same machine
+        # e.g snow, or snow.fnsl.gov
+        # this case we will say the workstation is the same
+        #
+        print "Owner1---Owner2---", owner1, owner2
+        if not owner1 or not owner2:
+            return True
+        ownerparts1 = owner1.lower().split(':')
+        ownerparts2 = owner2.lower().split(':')
+        if len(ownerparts1) < 2 or len(ownerparts2) < 2:
+            return False
+        return (ownerparts1[0].find(ownerparts2[0]) >= 0 or \
+                ownerparts2[0].find(ownerparts1[0]) >= 0) and \
+                (ownerparts1[1].find(ownerparts2[1]) >= 0 or \
+                 ownerparts2[1].find(ownerparts1[1]) >= 0)    
+
     def updateProbtrend(convectiveProbTrendGraphVals, interp):
         '''
         Logic taken from NSSL Prototype PHI tool http://www.nssl.noaa.gov/projects/facets/phi/prob_chart.js
@@ -2950,7 +2985,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     
 
     print "\n*****************\nCM applyConvective called"
-    print 'CM applyConvective triggerIdentifiers', triggerIdentifiers
+    print 'CM applyConvective triggerIdentifiers ', triggerIdentifiers
 
     returnDict = {}
 
@@ -3019,11 +3054,13 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     # the Modify button should be editable as well. If the Modify button
     # was clicked, these should be set to true and false, respectively.
     editable = False
+    isOwner = isEqualOwner(mutableProperties['owner'].get("values", None), getCaveUser())
+    print "CM-- isOwner--", isOwner
     if "activate" in mutableProperties:
-        editable = mutableProperties["activate"].get("values", False)
+        editable = mutableProperties["activate"].get("values", False) if isOwner else False
     editableModifyButton = True
     if "activateModify" in mutableProperties:
-        editableModifyButton = mutableProperties["activateModify"].get("values", True)
+        editableModifyButton = mutableProperties["activateModify"].get("values", True) if isOwner else False
     if modifyButtonChosen: 
         editable = True
         editableModifyButton = False

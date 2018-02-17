@@ -273,6 +273,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 # so as to work whether selected or not.
 
                 # self.setVisualFeatures(event)
+                self.updateVisualFeatures(event)
 
                 resultEventSet.add(event)
                 continue
@@ -1087,6 +1088,105 @@ class Recommender(RecommenderTemplate.Recommender):
             
         if self.printVisualFeatures:
              self.printFeatures(event, "Visual Features", features)
+             
+    def updateVisualFeatures(self, event):
+        print self.logMessage("Updating Visual Features")
+        self.flush()
+
+        forecastPolys = event.get('forecastPolys')
+        if not forecastPolys:
+            return
+        
+        features = event.getVisualFeatures()
+        
+        newfeatures = []
+        for feature in features:
+            featureIdentifier = feature.get('identifier')
+            if featureIdentifier.startswith("swathRec_relocated_"):
+                continue
+            newfeatures.append(feature)
+        
+        startTime_ms = self.dataLayerTimes[0]
+        featuresDisplay = self.featuresDisplay()
+        
+        # Forecast Features -- polygons, track points, relocated dashed, last motionVector
+        newfeatures += self.updateRelocatedVisualFeatures(event, startTime_ms)
+
+        if newfeatures:
+            event.setVisualFeatures(VisualFeatures(newfeatures))
+            
+        if self.printVisualFeatures:
+             self.printFeatures(event, "Visual Features", newfeatures)             
+
+    def updateRelocatedVisualFeatures(self, event, startTime_ms):
+        print "SR -- entering updateRelocatedVisualFeatures --YG"
+        self.flush()
+        forecastPolys = event.get('forecastPolys')
+        if not forecastPolys:
+            return
+        forecastTimes = event.get('forecastTimes')
+        featuresDisplay = self.featuresDisplay()
+        
+        geometry = event.getGeometry()
+                
+        features = []
+                
+        # Forecast Polygons, Track Points, Relocated Forecast 
+        numIntervals = len(forecastPolys)
+      
+        # Border thickness
+        if self.selectedHazard:
+            borderThickness = 'eventType'
+        else:
+            borderThickness = 4
+
+        print "SR Forecast Visual Features  eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
+        #print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'], event.get('automationLevel')
+        self.flush()
+           
+        for i in range(numIntervals):
+            poly = forecastPolys[i]
+            polySt_ms, polyEt_ms = forecastTimes[i]
+           
+            centroid = poly.asShapely().centroid           
+            # Dashed relocated shape and centroid show up if editable 
+            dragCapability = 'none'
+            editable = False                
+            relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
+                                                                   createRelocatedShape(geometry, centroid))    
+            if polySt_ms == self.eventSt_ms:
+                print "SR ======================= editableHazard ", self.editableHazard
+                if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                    dragCapability = 'all'
+                    editable = True 
+                    print "SR relocatedShape, editable -YG ", self.eventSt_ms
+                    self.flush()
+              
+            relocatedFeature = {
+              "identifier": "swathRec_relocated_" + str(polySt_ms),
+              "visibilityConstraints": "selected",
+              "borderColor": "eventType",
+              "borderThickness": "eventType",
+              "borderStyle": "dashed",
+              "bufferColor": self.BUFFER_COLOR,
+              "bufferThickness": self.BUFFER_THICKNESS,
+              "textSize": "eventType",
+              "dragCapability": dragCapability,
+              "scaleable": editable,
+              "rotatable": editable,
+              "editableUsingGeometryOps": editable,
+              "useForCentering": True,
+              "geometry": {
+                  (polySt_ms, polyEt_ms): relocatedShape
+                   }
+            }
+            #print "SR Test I 34 -- dashed polys", featuresDisplay.get('dashedPolys'),  self.selectedHazard,  event.get('automationLevel') in ['userOwned', 'attributesOnly']
+            #self.flush()
+#            if featuresDisplay.get('dashedPolys') and self.selectedHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+            if featuresDisplay.get('dashedPolys') and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                features.append(relocatedFeature)
+            
+        return features
         
     def forecastVisualFeatures(self, event, startTime_ms):
         print "SR -- entering forecastVisualFeatures --YG"

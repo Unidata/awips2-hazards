@@ -12,7 +12,7 @@ import numpy
 import GeometryFactory
 import EventFactory
 import EventSetFactory
-
+from ProbUtils import ProbUtils
 import UFStatusHandler
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
@@ -35,7 +35,8 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'OwnershipTool', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-
+        
+        self.probUtils = ProbUtils()
         
     def defineScriptMetadata(self):
         """
@@ -72,19 +73,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return ewpWorkStations + workstations
 
-    def isEqualOwner(self, owner1, owner2):
-        #
-        # assume the owner is composed of username:workstation
-        #
-        ownerparts1 = owner1.lower().split(':')
-        ownerparts2 = owner2.lower().split(':')
-        if len(ownerparts1) < 2 or len(ownerparts2) < 2:
-            return False
-        return (ownerparts1[0].find(ownerparts2[0]) >= 0 or \
-                ownerparts2[0].find(ownerparts1[0]) >= 0) and \
-                (ownerparts1[1].find(ownerparts2[1]) >= 0 or \
-                 ownerparts2[1].find(ownerparts1[1]) >= 0)
-
     def defineDialog(self, eventSet):
         """
         @param eventSet: A set of event objects that the user can use to help determine 
@@ -120,8 +108,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 else:
                     currentOwner = event.get('owner', caveUser) # in case currentOwner is not set..
                 
-                if self.isEqualOwner(caveUser, currentOwner):
-                    if not self.isEqualOwner(caveUser, newOwner):
+                if self.probUtils.isEqualOwner(caveUser, currentOwner):
+                    if not self.probUtils.isEqualOwner(caveUser, newOwner):
                         # put up dialog for caveUser:
                         if forceTakenFlag:
                             str = newOwner + " has taken the ownership of event " + event.getEventID()+"!"                        
@@ -131,7 +119,7 @@ class Recommender(RecommenderTemplate.Recommender):
                         # caveUser is already the newOwner, do nothing
                         continue
                 else:
-                    if self.isEqualOwner(caveUser, newOwner):
+                    if self.probUtils.isEqualOwner(caveUser, newOwner):
                         # put up dialog for caveUser:
                         if forceTakenFlag:
                             str = "You are being forced to take ownership of event " + event.getEventID()+"!"                        
@@ -248,6 +236,12 @@ class Recommender(RecommenderTemplate.Recommender):
         trigger = eventSetAttrs.get('trigger')
         print "OT: Execute Event trigger ", trigger
         print "dialogInputMap ", dialogInputMap
+
+        userName = eventSetAttrs.get('userName')
+        workStation = eventSetAttrs.get('workStation') 
+        # for automated event, username / workstation may not be present
+        self.caveUser = self.probUtils.getCaveUser(userName, workStation)
+        print "caveUser is ", self.caveUser
         
         resultEventSet = EventSetFactory.createEventSet(None)
         if not dialogInputMap:
@@ -261,6 +255,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if ownerChangeRequest:
                     if dialogInputMap.get("__dismissChoice__") == "accept":  
                         event.set('owner', ownerChangeRequest)
+                        self.probUtils.setActivation(event, self.caveUser)
                     # following code is executed for all choices: "accept", "decline", and "ok"
                     event.set('ownerChangeRequest', None)
                     resultEventSet.add(event)
@@ -283,6 +278,7 @@ class Recommender(RecommenderTemplate.Recommender):
             
             if forceOwner:
                 self.selectedEvent.set('owner',newOwner)
+                self.probUtils.setActivation(self.selectedEvent, self.caveUser)                
                 self.selectedEvent.set("ownerChangeRequest",currentOwner+"=>"+newOwner)
             else:
                 self.selectedEvent.set('ownerChangeRequest', newOwner)

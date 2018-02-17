@@ -265,6 +265,8 @@ class ProbUtils(object):
         
         #oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
         oneMinuteProbs = np.interp(oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)
+        
+        print "PU--oneMinuteProbs in Colors---", oneMinuteProbs
 
         if returnOneMinuteTime:
             return {'oneMinuteProbs':oneMinuteProbs, 'oneMinuteTimeIntervals': oneMinuteTimeIntervalsNew}
@@ -623,7 +625,7 @@ class ProbUtils(object):
         else:
             graphVals = self.updateGraphValsDuration(graphVals, newGraphVals)
         
-        import pprint
+#        import pprint
 #        print 'remainingProbs'
 #        pprint.pprint(remainingProbs)
 #        print '---'
@@ -701,7 +703,9 @@ class ProbUtils(object):
         self.oneMinuteTimeIntervalsNew = self.getIntervalMinutes(duration)
                         
         #oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
-        self.oneMinuteProbs = np.interp(self.oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)            
+        self.oneMinuteProbs = np.interp(self.oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)
+        
+        print "PU--oneMinuteProbs---", self.oneMinuteProbs            
         
     def getInterpolatedProbTrendColor(self, event, interval, numIvals):
         '''
@@ -1261,11 +1265,12 @@ class ProbUtils(object):
                 print "Cave user is not the event owner, cannot modify event", caveUser, currentOwner
                 activate = False
                 activateModify = False
-                print "PU Setting activate, activateModify", activate, activateModify
-                self.flush()            
-                if modify:
-                    event.set('activate', activate)
-                    event.set('activateModify', activateModify)            
+                print "PU-- DO We NEED even to get here???"
+#                 print "PU Setting activate, activateModify", activate, activateModify
+#                 self.flush()            
+#                 if modify:
+#                     event.set('activate', activate)
+#                     event.set('activateModify', activateModify)            
                 return activate, activateModify
         
         #automationLevel = event.get('automationLevel')
@@ -1393,14 +1398,33 @@ class ProbUtils(object):
         
         sys.stdout.flush()
 
+    # function to compare two owner strings
+    # 
+    def isEqualOwner(self, owner1, owner2):
+        #
+        # assume the owner is composed of username:workstation
+        # sometimes the workstation maybe different for the same machine
+        # e.g snow, or snow.fnsl.gov
+        # this case we will say the workstation is the same
+        #
+        if not owner1 or not owner2:
+            return True
+        ownerparts1 = owner1.lower().split(':')
+        ownerparts2 = owner2.lower().split(':')
+        if len(ownerparts1) < 2 or len(ownerparts2) < 2:
+            return False
+        return (ownerparts1[0].find(ownerparts2[0]) >= 0 or \
+                ownerparts2[0].find(ownerparts1[0]) >= 0) and \
+                (ownerparts1[1].find(ownerparts2[1]) >= 0 or \
+                 ownerparts2[1].find(ownerparts1[1]) >= 0)
 
     def getCaveUser(self, userName, workStation):
         # To turn off Ownership, return None
-        return None
-        # To turn on Ownership, do the following:
-#         if userName and workStation:
-#             if "ewp" in workStation and len(workStation.split('.')) == 1:
-#                 workStation += ".hwt.nssl"
-#             return userName + ':' + workStation
 #         return None
+        # To turn on Ownership, do the following:
+        if userName and workStation:
+            if "ewp" in workStation and len(workStation.split('.')) == 1:
+                workStation += ".hwt.nssl"
+            return userName + ':' + workStation
+        return None
 
