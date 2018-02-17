@@ -3041,13 +3041,15 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             returnDict['geometryAutomated'] = {'values' : False}
             motionAutomated = False
             probTrendAutomated = False
-        else:
-            if len(triggerSet.intersection(megawidgetsRelatedToMotionAutomation)) > 0:
-                returnDict['motionAutomated'] = {'values' : False}
-                motionAutomated = False
-            if len(triggerSet.intersection(megawidgetsRelatedToProbTrendAutomation)) > 0:
-                returnDict['probTrendAutomated'] = {'values' : False}
-                probTrendAutomated = False
+        #=======================================================================
+        # else:
+        #     if len(triggerSet.intersection(megawidgetsRelatedToMotionAutomation)) > 0:
+        #         returnDict['motionAutomated'] = {'values' : False}
+        #         motionAutomated = False
+        #     if len(triggerSet.intersection(megawidgetsRelatedToProbTrendAutomation)) > 0:
+        #         returnDict['probTrendAutomated'] = {'values' : False}
+        #         probTrendAutomated = False
+        #=======================================================================
 
     # Determine whether the editable flag is true or not (controlling
     # the editability of all the megawidgets listed above), and whether

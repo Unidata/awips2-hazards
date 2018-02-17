@@ -775,11 +775,26 @@ class ProbUtils(object):
             return AdvancedGeometry.createShapelyWrapper(newPoly, rotation)
         return initialShape
 
+
+    def updateMotionVector(self, event, motionVectorTuples):
+        newMotion = self.computeMotionVector(motionVectorTuples) 
+        updateDict = {}
+        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+            value = int(newMotion.get(key))
+            # Save new motion vector to Application Dictionary
+            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+                updateDict[key] = value           
+            event.set(key, value)
+        print "PU updateApplicationDict adjust", updateDict
+        self.flush()
+        self.updateApplicationDict(updateDict)
+
+
+
     ###############################
     # Compute Motion Vector       #
     ###############################
-
-    def computeMotionVector(self, polygonTuples, currentTime):
+    def computeMotionVector(self, polygonTuples):
         '''
         @param polygonTuples List of tuples expected as:
         [(poly1, startTime1), (poly2, startTime2),,,,(polyN, startTimeN)]
@@ -811,7 +826,7 @@ class ProbUtils(object):
             
         spdStats = self.weightedAvgAndStdDevSPD(spdList)
         meanSpd = self.convertMsecToKts(spdStats.get('weightedAverage'))
-        print 'PU[1] - spdStats.get(\'weightedAverage\'), meanSpd', spdStats.get('weightedAverage'), meanSpd
+        #print 'PU[1] - spdStats.get(\'weightedAverage\'), meanSpd', spdStats.get('weightedAverage'), meanSpd
         stdSpd = self.convertMsecToKts(spdStats.get('stdDev'))
         dirStats = self.weightedAvgAndStdDevDIR(dirList)
         meanDir = dirStats.get('weightedAverage')
@@ -861,7 +876,7 @@ class ProbUtils(object):
         spdList = np.array(xList)
         weights = range(1,len(spdList)+1)
         weightedAvg = np.average(spdList, weights=weights)
-        print 'PU[0] - spdList, weights, weightedAvg', spdList, weights, weightedAvg
+        #print 'PU[0] - spdList, weights, weightedAvg', spdList, weights, weightedAvg
         weightedStd = np.sqrt(np.average((spdList-weightedAvg)**2, weights=weights))
         return {'weightedAverage':weightedAvg, 'stdDev': weightedStd}
     
@@ -1376,10 +1391,6 @@ class ProbUtils(object):
         else:
             sts.stderr.write("!!!! PU - GenericRegistryObjectDataAccess.queryObject returned multiple dictionaries. Reverting to default values")
             objectDicts = {}
-        print '\n\n################ PU - QUERY  #############' 
-        print objectDicts
-        print type(objectDicts)
-        sys.stdout.flush()
 
         self.OUTPUTDIR = objectDicts.get(OUTPUTDIRKEY, DEFAULTPHIOUTPUTDIR)
         self.buff = objectDicts.get(DOMAINBUFFERKEY, DEFAULTDOMAINBUFFER)

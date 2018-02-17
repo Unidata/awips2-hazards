@@ -460,8 +460,12 @@ class Recommender(RecommenderTemplate.Recommender):
         self.storeNextGeometry(event)
         
         if event.get('motionAutomated', False):
-            event.set('convectiveObjectDir', recommended.get('wdir'))
-            event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+            pastProbSeverePolys = event.get('probSevereGeomList', [])
+            if len(pastProbSeverePolys) > 1:
+                self.probUtils.updateMotionVector(event, pastProbSeverePolys)
+            else:
+                event.set('convectiveObjectDir', recommended.get('wdir'))
+                event.set('convectiveObjectSpdKts', recommended.get('wspd'))
             
         if event.get('probTrendAutomated', False):
             ### BUG ALERT: do we want DataLayerTime or ProbSevereTime?
@@ -506,19 +510,6 @@ class Recommender(RecommenderTemplate.Recommender):
             #print '\n!!!!!!!  ID[1]: ', ID, '>>>>', currentEvent.getStatus()
             if currentEvent.getStatus() == 'ELAPSED':
                 continue
-            
-            ### DISCOVERED ON 20170218:
-            ### If UI machine selects a hazard event AND hits Modify button,  
-            ### then PROCESSOR machine receives activateModify=0.
-            ### IF UI machine deselects hazard event, activateModify=True.
-            ### I understand that the flags don't necessarily make sense,
-            ### but it appears to be consistent and something we can use to
-            ### tell the Convective Recommedner to bypass THIS event
-            ### if THIS event activateModify=0
-#            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
-#            if currentEvent.get('activateModify') == 0:
-#                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
-#                continue
             
             recommendedAttrs = vals['recommendedAttrs']
             
@@ -567,6 +558,7 @@ class Recommender(RecommenderTemplate.Recommender):
             ### should avoid 'userOwned' since they are filtered out with previous if statement
 
             rawRecommendedID = re.findall('\d+', str(currentEventObjectID))[0]
+
             
             #if currentEvent.get('automationLevel') == 'userOwned':
             if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated'):

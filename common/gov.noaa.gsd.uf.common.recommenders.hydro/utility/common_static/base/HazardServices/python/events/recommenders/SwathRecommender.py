@@ -322,9 +322,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 changes = True
                 
             elif trigger == 'autoUpdate':
-                pastProbSeverePolys = event.get('probSevereGeomList', [])
-                if len(pastProbSeverePolys) > 1:
-                    self.updateMotionVector(event, pastProbSeverePolys)
+                #===============================================================
+                # pastProbSeverePolys = event.get('probSevereGeomList', [])
+                # if len(pastProbSeverePolys) > 1:
+                #     self.updateMotionVector(event, pastProbSeverePolys)
+                #===============================================================
                 changes = True
             
             if not changes:
@@ -369,19 +371,20 @@ class Recommender(RecommenderTemplate.Recommender):
         return resultEventSet      
     
     
-    def updateMotionVector(self, event, motionVectorTuples):
-        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms) 
-        updateDict = {}
-        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
-            value = int(newMotion.get(key))
-            # Save new motion vector to Application Dictionary
-            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
-                updateDict[key] = value           
-            event.set(key, value)
-        print "SR updateApplicationDict adjust", updateDict
-        self.flush()
-        self.probUtils.updateApplicationDict(updateDict)
-
+    #===========================================================================
+    # def updateMotionVector(self, event, motionVectorTuples):
+    #     newMotion = self.probUtils.computeMotionVector(motionVectorTuples) 
+    #     updateDict = {}
+    #     for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+    #         value = int(newMotion.get(key))
+    #         # Save new motion vector to Application Dictionary
+    #         if key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+    #             updateDict[key] = value           
+    #         event.set(key, value)
+    #     print "SR updateApplicationDict adjust", updateDict
+    #     self.flush()
+    #     self.probUtils.updateApplicationDict(updateDict)
+    #===========================================================================
     
     
     def setDataLayerTimes(self, eventSetAttrs):
@@ -635,6 +638,19 @@ class Recommender(RecommenderTemplate.Recommender):
     def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
         print '\n---SR: Entering adjustForEventModification...'
         print "SR entering adjustForEventModification -- YG"
+
+        origin = eventSetAttrs.get('origin')
+        attributeSet = set(self.attributeIdentifiers)
+        
+        megawidgetsRelatedToMotionAutomation = set(["convectiveObjectDir",
+                                                "convectiveObjectSpdKts", "convectiveObjectDirUnc",
+                                                "convectiveObjectSpdKtsUnc"])
+
+        # Set of megawidgets that are related to prob trend automation.
+        megawidgetsRelatedToProbTrendAutomation = set(["convectiveProbTrendGraph"])
+
+
+
         print self.attributeIdentifiers
         self.flush()
         
@@ -642,6 +658,15 @@ class Recommender(RecommenderTemplate.Recommender):
 
         if 'selected' in self.attributeIdentifiers:
             return False               
+        
+        if origin == 'user' and len(attributeSet.intersection(megawidgetsRelatedToMotionAutomation)) > 0:
+            event.set('motionAutomated', False)
+            changed = True
+        if origin == 'user' and len(attributeSet.intersection(megawidgetsRelatedToProbTrendAutomation)) > 0:
+            event.set('probTrendAutomated', False)
+            changed = True
+        
+        
         
         if 'status' in self.attributeIdentifiers:
             self.probUtils.setActivation(event, self.caveUser)
@@ -1000,7 +1025,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # print "SR motionVectorTuples", len(motionVectorTuples)
         # self.flush()
         
-        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms) 
+        newMotion = self.probUtils.computeMotionVector(motionVectorTuples) 
         updateDict = {}
         for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
             value = int(newMotion.get(key))
