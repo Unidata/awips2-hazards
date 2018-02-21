@@ -271,6 +271,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      parameter.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
  *                                      events.
+ * Feb 21, 2018 46736      Chris.Golden Changed call to mergeHazardEvents() to use new signature.
  * </pre>
  * 
  * @author bsteffen
@@ -967,7 +968,7 @@ public class SessionProductManager implements ISessionProductManager {
                             .equals(updatedEvent.getEventID())) {
 
                         eventManager.mergeHazardEvents(updatedEvent,
-                                sessionEvent, true, false, true, false,
+                                sessionEvent, true, true, false,
                                 Originator.OTHER);
 
                         /*

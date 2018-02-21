@@ -396,9 +396,8 @@ public class SimpleSessionEventManager implements ISessionEventManager {
     @Override
     public EventPropertyChangeResult mergeHazardEvents(
             IReadableHazardEvent newEvent, IHazardEventView oldEvent,
-            boolean forceMerge, boolean keepVisualFeatures,
-            boolean persistOnStatusChange, boolean useModifiedValue,
-            IOriginator originator) {
+            boolean forceMerge, boolean persistOnStatusChange,
+            boolean useModifiedValue, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 

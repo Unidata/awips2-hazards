@@ -71,6 +71,7 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
  *                                      useForCentering properties to visual
  *                                      features.
+ * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -666,6 +667,10 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
         jsonGenerator.writeStringField(
                 VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS,
                 visualFeature.getVisibilityConstraints().getDescription());
+
+        jsonGenerator.writeBooleanField(
+                VisualFeaturesListJsonConverter.KEY_PERSIST,
+                visualFeature.isPersist());
 
         for (Map.Entry<String, TypeToken<?>> entry : VisualFeaturesListJsonConverter.TYPES_FOR_PROPERTIES
                 .entrySet()) {

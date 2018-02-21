@@ -643,6 +643,13 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      event type changes result in visual features being cleared.
  * Feb 13, 2018   44514    Chris.Golden Removed event-modifying script code, as such scripts are
  *                                      not to be used.
+ * Feb 21, 2018   46736    Chris.Golden Added code to make non-persisting visual features and
+ *                                      session attributes be kept firewalled from the database,
+ *                                      so that they are maintained in the session regardless of
+ *                                      what the database holds. Also changed the behavior of
+ *                                      changeEventProperty() to not lock a hazard event if the
+ *                                      changed property is session-specific. Also simplified
+ *                                      mergeHazardEvents().
  * </pre>
  * 
  * @author bsteffen
@@ -1122,16 +1129,70 @@ public class SessionEventManager implements ISessionEventManager {
         }
 
         /*
-         * If this change originates with the user, get a lock on the event,
+         * If the change generally requires locking, and the event is in the
+         * database, then see if the change actually needs locking. (Changes
+         * that are solely to session attributes or to non-persisting visual
+         * features do not require a lock.) If it does, get a lock on the event,
          * aborting the change attempt and notifying the user if the lock cannot
          * be acquired.
          */
-        if (originator.isNotLockedByOthersRequired() && isEventInDatabase(event)
-                && (sessionManager.getLockManager()
-                        .lockHazardEvent(event.getEventID()) == false)) {
-            showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
-                    originator, event.getEventID());
-            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        if (originator.isNotLockedByOthersRequired()
+                && isEventInDatabase(event)) {
+
+            boolean requiresLock = true;
+            if ((propertyChange == ADD_EVENT_ATTRIBUTE)
+                    || (propertyChange == ADD_EVENT_ATTRIBUTES)
+                    || (propertyChange == SET_EVENT_ATTRIBUTES)
+                    || (propertyChange == REMOVE_EVENT_ATTRIBUTE)) {
+                Set<String> sessionAttributes = new HashSet<>(configManager
+                        .getSessionAttributes(sessionEvent.getHazardType()));
+                Set<String> changedAttributes = (propertyChange == ADD_EVENT_ATTRIBUTE
+                        ? Sets.newHashSet(
+                                ((Pair<String, Serializable>) parameters)
+                                        .getFirst())
+                        : (propertyChange == ADD_EVENT_ATTRIBUTES
+                                ? ((Map<String, Serializable>) parameters)
+                                        .keySet()
+                                : (propertyChange == SET_EVENT_ATTRIBUTES
+                                        ? Sets.union(
+                                                ((Map<String, Serializable>) parameters)
+                                                        .keySet(),
+                                                sessionEvent
+                                                        .getHazardAttributes()
+                                                        .keySet())
+                                        : Sets.newHashSet(
+                                                (String) parameters))));
+                if (Sets.difference(changedAttributes, sessionAttributes)
+                        .isEmpty()) {
+                    requiresLock = false;
+                }
+
+            } else if (propertyChange == REPLACE_EVENT_VISUAL_FEATURE) {
+                VisualFeature newFeature = (VisualFeature) parameters;
+                VisualFeature oldFeature = sessionEvent
+                        .getVisualFeature(newFeature.getIdentifier());
+                if (((newFeature == null) || (newFeature.isPersist() == false))
+                        && ((oldFeature == null)
+                                || (oldFeature.isPersist() == false))) {
+                    requiresLock = false;
+                }
+
+            } else if (propertyChange == SET_EVENT_VISUAL_FEATURES) {
+                VisualFeaturesList oldFeatures = getPersistentVisualFeatures(
+                        sessionEvent.getVisualFeatures());
+                VisualFeaturesList newFeatures = getPersistentVisualFeatures(
+                        (VisualFeaturesList) parameters);
+                if (oldFeatures.equals(newFeatures)) {
+                    requiresLock = false;
+                }
+            }
+
+            if (requiresLock && (sessionManager.getLockManager()
+                    .lockHazardEvent(event.getEventID()) == false)) {
+                showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                        originator, event.getEventID());
+                return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+            }
         }
 
         /*
@@ -1193,6 +1254,28 @@ public class SessionEventManager implements ISessionEventManager {
                     "unknown property change \"" + parameters + "\"");
         }
         return EventPropertyChangeResult.SUCCESS;
+    }
+
+    /**
+     * Get the persistent visual features from the specified list.
+     * 
+     * @param visualFeatures
+     *            List of visual features from which to extract a list of those
+     *            which are persistent.
+     * @return Persistent visual features.
+     */
+    private VisualFeaturesList getPersistentVisualFeatures(
+            VisualFeaturesList visualFeatures) {
+        VisualFeaturesList persistentVisualFeatures = new VisualFeaturesList();
+        if (visualFeatures == null) {
+            return persistentVisualFeatures;
+        }
+        for (VisualFeature visualFeature : visualFeatures) {
+            if (visualFeature.isPersist()) {
+                persistentVisualFeatures.add(visualFeature);
+            }
+        }
+        return persistentVisualFeatures;
     }
 
     /**
@@ -2365,7 +2448,7 @@ public class SessionEventManager implements ISessionEventManager {
         IHazardEvent modifiedHazardEvent = metadata.getModifiedHazardEvent();
         if (modifiedHazardEvent != null) {
             mergeHazardEvents(modifiedHazardEvent, eventView, false, false,
-                    false, false, Originator.OTHER);
+                    false, Originator.OTHER);
         }
 
         /*
@@ -3277,9 +3360,8 @@ public class SessionEventManager implements ISessionEventManager {
     @Override
     public EventPropertyChangeResult mergeHazardEvents(
             IReadableHazardEvent newEvent, IHazardEventView oldEvent,
-            boolean forceMerge, boolean keepVisualFeatures,
-            boolean persistOnStatusChange, boolean useModifiedValue,
-            IOriginator originator) {
+            boolean forceMerge, boolean persistOnStatusChange,
+            boolean useModifiedValue, IOriginator originator) {
 
         ObservedHazardEvent sessionEvent = getSessionEventForView(oldEvent);
         if (sessionEvent == null) {
@@ -3326,25 +3408,43 @@ public class SessionEventManager implements ISessionEventManager {
         sessionEvent.setCreationTime(newEvent.getCreationTime(), originator);
 
         /*
-         * If the keep visual features flag is set, only use the visual features
-         * of the new event if there is at least one, retaining the old event's
-         * features if the new one has none. If the flag is not set, always use
-         * the new event's visual feature list.
+         * If the merge is from the database or the result of a revert, augment
+         * the new version of the event's visual features list to include any
+         * visual features from the old version of the event that are not to be
+         * persisted. (Because this means they are session-specific, and thus
+         * should be retained when a new version of the event arrives.)
          */
-        if ((keepVisualFeatures == false)
-                || ((newEvent.getVisualFeatures() != null)
-                        && (newEvent.getVisualFeatures().isEmpty() == false))) {
-            sessionEvent.setVisualFeatures(newEvent.getVisualFeatures(),
-                    originator);
+        VisualFeaturesList oldVisualFeatures = sessionEvent.getVisualFeatures();
+        VisualFeaturesList newVisualFeatures = newEvent.getVisualFeatures();
+        if (((originator == Originator.DATABASE)
+                || (originator instanceof RevertOriginator))
+                && (oldVisualFeatures != null)) {
+            if (newVisualFeatures == null) {
+                newVisualFeatures = new VisualFeaturesList();
+            } else {
+                newVisualFeatures = new VisualFeaturesList(newVisualFeatures);
+            }
+            for (VisualFeature visualFeature : oldVisualFeatures) {
+                if (visualFeature.isPersist() == false) {
+                    newVisualFeatures.add(visualFeature);
+                }
+            }
         }
+        sessionEvent.setVisualFeatures(
+                ((newVisualFeatures == null) || newVisualFeatures.isEmpty()
+                        ? null : newVisualFeatures),
+                originator);
 
         sessionEvent.setHazardMode(newEvent.getHazardMode(), originator);
 
         /*
          * Get a copy of the old attributes, and the new ones, then transfer any
          * attributes that are to be retained (if they are not already in the
-         * new attributes) from the old to the new. Then set the resulting map
-         * as the old hazard's attributes.
+         * new attributes) from the old to the new. Then, if the origin is the
+         * database, transfer any attributes that are session attributes from
+         * the old to the new -- unlike the ones to be retained, the old
+         * attribute values are always used in place of the new ones. Finally,
+         * set the resulting map as the old hazard's attributes.
          */
         Map<String, Serializable> oldAttr = sessionEvent.getHazardAttributes();
         if (oldAttr == null) {
@@ -3357,6 +3457,15 @@ public class SessionEventManager implements ISessionEventManager {
             if ((newAttr.containsKey(key) == false)
                     && oldAttr.containsKey(key)) {
                 newAttr.put(key, oldAttr.get(key));
+            }
+        }
+        if ((originator == Originator.DATABASE)
+                || (originator instanceof RevertOriginator)) {
+            for (String key : configManager
+                    .getSessionAttributes(sessionEvent.getHazardType())) {
+                if (oldAttr.containsKey(key)) {
+                    newAttr.put(key, oldAttr.get(key));
+                }
             }
         }
         sessionEvent.setHazardAttributes(newAttr, originator);
@@ -3503,7 +3612,7 @@ public class SessionEventManager implements ISessionEventManager {
                 }
             }
 
-            mergeHazardEvents(event, oldEventView, true, true, false, true,
+            mergeHazardEvents(event, oldEventView, true, false, true,
                     Originator.DATABASE);
             if (event.isLatestVersion() == false) {
                 notificationSender.postNotificationAsync(
@@ -6485,7 +6594,7 @@ public class SessionEventManager implements ISessionEventManager {
         if (getHistoricalVersionCountForEvent(identifier) > 0) {
             List<IHazardEventView> list = getEventHistoryById(identifier);
             mergeHazardEvents(list.get(list.size() - 1), event, false, false,
-                    false, true, (originator.isDirectResultOfUserInput()
+                    true, (originator.isDirectResultOfUserInput()
                             ? RevertOriginator.USER : RevertOriginator.OTHER));
             if (sessionManager.getLockManager()
                     .unlockHazardEvent(identifier) == false) {
@@ -6560,6 +6669,20 @@ public class SessionEventManager implements ISessionEventManager {
          * entirely done away with.
          */
         dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+
+        /*
+         * Weed out any visual features that are not to be persisted.
+         */
+        VisualFeaturesList visualFeatures = dbEvent.getVisualFeatures();
+        if (visualFeatures != null) {
+            for (Iterator<VisualFeature> iterator = visualFeatures
+                    .iterator(); iterator.hasNext();) {
+                VisualFeature visualFeature = iterator.next();
+                if (visualFeature.isPersist() == false) {
+                    iterator.remove();
+                }
+            }
+        }
 
         /*
          * If the copy is not intended to be added to the history list, mark it

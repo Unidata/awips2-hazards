@@ -2410,6 +2410,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "showScale": False,
                         "values": False,
                         "modifyRecommender": recommender,
+                        "doesNotAffectModifyFlag": True,
                         },
                         {
                         "fieldType": "Button",
@@ -3023,8 +3024,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     # If one of the properties related to motion automation changed value,
     # uncheck motion automated; and if one of the properties related to
     # prob trend automation changed value, uncheck prob trend automated.
-    # Also, if either the automate all or the automate none button is
-    # clicked, change the values of all the automated checkboxes. 
     motionAutomated = (mutableProperties['motionAutomated'].get("values", False) if 'motionAutomated' in mutableProperties else False)
     probTrendAutomated = (mutableProperties['probTrendAutomated'].get("values", False) if 'probTrendAutomated' in mutableProperties else False)
     if triggerIdentifiers:
@@ -3041,15 +3040,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             returnDict['geometryAutomated'] = {'values' : False}
             motionAutomated = False
             probTrendAutomated = False
-        #=======================================================================
-        # else:
-        #     if len(triggerSet.intersection(megawidgetsRelatedToMotionAutomation)) > 0:
-        #         returnDict['motionAutomated'] = {'values' : False}
-        #         motionAutomated = False
-        #     if len(triggerSet.intersection(megawidgetsRelatedToProbTrendAutomation)) > 0:
-        #         returnDict['probTrendAutomated'] = {'values' : False}
-        #         probTrendAutomated = False
-        #=======================================================================
 
     # Determine whether the editable flag is true or not (controlling
     # the editability of all the megawidgets listed above), and whether
@@ -3068,19 +3058,15 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         editableModifyButton = False
     print 'CM applyConvective: editable, editableModifyButton =', editable, editableModifyButton
 
-    # Ensure that no matter what else, the time range megawidget is made editable or read-only
-    # as appropriate. This has to be done regardless of the trigger because, for example, when
-    # the HID comes up, the time range megawidget is enabled by default. 
+    # Ensure that no matter what else, the time range megawidget is made
+    # editable or read-only as appropriate. This has to be done regardless
+    # of the trigger because, for example, when the HID comes up, the time
+    # range megawidget is enabled by default. 
     returnDict["__startTime__:__endTime__"] = { "editable": editable }
         
     # Ensure the the appropriate megawidgets are editable or uneditable.
     for key in editabilityChangeableMegawidgets:
-        if key in megawidgetsRelatedToMotionAutomation:
-            returnDict[key] = { 'editable' : (editable and not motionAutomated) }
-        elif key in megawidgetsRelatedToProbTrendAutomation:
-            returnDict[key] = { 'editable' : (editable and not probTrendAutomated) }
-        else:
-            returnDict[key] = { 'editable' : editable }
+        returnDict[key] = { 'editable' : editable }
             
     # Ensure the Modify button is enabled or disabled as appropriate.
     returnDict['modifyButton'] = { 'editable' : editableModifyButton }

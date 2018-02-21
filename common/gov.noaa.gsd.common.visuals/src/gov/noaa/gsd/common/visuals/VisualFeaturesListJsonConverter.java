@@ -62,6 +62,7 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
  *                                      useForCentering properties to visual
  *                                      features.
+ * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,6 +82,11 @@ public class VisualFeaturesListJsonConverter {
      * feature.
      */
     public static final String KEY_VISIBILITY_CONSTRAINTS = "visibilityConstraints";
+
+    /**
+     * Key for the persist flag in a JSON object representing a visual feature.
+     */
+    public static final String KEY_PERSIST = "persist";
 
     /**
      * Key for the templates in a JSON object representing a visual feature.

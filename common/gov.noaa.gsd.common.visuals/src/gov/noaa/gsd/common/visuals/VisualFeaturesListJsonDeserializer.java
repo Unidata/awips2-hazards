@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -97,6 +98,7 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
  *                                      useForCentering properties to visual
  *                                      features.
+ * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -805,7 +807,7 @@ class VisualFeaturesListJsonDeserializer
         VisualFeature visualFeature = new VisualFeature(identifier);
 
         /*
-         * Ensure visibility constraints are supplied.
+         * Get the visibility constraints if supplied.
          */
         node = objectNode.get(
                 VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS);
@@ -827,6 +829,23 @@ class VisualFeaturesListJsonDeserializer
         }
 
         /*
+         * Get the persist flag if supplied.
+         */
+        node = objectNode.get(VisualFeaturesListJsonConverter.KEY_PERSIST);
+        boolean foundPersist = true;
+        boolean persist = true;
+        if (node instanceof BooleanNode) {
+            persist = node.asBoolean();
+        } else if (node != null) {
+            throw createValueDeserializationException(identifier,
+                    VisualFeaturesListJsonConverter.KEY_PERSIST, "boolean",
+                    node, null, null);
+        }
+        if (foundPersist) {
+            visualFeature.setPersist(persist);
+        }
+
+        /*
          * Iterate through the properties of the object, processing each in
          * turn.
          */
@@ -837,13 +856,14 @@ class VisualFeaturesListJsonDeserializer
             node = entry.getValue();
 
             /*
-             * Skip the property if it is the identifier or the visibility
-             * constraints, as those have already been processed. Also skip any
-             * properties that have null values.
+             * Skip the property if it is the identifier, the visibility
+             * constraints, or the persist flag, as those have already been
+             * processed. Also skip any properties that have null values.
              */
             if (name.equals(VisualFeaturesListJsonConverter.KEY_IDENTIFIER)
                     || name.equals(
                             VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS)
+                    || name.equals(VisualFeaturesListJsonConverter.KEY_PERSIST)
                     || (node == null) || (node instanceof NullNode)) {
                 continue;
             }

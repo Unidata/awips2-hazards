@@ -129,6 +129,9 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
  *                                      mutable session events.
  * Jan 26, 2018 33428      Chris.Golden Added issuance count.
+ * Feb 21, 2018 46736      Chris.Golden Made copy constructor use a shallow
+ *                                      copy of the visual features list of the
+ *                                      copied object.
  * </pre>
  * 
  * @author mnash
@@ -337,7 +340,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setCreationTime(event.getCreationTime());
         setInsertTime(event.getInsertTime());
         setGeometry(event.getGeometry());
-        setVisualFeatures(event.getVisualFeatures());
+        setVisualFeatures(new VisualFeaturesList(event.getVisualFeatures()));
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());

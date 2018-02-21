@@ -50,6 +50,7 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  *                                      RGBA color components as floats, which is
  *                                      what they are, instead of trying to use
  *                                      one byte per float, which led to problems.
+ * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -131,6 +132,16 @@ class VisualFeaturesListBinaryDeserializer
                                         ByteOrder.BIG_ENDIAN)));
             } catch (IOException e) {
                 throw new IOException("unknown visibility constraints", e);
+            }
+
+            /*
+             * Read the persist flag and assign it.
+             */
+            try {
+                visualFeature.setPersist(PrimitiveAndStringBinaryTranslator
+                        .readBoolean(bytesInputStream));
+            } catch (IOException e) {
+                throw new IOException("unknown persist flag", e);
             }
 
             /*

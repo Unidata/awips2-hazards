@@ -47,6 +47,7 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  *                                      RGBA color components as floats, which is
  *                                      what they are, instead of trying to use
  *                                      one byte per float, which led to problems.
+ * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -101,7 +102,7 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
         for (VisualFeature visualFeature : visualFeatures) {
 
             /*
-             * Add the identifier and the visibility constraints.
+             * Add the identifier, visibility constraints, and persist flag.
              */
             PrimitiveAndStringBinaryTranslator.writeString(
                     visualFeature.getIdentifier(), outputStream,
@@ -109,6 +110,8 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
             PrimitiveAndStringBinaryTranslator.writeShort(
                     (short) visualFeature.getVisibilityConstraints().ordinal(),
                     outputStream, ByteOrder.BIG_ENDIAN);
+            PrimitiveAndStringBinaryTranslator
+                    .writeBoolean(visualFeature.isPersist(), outputStream);
 
             /*
              * Add the temporally variant properties. Note that all the

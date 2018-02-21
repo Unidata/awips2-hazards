@@ -888,7 +888,8 @@
          <parameter>Prob_Tornado</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.90" g="0.31" b="0.00" a="1.0"/>
+          <!-- color r="0.90" g="0.31" b="0.00" a="1.0" -->
+          <color r="1.0" g="0.00" b="0.00" a="1.0"/>
      </hazardStyle>
    </styleRule>
 
@@ -897,7 +898,8 @@
          <parameter>Prob_Severe</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="1.00" g="0.41" b="0.70" a="1.0"/>
+          <!-- color r="1.00" g="0.41" b="0.70" a="1.0" -->
+          <color r="1.00" g="1.00" b="0.00" a="1.0"/>
      </hazardStyle>
    </styleRule>
 

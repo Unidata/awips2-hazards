@@ -2139,7 +2139,7 @@ HazardTypes = {
               'modifyRecommenders': modRecsDict,
               'regenMetadataUponSelection': True,
               'allowOverlappingPolygons': True,
-              'sessionAttributes': SESSION_ATTRS + ["editable"],
+              'sessionAttributes': SESSION_ATTRS + ["editable", "showGrid"],
               "timeResolution": "seconds",
               },
     'Prob_Severe' : {
@@ -2169,7 +2169,7 @@ HazardTypes = {
               'modifyRecommenders': modRecsDict,
               'regenMetadataUponSelection': True,
               'allowOverlappingPolygons': True,
-              'sessionAttributes':  SESSION_ATTRS + ["editable"],
+              'sessionAttributes':  SESSION_ATTRS + ["editable", "showGrid"],
               "timeResolution": "seconds",
               },
     ################

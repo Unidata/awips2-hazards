@@ -25,6 +25,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  *                                      user input, and whether or not they
  *                                      require hazard events to not be
  *                                      locked by other workstations.
+ * Feb 21, 2018   46736    Chris.Golden Changed to allow the "not locked by
+ *                                      others required" property to be
+ *                                      configurable when created, so that
+ *                                      recommenders can merge their changes
+ *                                      into the session copies of the events
+ *                                      without locking them when appropriate.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,6 +45,13 @@ public class RecommenderOriginator implements IOriginator {
      */
     private final String name;
 
+    /**
+     * Flag indicating whether or not actions with this originator should, when
+     * being applied to hazard events, require that the event not be locked by
+     * another workstation.
+     */
+    private final boolean notLockedByOthersRequired;
+
     // Public Constructors
 
     /**
@@ -47,12 +60,18 @@ public class RecommenderOriginator implements IOriginator {
      * @param name
      *            Name of the recommender that is the origin; must not be
      *            <code>null</code>.
+     * @param notLockedByOthersRequired
+     *            Flag indicating whether or not actions with this originator
+     *            should, when being applied to hazard events, require that the
+     *            event not be locked by another workstation.
      */
-    public RecommenderOriginator(String name) {
+    public RecommenderOriginator(String name,
+            boolean notLockedByOthersRequired) {
         if (name == null) {
             throw new NullPointerException("name cannot be null");
         }
         this.name = name;
+        this.notLockedByOthersRequired = notLockedByOthersRequired;
     }
 
     // Public Methods
@@ -73,17 +92,27 @@ public class RecommenderOriginator implements IOriginator {
 
     @Override
     public boolean isNotLockedByOthersRequired() {
-        return true;
+        return notLockedByOthersRequired;
     }
 
     @Override
     public boolean equals(Object other) {
+
+        /*
+         * The flag concerning locking is ignored for the purposes of this
+         * method, since the point is to see whether the names are the same.
+         */
         return ((other instanceof RecommenderOriginator)
                 && name.equals(((RecommenderOriginator) other).name));
     }
 
     @Override
     public int hashCode() {
+
+        /*
+         * The flag is ignored here; see the comment about this in the equals()
+         * implementation.
+         */
         return name.hashCode();
     }
 

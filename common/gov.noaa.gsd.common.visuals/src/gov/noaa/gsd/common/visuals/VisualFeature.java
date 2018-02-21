@@ -88,6 +88,7 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  *                                      flag.
  * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
  *                                      useForCentering properties.
+ * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -681,6 +682,11 @@ public class VisualFeature implements Serializable {
     private VisibilityConstraints visibilityConstraints;
 
     /**
+     * Flag indicating whether or not the feature is to be persisted.
+     */
+    private boolean persist;
+
+    /**
      * List of visual features to be treated as templates for this feature, in
      * the order in which they should be checked when querying for property
      * values. This list may be <code>null</code>.
@@ -852,6 +858,7 @@ public class VisualFeature implements Serializable {
          */
         this.identifier = original.identifier;
         this.visibilityConstraints = original.visibilityConstraints;
+        this.persist = original.persist;
         this.templates = original.templates;
         this.borderColor = original.borderColor;
         this.bufferColor = original.bufferColor;
@@ -899,6 +906,7 @@ public class VisualFeature implements Serializable {
      */
     VisualFeature(String identifier) {
         this.identifier = identifier;
+        this.persist = true;
     }
 
     // Public Methods
@@ -911,6 +919,7 @@ public class VisualFeature implements Serializable {
         VisualFeature otherFeature = (VisualFeature) other;
         return (Utils.equal(identifier, otherFeature.identifier)
                 && (visibilityConstraints == otherFeature.visibilityConstraints)
+                && (persist == otherFeature.persist)
                 && Utils.equal(templates, otherFeature.templates)
                 && Utils.equal(geometry, otherFeature.geometry)
                 && Utils.equal(borderColor, otherFeature.borderColor)
@@ -943,8 +952,8 @@ public class VisualFeature implements Serializable {
     public int hashCode() {
         return (int) ((Utils.getHashCode(identifier)
                 + Utils.getHashCode(visibilityConstraints)
-                + Utils.getHashCode(templates) + Utils.getHashCode(geometry)
-                + Utils.getHashCode(borderColor)
+                + Utils.getHashCode(persist) + Utils.getHashCode(templates)
+                + Utils.getHashCode(geometry) + Utils.getHashCode(borderColor)
                 + Utils.getHashCode(bufferColor) + Utils.getHashCode(fillColor)
                 + Utils.getHashCode(borderThickness)
                 + Utils.getHashCode(bufferThickness)
@@ -977,6 +986,17 @@ public class VisualFeature implements Serializable {
      */
     public VisibilityConstraints getVisibilityConstraints() {
         return visibilityConstraints;
+    }
+
+    /**
+     * Get the flag indicating whether or not the visual feature is to be
+     * persisted.
+     * 
+     * @return <code>true</code> if the visual feature is to be persisted,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isPersist() {
+        return persist;
     }
 
     /**
@@ -1767,9 +1787,22 @@ public class VisualFeature implements Serializable {
 
     /**
      * Set the visibility constraints for this feature.
+     * 
+     * @param visibilityConstraints
+     *            New visibility constraints.
      */
     void setVisibilityConstraints(VisibilityConstraints visibilityConstraints) {
         this.visibilityConstraints = visibilityConstraints;
+    }
+
+    /**
+     * Set the persist flag for this feature.
+     * 
+     * @param persist
+     *            New persist flag for this feature.
+     */
+    void setPersist(boolean persist) {
+        this.persist = persist;
     }
 
     /**

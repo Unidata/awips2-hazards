@@ -227,6 +227,12 @@ class Recommender(RecommenderTemplate.Recommender):
                                     
             # Determine if we want to process this event or skip it
             if not self.selectEventForProcessing(event, trigger, origin, eventSetAttrs, resultEventSet):
+
+                # If the invocation is due to a database-originated change, and the
+                # preview grid is showing, update only the preview grid visual
+                # features.
+                if origin == 'database' and event.get('showGrid'):
+                    self.updatePreviewGridFeaturesOnly(event, resultEventSet)
                 continue
 
             # Begin Graph Draw
@@ -255,9 +261,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
-                self.probUtils.setActivation(event, self.caveUser)
+                activateCurrent, activateModifyCurrent = self.probUtils.setActivation(event, self.caveUser)
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-                print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
+                print 'SR -- YG: - selected activate, activateModify-- ', activateCurrent, activateModifyCurrent
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
                 self.flush()
                 
@@ -283,6 +289,16 @@ class Recommender(RecommenderTemplate.Recommender):
             if trigger == 'frameChange':
                 if not self.adjustForFrameChange(event, eventSetAttrs, resultEventSet):
                     continue
+
+            elif origin == "revert":
+                self.keepLocked = False
+                self.doNotCountAsModification = True
+                self.probUtils.setActivation(event)
+                self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+                self.advanceForecastPolys(event, eventSetAttrs)         
+                graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+                event.set('convectiveProbTrendGraph', graphProbs)
+                changes = True
                     
             elif trigger == 'dataLayerUpdate':
                 self.processDataLayerUpdate(event, eventSetAttrs, resultEventSet)
@@ -292,6 +308,13 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
                 
             elif trigger == 'hazardEventModification':
+
+                # If the preview grid has been toggled on or off, and that is all
+                # that triggered this recommender run, only show or hide the preview
+                # grid visual features.
+                if len(self.attributeIdentifiers) == 1 and "showGrid" in self.attributeIdentifiers:
+                    self.updatePreviewGridFeaturesOnly(event, resultEventSet)
+                    continue
 
                 if 'status' in self.attributeIdentifiers and event.getStatus() in ['ELAPSED', 'ENDED', 'ISSUED']:
                     self.keepLocked = False
@@ -441,17 +464,17 @@ class Recommender(RecommenderTemplate.Recommender):
         # correct given the non-activated state of the event.
         if origin == 'database':
             return False
-        elif origin == "revert":
-            self.keepLocked = False
-            self.doNotCountAsModification = True
-            self.probUtils.setActivation(event)
-            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-            self.advanceForecastPolys(event, eventSetAttrs)         
-            graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
-            event.set('convectiveProbTrendGraph', graphProbs)
-            self.setVisualFeatures(event)
-            resultEventSet.add(event)
-            return False
+#         elif origin == "revert":
+#             self.keepLocked = False
+#             self.doNotCountAsModification = True
+#             self.probUtils.setActivation(event)
+#             self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+#             self.advanceForecastPolys(event, eventSetAttrs)         
+#             graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+#             event.set('convectiveProbTrendGraph', graphProbs)
+#             self.setVisualFeatures(event)
+#             resultEventSet.add(event)
+#             return False
 
         # For event modification, visual feature change, or selection change, 
         #   we only want to process the events identified in the eventSetAttrs,
@@ -488,6 +511,22 @@ class Recommender(RecommenderTemplate.Recommender):
             # BUG ALERT?? Should we still process it?
 
         return True
+
+    # Update the preview grid visual features for the specified event.
+    def updatePreviewGridFeatures(self, event):
+        features = self.getNonPreviewGridFeatures(event)
+        if self.featuresDisplay().get('previewGrid'):
+            features += self.getPreviewGridFeatures(event, self.dataLayerTimes[0])
+        event.setVisualFeatures(VisualFeatures(features))
+
+    # Update the preview grid visual features only for the specified event,
+    # adding it to the specified result event set and setting flags appropriately
+    # for a preview-grid-only update.
+    def updatePreviewGridFeaturesOnly(self, event, resultEventSet):
+        self.updatePreviewGridFeatures(event)
+        resultEventSet.add(event)
+        self.saveToDatabase = False
+        self.doNotCountAsModification = True
     
     def beginGraphDraw(self, event, trigger):
         ''' 
@@ -857,6 +896,8 @@ class Recommender(RecommenderTemplate.Recommender):
         forecastPolys = event.get('forecastPolys', [])
         forecastTimes = event.get('forecastTimes', [])
         print 'SR Advancing forecastTimes', forecastTimes
+        print "SR setting motion vector--", event.get('settingMotionVector')
+        print "SR motionVectorCentroids", event.get('motionVectorCentroids')
         self.flush()
         if not forecastPolys or not forecastTimes:
             return
@@ -1456,7 +1497,8 @@ class Recommender(RecommenderTemplate.Recommender):
         swath = {
               "identifier": "swathRec_swath",
               "visibilityConstraints": "selected",
-              "borderColor": { "red": 1, "green": 1, "blue": 0 },
+              "borderColor": "eventType",
+              #"borderColor": { "red": 1, "green": 1, "blue": 0 },
               "borderThickness": 3,
               "borderStyle": "dotted",
               "bufferColor": self.BUFFER_COLOR,
@@ -1550,8 +1592,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     continue
                 dragCapability = 'whole'
                 color = 'eventType'
-                if polyType == 'upstream':  # yellow
-                    color = { "red": 1, "green": 1, "blue": 0 }
+                if polyType == 'upstream':  # light pink
+                    color = { "red": 1, "green": 0.8, "blue": 1 }                    
                 elif polyType == 'motionVector':  # purple / dark pink
                     color = { "red": 1, "green": 0, "blue": 1 }
 
@@ -1640,6 +1682,13 @@ class Recommender(RecommenderTemplate.Recommender):
                     return upstreamPolys[i], 'upstream'
         return None, 'none'
 
+    def getNonPreviewGridFeatures(self, event):
+        nonPreviewGridVisualFeatures = []
+        for visualFeature in event.getVisualFeatures():
+            if not "gridPreview_" in visualFeature["identifier"]:
+                nonPreviewGridVisualFeatures.append(visualFeature)
+        return nonPreviewGridVisualFeatures
+
     def getPreviewGridFeatures(self, event, upstreamSt_ms):
         if not event.get('showGrid'): 
             return []
@@ -1669,6 +1718,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if poly.is_valid:
                 gridPreviewPoly = {
                     "identifier": "gridPreview_" + key,
+                    "persist": False,
                     "visibilityConstraints": "selected",
                     "borderColor": { "red": 0, "green": 0, "blue": 0 },  # colorFill[key],
                     "fillColor": colorFill[key],

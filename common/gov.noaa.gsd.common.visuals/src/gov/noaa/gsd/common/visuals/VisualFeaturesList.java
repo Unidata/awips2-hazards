@@ -25,13 +25,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * ------------ ---------- ------------ --------------------------
  * Feb 16, 2016   15676    Chris.Golden Initial creation.
  * Mar 26, 2016   15676    Chris.Golden Added convenience lookup methods.
- * Jun 10, 2016   19537    Chris.Golden Changed convenience method to just
- *                                      do a replace instead of a lookup.
+ * Jun 10, 2016   19537    Chris.Golden Changed convenience method to just do
+ *                                      a replace instead of a lookup.
  * Feb 13, 2017   28892    Chris.Golden Added annotations concerning
  *                                      serialization, since the latter is
- *                                      done at this level now, instead of
- *                                      at the level of individual visual
+ *                                      done at this level now, instead of at
+ *                                      the level of individual visual
  *                                      features.
+ * Feb 21, 2018   46736    Chris.Golden Added copy constructor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,6 +69,17 @@ public class VisualFeaturesList extends ArrayList<VisualFeature> {
      */
     public VisualFeaturesList(int capacity) {
         super(capacity);
+    }
+
+    /**
+     * Construct a standard instance as a copy of the specified list. The copy
+     * is shallow, that is, the visual features are not copied, only the list.
+     * 
+     * @param other
+     *            Visual features list to be copied.
+     */
+    public VisualFeaturesList(VisualFeaturesList other) {
+        super(other);
     }
 
     // Public Methods

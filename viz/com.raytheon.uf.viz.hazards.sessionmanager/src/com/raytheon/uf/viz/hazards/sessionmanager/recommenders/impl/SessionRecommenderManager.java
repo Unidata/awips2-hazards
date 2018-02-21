@@ -241,6 +241,11 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      modifications from the perspectives of the
  *                                      session events.
  * Feb 13, 2018   20595    Chris.Golden Added "type" as a recommender execution trigger.
+ * Feb 21, 2018   46736    Chris.Golden Changed to allow a hazard event to not be locked
+ *                                      when being changed if it is marked as a "do not
+ *                                      count as a modification" change by the
+ *                                      recommender, and mergeHazardEvents() is now
+ *                                      called using its new signature.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1984,7 +1989,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS);
             Set<String> identifiersOfEventsToBeDeleted = null;
             IOriginator originator = new RecommenderOriginator(
-                    recommenderIdentifier);
+                    recommenderIdentifier, (doNotCountAsModification == false));
             if (toBeDeleted != null) {
                 if (toBeDeleted instanceof Collection == false) {
                     statusHandler.warn("Ignoring " + recommenderIdentifier
@@ -2142,7 +2147,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                             if (addedEvent != null) {
                                 EventPropertyChangeResult result = eventManager
                                         .mergeHazardEvents(hazardEvent,
-                                                addedEvent, false, false, true,
+                                                addedEvent, false, true,
                                                 doNotCountAsModification,
                                                 originator);
                                 if (result != EventPropertyChangeResult.SUCCESS) {

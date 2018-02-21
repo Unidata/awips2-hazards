@@ -153,6 +153,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      conflicts.
  * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such scripts are
  *                                      not to be used.
+ * Feb 21, 2018 46736      Chris.Golden Simplified the mergeHazardEvents() method.
  * </pre>
  * 
  * @author bsteffen
@@ -402,11 +403,6 @@ public interface ISessionEventManager {
      *            new event will not be checked for correctness before being
      *            merged into the old event. If <code>false</code>, such checks
      *            will occur.
-     * @param keepVisualFeatures
-     *            If <code>true</code>, then if the new event has no visual
-     *            features, the old event's visual features will be kept. If
-     *            <code>false</code>, the new event's visual features list will
-     *            always be used in place of the old one's.
      * @param persistOnStatusChange
      *            Flag indicating whether or not the event should be saved to
      *            the database (persisted) if its status is being changed as a
@@ -420,9 +416,8 @@ public interface ISessionEventManager {
      */
     public EventPropertyChangeResult mergeHazardEvents(
             IReadableHazardEvent newEvent, IHazardEventView oldEvent,
-            boolean forceMerge, boolean keepVisualFeatures,
-            boolean persistOnStatusChange, boolean useModifiedValue,
-            IOriginator originator);
+            boolean forceMerge, boolean persistOnStatusChange,
+            boolean useModifiedValue, IOriginator originator);
 
     /**
      * Remove an event from the session.
