@@ -63,20 +63,19 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential probabilistic hazard events. 
         '''
-        import sys
-        sys.stderr.write("Running Create VA Layer Forecast Tool.\n")
-
-        sys.stderr.flush()
-        
         
         for event in eventSet:
-            if event.get("internationalSigmetPhenomenonComboBox") == "volcanicAsh":
-                numLayers = event.get("internationalSigmetVALayersSpinner")
-                self.addVAForecastVisualFeatures(event, numLayers)
+            phenomena = event.get("internationalSigmetPhenomenonComboBox")               
+            
+            if phenomena == "volcanicAsh":
+                numFcstLayers = event.get("internationalSigmetVALayersSpinner")
+                numObsLayers = event.get("internationalSigmetObservedLayerSpinner")
+                self.addVAForecastVisualFeatures(event, numFcstLayers, numObsLayers)
             
         return eventSet
     
-    def addVAForecastVisualFeatures(self, hazardEvent, numLayers):
+    def addVAForecastVisualFeatures(self, hazardEvent, numFcstLayers, numObsLayers):
+        
         startTime = hazardEvent.getStartTime().replace(second=0, microsecond=0)
         startTime = startTime - datetime.timedelta(hours=2)
         endTime = TimeUtils.roundDatetime(hazardEvent.getEndTime())
@@ -86,20 +85,37 @@ class Recommender(RecommenderTemplate.Recommender):
         vertices = vertices.pop()
 
         fcstVerticesDict = {}
+        obsVerticesDict = {}
         
-        for i in range(0,numLayers):
+        for i in range(0,numObsLayers):
             i = i+1
-            newVerticesList = []
+            newObsVerticesList = []
+            for vertex in vertices:
+                newVert = []
+                for vert in vertex:
+                    vert = vert+1.5*i
+                    newVert.append(vert)
+                newObsVerticesList.append(newVert)
+                newObsVerticesTuple = tuple(newObsVerticesList)
+                obsVerticesDict['vaObsPoly'+str(i)] = newObsVerticesTuple
+            
+        
+        for i in range(0,numFcstLayers):
+            i = i+1
+            newFcstVerticesList = []
             for vertex in vertices:
                 newVert = []
                 for vert in vertex:
                     vert = vert - 1.5*i
                     newVert.append(vert)
-                newVerticesList.append(newVert)
-                newVerticesTuple = tuple(newVerticesList)
-                fcstVerticesDict['vaFcstPoly'+str(i)] = newVerticesTuple
+                newFcstVerticesList.append(newVert)
+                newFcstVerticesTuple = tuple(newFcstVerticesList)
+                fcstVerticesDict['vaFcstPoly'+str(i)] = newFcstVerticesTuple
         
         for key, value in fcstVerticesDict.iteritems():
+            hazardEvent.set(key, value)
+            
+        for key, value in obsVerticesDict.iteritems():
             hazardEvent.set(key, value)               
         
         eventID = hazardEvent.getEventID()
@@ -113,13 +129,14 @@ class Recommender(RecommenderTemplate.Recommender):
             "dragCapability": "all",
             "borderColor": "eventType",
             "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
+            "label": "Observed Layer 1",
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
             }
         }
         selectedFeatures.append(basePoly) 
         
-        for i in range(0, numLayers):
+        for i in range(0, numFcstLayers):
             poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(fcstVerticesDict['vaFcstPoly'+str(i+1)]), 0)
             featureName = 'vaFcstPoly'+str(i+1)            
             featureName = {
@@ -133,11 +150,26 @@ class Recommender(RecommenderTemplate.Recommender):
                 }
             }                   
             selectedFeatures.append(featureName)
+            
+        for i in range(0, numObsLayers):
+            poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(obsVerticesDict['vaObsPoly'+str(i+1)]), 0)
+            featureName = 'vaObsPoly'+str(i+1)
+            featureName = {
+                "identifier": "vaObsPoly"+str(i+1)+"_" + eventID,
+                "dragCapability": "all",
+                "borderColor": {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 },
+                "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
+                "label": "Observed Layer" + str(i+2),
+                "geometry": {
+                    (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly                           
+                }
+            }
+            selectedFeatures.append(featureName)
         
         hazardEvent.setVisualFeatures(VisualFeatures(selectedFeatures))    
         
-        return True          
-
+        return True
+    
     def flush(self):
         import os
         os.sys.__stdout__.flush()

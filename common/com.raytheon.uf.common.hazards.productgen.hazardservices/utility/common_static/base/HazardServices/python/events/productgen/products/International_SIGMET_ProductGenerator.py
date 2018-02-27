@@ -71,15 +71,14 @@ class Product(HydroGenerator.Product):
                        ('awipsHeader', 'SIGA0A'), ('firName', 'NEW YORK OCEANIC FIR'),
                        ('location', 'WI N470 W10126 - N4425 W10110 - N4424 W9940 - N4642 W984 - N470 W10126.'),
                        ('forecastObserved', 'FCST'), ('verticalExtent', 'TOP FL300.'), ('movement', 'STNR.'),
-                       ('intensityTrend', 'NC.'), ('additionalRemarks', 'Canned Response 1'),
-                       ('volcanoProductPartsDict', None), ('tropicalCycloneProductPartsDict', None),
+                       ('intensityTrend', 'NC.'),('volcanoProductPartsDict', None), ('tropicalCycloneProductPartsDict', None),
                        ('previousStartTime', None), ('previousEndTime', None), ('cancellation', 0)]),
                        'status': 'PENDING', 'issueFlag': 'False'}], 'productName': 'INTERNATIONAL SIGMET',
                        'productParts': ['originatingOffice', 'firAbbreviation', 'phenomenon', 'sequenceName',
                        'startTime', 'endTime', 'sequenceNumber', 'wmoHeader', 'awipsHeader', 'firName', 'location',
-                       'forecastObserved', 'verticalExtent', 'movement', 'intensityTrend', 'additionalRemarks',
-                       'volcanoProductPartsDict', 'tropicalCycloneProductPartsDict', 'previousStartTime',
-                       'previousEndTime', 'cancellation'], 'productID': 'SIGMET.International'}
+                       'forecastObserved', 'verticalExtent', 'movement', 'intensityTrend','volcanoProductPartsDict',
+                       'tropicalCycloneProductPartsDict', 'previousStartTime','previousEndTime', 'cancellation'],
+                       'productID': 'SIGMET.International'}
 
         '''
         self._initialize() 
@@ -96,14 +95,18 @@ class Product(HydroGenerator.Product):
         else:
             self._dialogInputMap = {}
         
-        parts = ['originatingOffice', 'firAbbreviation', 'phenomenon', 'sequenceName', 'startTime', 'endTime', 'sequenceNumber', 
+        parts = ['originatingOffice', 'firAbbreviation', 'phenomenon', 'sequenceName', 'startTime', 'endTime',
+                 'startDate', 'endDate', 'sequenceNumber', 'additionalRemarks', 
                  'wmoHeader', 'awipsHeader', 'firName', 'location', 'forecastObserved', 'verticalExtent', 'movement',
-                 'intensityTrend', 'additionalRemarks', 'volcanoProductPartsDict', 'tropicalCycloneProductPartsDict',
-                 'previousStartTime', 'previousEndTime',  'cancellation']
+                 'intensityTrend', 'volcanoProductPartsDict', 'tropicalCycloneProductPartsDict',
+                 'previousStartTime', 'previousEndTime',  'cancellation', 'geometry']
         
         productDict = {}
         productDict['productParts'] = parts
-        eventDicts = [] 
+        eventDicts = []
+        
+        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        self.practice = (False if caveMode == 'OPERATIONAL' else True) 
                           
         for event in self._inputHazardEvents:
             self._geomType = event.get('originalGeomType')
@@ -124,9 +127,7 @@ class Product(HydroGenerator.Product):
         
         productDict['eventDicts'] = eventDicts
         productDict['productID'] = 'SIGMET.International'
-        productDict['productName'] = 'INTERNATIONAL SIGMET'
-        
-        print "productDict: ", productDict     
+        productDict['productName'] = 'INTERNATIONAL SIGMET'  
 
         return [productDict], self._inputHazardEvents
     
@@ -158,36 +159,68 @@ class Product(HydroGenerator.Product):
         self.sequenceName = sequenceName
         return sequenceName
     
-    def sequenceNumber(self, hazardEvent):
-        import json
-        #if file already exists
-        if os.path.isfile('/scratch/internationalSigmetNumber.txt'):
-            with open('/scratch/internationalSigmetNumber.txt') as openFile:
-                internationalSigmetNumberDict = json.load(openFile)
-            if self.sequenceName in internationalSigmetNumberDict:
-                if hazardEvent.getStatus() in ["PENDING", "ISSUED"]:
-                    sequenceNumber = internationalSigmetNumberDict[self.sequenceName]['number']
-                    sequenceNumber += 1
+    def sequenceNumber(self, hazardEvent):        
+        import GenericRegistryObjectDataAccess
+        import time
+        
+        startTime = str(hazardEvent.getStartTime())
+        endTime = str(hazardEvent.getEndTime())
+        
+        eventStartTimeTuple = time.strptime(startTime, '%Y-%m-%d %H:%M:%S')
+        eventEndTimeTuple = time.strptime(endTime, '%Y-%m-%d %H:%M:%S')
+        
+        self.eventStartTimeEpoch = int(time.mktime(eventStartTimeTuple))
+        self.eventEndTimeEpoch = int(time.mktime(eventEndTimeTuple))
+        
+        #first call database to see if entry exists
+        objectDicts = GenericRegistryObjectDataAccess.queryObjects(
+            [("objectType", "InternationalSIGMET"),
+             ("uniqueID", self.sequenceName)],
+            self.practice)       
+        #if entry already exists in database
+        if objectDicts:
+            #need check to see if it's been more than 24 hours since last issuance for given series name
+            cancellation = objectDicts[0]['cancellation']
+            previousStartTime = objectDicts[0]['startTime']
+            currentStartTime = int(time.time())
+            if cancellation == 'yes' and (currentStartTime - previousStartTime) < 86400:
+                sequenceNumber = None
             else:
-                sequenceNumber = 1
-            if self._issueFlag == "True":
-                sequenceDict = {}
-                sequenceDict['number'] = sequenceNumber
-                sequenceDict['startTime'] = self.startTime
-                sequenceDict['endTime'] = self.endTime
-                internationalSigmetNumberDict[self.sequenceName] = sequenceDict
-                with open('/scratch/internationalSigmetNumber.txt', 'w') as outFile:
-                    json.dump(internationalSigmetNumberDict, outFile)
-        #if file does not exist                    
+                sequenceNumber = objectDicts[0]['sequenceNumber'] + 1
+                if self._issueFlag == 'True':
+                    objectDict = {'objectType': 'InternationalSIGMET', 'uniqueID': self.sequenceName, 'sequenceNumber': sequenceNumber, 'startTime': int(time.time()),
+                                  'cancellation': 'no', 'eventStartTime': self.eventStartTimeEpoch, 'eventEndTime': self.eventEndTimeEpoch}
+                    GenericRegistryObjectDataAccess.storeObject(objectDict,self.practice)                
+        #if entry does not exist in database
         else:
             sequenceNumber = 1
-            internationalSigmetNumberDict = {self.sequenceName: {'number': 1, 'startTime': self.startTime,
-                                                                 'endTime': self.endTime}}
-            if self._issueFlag == "True":
-                with open('/scratch/internationalSigmetNumber.txt', 'w') as outFile:
-                    json.dump(internationalSigmetNumberDict, outFile)
-
+            if self._issueFlag == 'True':
+                objectDict = {'objectType': 'InternationalSIGMET', 'uniqueID': self.sequenceName, 'sequenceNumber': sequenceNumber, 'startTime': int(time.time()),
+                              'cancellation': 'no', 'eventStartTime': self.eventStartTimeEpoch, 'eventEndTime': self.eventEndTimeEpoch}
+                GenericRegistryObjectDataAccess.storeObject(objectDict,self.practice)
+            
         return sequenceNumber
+    
+    def additionalRemarks(self, hazardEvent):
+        return hazardEvent.get('internationalSigmetAdditionalRemarks')    
+    
+    def cancellation(self, hazardEvent):
+        import GenericRegistryObjectDataAccess
+        import time
+        
+        cancellation = hazardEvent.get('internationalSigmetCancellation')
+        if cancellation == "None":
+            cancellation = False
+        else:
+            cancellation = True
+            
+        if (cancellation is True) and (self._issueFlag == "True"):
+            hazardEvent.setStatus('ELAPSED')
+            objectDict = {'objectType': 'InternationalSIGMET', 'uniqueID': self.sequenceName, 'sequenceNumber': 0, 'startTime': int(time.time()),
+                          'cancellation': 'yes', 'eventStartTime': self.eventStartTimeEpoch, 'eventEndTime': self.eventEndTimeEpoch}
+            GenericRegistryObjectDataAccess.storeObject(objectDict,self.practice)                    
+        
+        return cancellation    
     
     def startTime(self, hazardEvent):
         epochStartTime = time.mktime(hazardEvent.getStartTime().timetuple())
@@ -202,6 +235,18 @@ class Product(HydroGenerator.Product):
         self.endTime = endTime
         
         return endTime
+    
+    def startDate(self, hazardEvent):
+        epochStartTime = time.mktime(hazardEvent.getStartTime().timetuple())
+        initDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochStartTime))        
+
+        return initDateZ
+    
+    def endDate(self, hazardEvent):
+        epochEndTime = time.mktime(hazardEvent.getEndTime().timetuple())
+        endDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochEndTime))            
+
+        return endDateZ     
     
     def wmoHeader(self, hazardEvent):
         if self._phenomenon in ["obscuredThunderstorms", "embeddedThunderstorms", "frequentThunderstorms",
@@ -350,48 +395,7 @@ class Product(HydroGenerator.Product):
     
     def location(self, hazardEvent):
         vertices = self.geometry(hazardEvent)
-        
-        newVerticesList = []
-        locationList = []
-        for vertex in vertices:
-            newVert = []
-            for vert in vertex:
-                decimal, degree = math.modf(vert)
-                minute = (decimal*60)/100
-                vert = round(int(degree) + minute, 2) 
-                newVert.append(vert)
-                newVert.reverse()
-            newVerticesList.append(newVert)
-        
-        for vertices in newVerticesList:
-            latMinute, latDegree = math.modf(vertices[0])
-            lonMinute, lonDegree = math.modf(vertices[1])
-        
-            if latDegree < 0:
-                lat = 'S'+str(abs(int(latDegree)))+str(abs(int(latMinute*100)))
-            else:
-                lat = 'N'+str(int(latDegree))+str(int(latMinute*100))
-        
-            if lonDegree < 0:
-                lon = 'W'+str(abs(int(lonDegree)))+str(abs(int(lonMinute*100)))
-            else:
-                lon = 'E'+str(int(lonDegree))+str(int(lonMinute*100))
-        
-            locationList.append(lat+' '+lon)
-            locationList.append(' - ')
-        
-        locationList.pop()        
-        
-        if self._geomType == 'Polygon':            
-            location = "".join(locationList)
-            location = "WI " + location + '.'
-        elif self._geomType == 'LineString':
-            lineWidth = hazardEvent.get('convectiveSigmetWidth')
-            location = "".join(locationList)
-            location = "WI " + str(lineWidth) + " NM EITHER SIDE OF LINE " + location + '.' 
-        else:
-            location = "".join(locationList)
-            location = "NR " + location + '.'            
+        location = AviationUtils.AviationUtils().createIntlSigmetLatLonString(self._geomType,vertices)           
         
         return location
     
@@ -476,21 +480,6 @@ class Product(HydroGenerator.Product):
             return None
             
         return intensityTrend
-    
-    def additionalRemarks(self, hazardEvent):
-        additionalRemarks = hazardEvent.get("internationalSigmetAdditionalRemarks")
-        cannedRemarks = hazardEvent.get("internationalSigmetCannedRemarks")
-        
-        if additionalRemarks:
-            if cannedRemarks != "None":
-                additionalRemarks = cannedRemarks + " " + additionalRemarks
-        else:
-            if cannedRemarks != "None":
-                additionalRemarks = cannedRemarks
-            else:
-                additionalRemarks = ""
-
-        return additionalRemarks
 
     def volcanoProductPartsDict(self, hazardEvent):
         volcanoProductPartsDict = {}
@@ -503,19 +492,51 @@ class Product(HydroGenerator.Product):
         if self._phenomenon == 'volcanicAsh':
             volcanoProductPartsDict['type'] = 'volcanicAsh'
             volcanoName = hazardEvent.get("internationalSigmetVolcanoNameVA")
-            numLayers = hazardEvent.get("internationalSigmetVALayersSpinner")
-            volcanoProductPartsDict['numLayers'] = numLayers
+            numFcstLayers = hazardEvent.get("internationalSigmetVALayersSpinner")
+            numObsLayers = hazardEvent.get("internationalSigmetObservedLayerSpinner")
+            volcanoProductPartsDict['numFcstLayers'] = numFcstLayers
+            volcanoProductPartsDict['numObsLayers'] = numObsLayers
+            volcanoProductPartsDict['resuspension'] = hazardEvent.get("internationalSigmetVolcanoResuspension")
+            volcanoProductPartsDict['observedLayerTop'] = hazardEvent.get("internationalSigmetObservedExtentTop")
+            volcanoProductPartsDict['observedLayerBottom'] = hazardEvent.get("internationalSigmetObservedExtentBottom")
             
-            for i in range(0, numLayers):
+            obsSpeed = hazardEvent.get("internationalSigmetObservedSpeed")
+            obsDirection = hazardEvent.get("internationalSigmetObservedDirection")
+            if obsSpeed == 0:
+                obsMotionStr = 'STNR.'
+            else:
+                obsMotionStr = 'MOV ' + obsDirection + ' ' + str(obsSpeed) + 'KT.'
+            volcanoProductPartsDict['observedLayerMotion'] = obsMotionStr
+            
+            for i in range(0, numObsLayers):
+                i = i+1
+                vertices = hazardEvent.get('vaObsPoly'+str(i))
+                vaLayerObsStr = self.getVALayerStr(vertices)
+                volcanoProductPartsDict['vaObsPoly'+str(i)] = vaLayerObsStr
+            
+            for i in range(0, numFcstLayers):
                 i = i+1
                 vertices = hazardEvent.get('vaFcstPoly'+str(i))
-                vaLayerFcstStr = self.getVALayerFcstStr(vertices)
+                vaLayerFcstStr = self.getVALayerStr(vertices)
                 volcanoProductPartsDict['vaFcstPoly'+str(i)] = vaLayerFcstStr
+                
+            for i in range(0,numObsLayers):
+                volcanoProductPartsDict['obsLayer'+str(i+1)] = {}
+                volcanoProductPartsDict['obsLayer'+str(i+1)]["bottom"] = hazardEvent.get("internationalSigmetObservedExtentBottom"+str(i+1))
+                volcanoProductPartsDict['obsLayer'+str(i+1)]["top"] = hazardEvent.get("internationalSigmetObservedExtentTop"+str(i+1))
+                
+                speed = hazardEvent.get("internationalSigmetObservedSpeed"+str(i+1))
+                direction = hazardEvent.get("internationalSigmetObservedDirection"+str(i+1))
+                if speed == 0:
+                    motionStr = 'STNR.'
+                else:
+                    motionStr = 'MOV ' + direction + ' ' + str(speed) + 'KT.'
+                volcanoProductPartsDict['obsLayer'+str(i+1)]["motion"] = motionStr                
             
-            for i in range(0,numLayers):
-                volcanoProductPartsDict['layer'+str(i+1)] = {}
-                volcanoProductPartsDict['layer'+str(i+1)]["bottom"] = hazardEvent.get("internationalSigmetVAExtentBottom"+str(i+1))
-                volcanoProductPartsDict['layer'+str(i+1)]["top"] = hazardEvent.get("internationalSigmetVAExtentTop"+str(i+1))
+            for i in range(0,numFcstLayers):
+                volcanoProductPartsDict['fcstLayer'+str(i+1)] = {}
+                volcanoProductPartsDict['fcstLayer'+str(i+1)]["bottom"] = hazardEvent.get("internationalSigmetVAExtentBottom"+str(i+1))
+                volcanoProductPartsDict['fcstLayer'+str(i+1)]["top"] = hazardEvent.get("internationalSigmetVAExtentTop"+str(i+1))
                 
                 speed = hazardEvent.get("internationalSigmetVASpeed"+str(i+1))
                 direction = hazardEvent.get("internationalSigmetVADirection"+str(i+1))
@@ -523,7 +544,8 @@ class Product(HydroGenerator.Product):
                     motionStr = 'STNR.'
                 else:
                     motionStr = 'MOV ' + direction + ' ' + str(speed) + 'KT.'
-                volcanoProductPartsDict['layer'+str(i+1)]["motion"] = motionStr
+                volcanoProductPartsDict['fcstLayer'+str(i+1)]["motion"] = motionStr
+                
         elif self._phenomenon == 'volcanicEruption':
             volcanoProductPartsDict['type'] = 'volcanicEruption'
             volcanoName = hazardEvent.get("internationalSigmetVolcanoNameEruption")
@@ -534,15 +556,17 @@ class Product(HydroGenerator.Product):
             volcanoTimeStr = self.getVolcanoTimeStr(volcanoTime)
             volcanoProductPartsDict['time'] = volcanoTimeStr
             
+        volcanoProductPartsDict['simpleName'] = volcanoName    
         volcanoProductPartsDict['name'] = volcanoName + ' VOLCANO'
         volcanoDict = volcanoDict[volcanoName]
         
+        volcanoProductPartsDict['simplePosition'] = volcanoDict[1] + ' ' + volcanoDict[2]
         volcanoPosition = self.getVolcanoPosition(volcanoDict)
         volcanoProductPartsDict['position'] = volcanoPosition
         
         return volcanoProductPartsDict
     
-    def getVALayerFcstStr(self, vertices):
+    def getVALayerStr(self, vertices):
         newVerticesList = []
         locationList = []
         for vertex in vertices:
@@ -653,24 +677,6 @@ class Product(HydroGenerator.Product):
         tropicalCycloneProductPartsDict['fcstPosition'] = forecastPosition
         
         return tropicalCycloneProductPartsDict
-    
-    def cancellation(self, hazardEvent):
-        import json
-        
-        cancellation = hazardEvent.get('internationalSigmetCancellation')
-        
-        if (cancellation is True) and (self._issueFlag == "True"):
-            hazardEvent.setStatus('ELAPSED')
-            if os.path.isfile(self.outputNumberFile()):
-                with open(self.outputNumberFile()) as openFile:
-                    internationalSigmetNumberDict = json.load(openFile)
-                    
-                internationalSigmetNumberDict.pop(self.sequenceName, None)
-                
-                with open('/scratch/internationalSigmetNumber.txt', 'w') as outFile:
-                    json.dump(internationalSigmetNumberDict, outFile)        
-        
-        return cancellation
     
     def previousStartTime(self, hazardEvent):
         import json

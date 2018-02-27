@@ -18,8 +18,6 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         
         self._setTimeRange(hazardEvent)
         self._geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
-        hazardEvent.set('originalGeomType', self._geomType)
-        
         trigger = 'generation'
         
         convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(hazardEvent,[],self._geomType,trigger)

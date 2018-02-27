@@ -202,6 +202,8 @@ class Product(HydroGenerator.Product):
         if event.getStatus() in ['ELAPSED', 'ENDED', 'ENDING']:  
             event.setStatus('ELAPSED')              
             return False
+        if latestStartTime is None:
+            return True
         # Throw out events with startTime earlier than the latest start time
         if event.getStartTime() < latestStartTime:
             event.setStatus('ELAPSED')

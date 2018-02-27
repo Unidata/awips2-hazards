@@ -2265,7 +2265,7 @@ HazardTypes = {
               'inclusionFractionTest': False,
               'inclusionFraction': 0,
               'durationChoiceList': [ "4 hrs", "6 hrs" ],              
-              'defaultDuration': 4 * HOURS,
+              'defaultDuration': 6 * HOURS,
               'durationIncrement': 60,
               'sessionAttributes': SESSION_ATTRS,
               'modifyRecommenders': {

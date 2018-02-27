@@ -75,11 +75,58 @@ class AviationUtils:
         for i in range(0,len(volcanoName)):
             volcanoDict[volcanoName[i]] = [volcanoNumber[i], volcanoLatitude[i], volcanoLongitude[i], volcanoElevationMeters[i], volcanoSubregion[i]]        
         
-        return volcanoDict    
+        return volcanoDict
+    
+    def createIntlSigmetLatLonString(self,geomType,vertices):
+        newVerticesList = []
+        locationList = []
+        for vertex in vertices:
+            newVert = []
+            for vert in vertex:
+                decimal, degree = math.modf(vert)
+                minute = (decimal*60)/100
+                vert = round(int(degree) + minute, 2) 
+                newVert.append(vert)
+                newVert.reverse()
+            newVerticesList.append(newVert)
+         
+        for vertices in newVerticesList:
+            latMinute, latDegree = math.modf(vertices[0])
+            lonMinute, lonDegree = math.modf(vertices[1])
+         
+            if latDegree < 0:
+                lat = 'S'+str(abs(int(latDegree)))+str(abs(int(latMinute*100)))
+            else:
+                lat = 'N'+str(int(latDegree))+str(int(latMinute*100))
+         
+            if lonDegree < 0:
+                lon = 'W'+str(abs(int(lonDegree)))+str(abs(int(lonMinute*100)))
+            else:
+                lon = 'E'+str(int(lonDegree))+str(int(lonMinute*100))
+         
+            locationList.append(lat+' '+lon)
+            locationList.append(' - ')
+         
+        locationList.pop()        
+         
+        if geomType == 'Polygon':            
+            latLonString = "".join(locationList)
+            latLonString = "WI " + latLonString + '.'
+        elif geomType == 'LineString':
+            lineWidth = hazardEvent.get('convectiveSigmetWidth')
+            latLonString = "".join(locationList)
+            latLonString = "WI " + str(lineWidth) + " NM EITHER SIDE OF LINE " + latLonString + '.' 
+        else:
+            latLonString = "".join(locationList)
+            latLonString = "NR " + latLonString + '.'                  
+        
+        return latLonString    
         
     def getGeometryType(self, hazardEvent):        
         for g in hazardEvent.getFlattenedGeometry():
-            geomType = g.geom_type           
+            geomType = g.geom_type
+            
+        hazardEvent.set('originalGeomType', geomType)           
         
         return geomType
     
@@ -563,6 +610,12 @@ class AviationUtils:
     
     def outputConvectiveSigmetFilePath(self):
         return '/scratch/convectiveSigmetTesting'
+    
+    def outputInternationalSigmetFilePath(self):
+        return '/scratch/internationalSIGMET'
+    
+    def outputAirmetFilePath(self):
+        return 'scratch/airmet'
     
     def outputVAAFilePath(self):
         return '/scratch/VAA'        

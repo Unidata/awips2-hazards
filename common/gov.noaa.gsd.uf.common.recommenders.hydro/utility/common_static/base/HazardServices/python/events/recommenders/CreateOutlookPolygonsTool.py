@@ -1,5 +1,5 @@
 '''
-CreateOutlookPolygonsTool to attributes from copied hazard event and create new event.
+CreateOutlookPolygonsTool to create outlook visual features.
 '''
 import datetime, time, TimeUtils
 import GeometryFactory

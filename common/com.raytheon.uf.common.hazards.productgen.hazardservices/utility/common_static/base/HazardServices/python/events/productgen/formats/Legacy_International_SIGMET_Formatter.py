@@ -100,51 +100,65 @@ class Format(Legacy_Hydro_Formatter.Format):
             if eventDictParts.get('phenomenon') == 'VA ERUPTION':
                 volcanoProductPartsDict = eventDictParts.get('volcanoProductPartsDict')
                 if volcanoProductPartsDict['type'] == 'volcanicAsh':
-                    body = '%s %s %s %s %s %s%s %s' % (eventDictParts.get('firName'), eventDictParts.get('phenomenon'),
-                                         volcanoProductPartsDict['name'], volcanoProductPartsDict['position'],
-                                         'VA CLDS OBS AT', eventDictParts.get('startTime')[2:],'Z', eventDictParts.get('location'))
-                    
-                    numLayers = volcanoProductPartsDict['numLayers']
-                    
-                    for i in range(0,numLayers):
+                    #OBSERVED AREA FOR VOLCANIC ASH
+                    numObsLayers = volcanoProductPartsDict['numObsLayers']
+                    if volcanoProductPartsDict['resuspension'] is True:
+                        body = '%s %s %s %s %s %s%s %s' % (eventDictParts.get('firName'), 'RESUSPENSION VA',
+                                            volcanoProductPartsDict['name'], volcanoProductPartsDict['position'],
+                                            'VA CLDS OBS AT', eventDictParts.get('startTime')[2:],'Z', eventDictParts.get('location'))                        
+                    else:
+                        body = '%s %s %s %s %s %s%s %s' % (eventDictParts.get('firName'), eventDictParts.get('phenomenon'),
+                                                volcanoProductPartsDict['name'], volcanoProductPartsDict['position'],
+                                                'VA CLDS OBS AT', eventDictParts.get('startTime')[2:],'Z', eventDictParts.get('location'))
+                                
+                    body = '%s %s%s%s%s %s' % (body, volcanoProductPartsDict['observedLayerBottom'],
+                                                '/',volcanoProductPartsDict['observedLayerTop'],'.',
+                                                volcanoProductPartsDict['observedLayerMotion'])
+                            
+                    if numObsLayers > 0:
+                        for i in range(0,numObsLayers):
+                            body = '%s\n%s %s %s%s%s%s %s' % (body, 'AND', volcanoProductPartsDict['vaObsPoly'+str(i+1)],
+                                                              volcanoProductPartsDict['obsLayer'+str(i+1)]['bottom'],'/',
+                                                            volcanoProductPartsDict['obsLayer'+str(i+1)]['top'],'.',
+                                                            volcanoProductPartsDict['obsLayer'+str(i+1)]['motion'])
+                            
+                    #FORECAST AREA FOR VOLCANIC ASH
+                    numFcstLayers = volcanoProductPartsDict['numFcstLayers']
+                    for i in range(0,numFcstLayers):
                         if i == 0:
-                            body = '%s %s%s%s%s %s' % (body, volcanoProductPartsDict['layer'+str(i+1)]['bottom'],'/',volcanoProductPartsDict['layer'+str(i+1)]['top'],'.',
-                                                    volcanoProductPartsDict['layer'+str(i+1)]['motion'])
                             body = '%s\n%s %s%s %s %s%s%s%s' % (body, 'FCST', eventDictParts.get('endTime')[2:],'Z VA CLD',
-                                                       volcanoProductPartsDict['vaFcstPoly1'], volcanoProductPartsDict['layer'+str(i+1)]['bottom'],
-                                                       '/',volcanoProductPartsDict['layer'+str(i+1)]['top'],'.')
+                                                        volcanoProductPartsDict['vaFcstPoly1'], volcanoProductPartsDict['fcstLayer'+str(i+1)]['bottom'],
+                                                        '/',volcanoProductPartsDict['fcstLayer'+str(i+1)]['top'],'.')
                         else:
-                            body = '%s\n%s %s %s%s%s%s' % (body, 'AND', volcanoProductPartsDict['vaFcstPoly'+str(i+1)], volcanoProductPartsDict['layer'+str(i+1)]['bottom'],
-                                                             '/',volcanoProductPartsDict['layer'+str(i+1)]['top'],'.')                                        
+                            body = '%s\n%s %s %s%s%s%s' % (body, 'AND', volcanoProductPartsDict['vaFcstPoly'+str(i+1)], volcanoProductPartsDict['fcstLayer'+str(i+1)]['bottom'],
+                                                                '/',volcanoProductPartsDict['fcstLayer'+str(i+1)]['top'],'.')                                        
                 else:
                     body = '%s %s %s %s %s' % (eventDictParts.get('firName'),eventDictParts.get('phenomenon'),
-                                               volcanoProductPartsDict['name'], volcanoProductPartsDict['position'],
-                                               eventDictParts.get('verticalExtent'))
+                                                volcanoProductPartsDict['name'], volcanoProductPartsDict['position'],
+                                                eventDictParts.get('verticalExtent'))
                     body = '%s %s %s %s %s' % (body, volcanoProductPartsDict['indicator'], 'INDICATE AN ERUPTION AT',
-                                         volcanoProductPartsDict['time'], 'UTC.')
-                    if eventDictParts.get('additionalRemarks'):
-                        body = '%s %s' % (body, eventDictParts.get('additionalRemarks'))   
+                                               volcanoProductPartsDict['time'], 'UTC.')   
             elif eventDictParts.get('phenomenon') == 'TC':
                 tropicalCycloneProductPartsDict = eventDictParts.get('tropicalCycloneProductPartsDict')
                 body = '%s %s %s %s' % (eventDictParts.get('firAbbreviation'), eventDictParts.get('firName'),
-                                     eventDictParts.get('phenomenon'), tropicalCycloneProductPartsDict['name'])
+                                        eventDictParts.get('phenomenon'), tropicalCycloneProductPartsDict['name'])
                 body = '%s %s %s %s %s %s' % (body, tropicalCycloneProductPartsDict['observationTime'],
-                                              tropicalCycloneProductPartsDict['centerLocation'], eventDictParts.get('movement'),
-                                              eventDictParts.get('intensityTrend'), eventDictParts.get('verticalExtent'))
+                                                tropicalCycloneProductPartsDict['centerLocation'], eventDictParts.get('movement'),
+                                                eventDictParts.get('intensityTrend'), eventDictParts.get('verticalExtent'))
                 if eventDict.get('geomType') == 'Point':
                     body = '%s %s %s' % (body, tropicalCycloneProductPartsDict['radius'],
-                                         tropicalCycloneProductPartsDict['fcstPosition'])
+                                            tropicalCycloneProductPartsDict['fcstPosition'])
                 else:
                     body = '%s %s %s' % (body, eventDictParts.get('location'), tropicalCycloneProductPartsDict['fcstPosition'])              
             else:            
                 body = '%s %s %s %s %s' % (eventDictParts.get('firAbbreviation'), eventDictParts.get('firName'),
-                                             eventDictParts.get('phenomenon'), eventDictParts.get('forecastObserved'),
-                                             eventDictParts.get('location'))
+                                                eventDictParts.get('phenomenon'), eventDictParts.get('forecastObserved'),
+                                                eventDictParts.get('location'))
                 body = '%s %s %s %s' % (body, eventDictParts.get('verticalExtent'), eventDictParts.get('movement'),
-                                           eventDictParts.get('intensityTrend'))
+                                            eventDictParts.get('intensityTrend'))
                 
-                if eventDictParts.get('additionalRemarks'):
-                    body = '%s %s' % (body, eventDictParts.get('additionalRemarks'))
+        if eventDictParts.get('additionalRemarks') is not None:    
+            body = '%s %s' % (body, eventDictParts.get('additionalRemarks'))
 
         return body
                     

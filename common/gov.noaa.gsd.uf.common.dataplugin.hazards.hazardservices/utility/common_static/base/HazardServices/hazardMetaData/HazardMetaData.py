@@ -25,7 +25,7 @@ HazardMetaData =[
                 {"hazardTypes": HazardCategories.get("Convective"), "classMetaData": None},
                 {
                  "hazardTypes":  HazardCategories.get("Winter Weather") +  HazardCategories.get("Coastal Flood") + HazardCategories.get("Fire Weather") +\
-                                 HazardCategories.get("Marine") + HazardCategories.get("Non Precip") + HazardCategories.get("Tropical"),
+                                 HazardCategories.get("Marine") + HazardCategories.get("Non Precip"), # + HazardCategories.get("Tropical"),
                  "classMetaData": None, # empty for now -- MetaData_LongFused,
                 },
                                 
@@ -45,5 +45,8 @@ HazardMetaData =[
                 {"hazardTypes": [("IFR",)], "classMetaData": "MetaData_IFR"},
                 {"hazardTypes": [("Icing",)], "classMetaData": "MetaData_Icing"},
                 {"hazardTypes": [("Multiple_Freezing_Levels",)], "classMetaData": "MetaData_Multiple_Freezing_Levels"},
+                
+                {"hazardTypes": [("SS", "A")], "classMetaData": "MetaData_StormSurge"},
+                {"hazardTypes": [("SS", "W")], "classMetaData": "MetaData_StormSurge"},
                 
 ]

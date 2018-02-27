@@ -23,10 +23,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         CommonMetaData.writelines(sys.stderr, ['Calling Icing', '\n'])
         
         hazardEvent.setVisualFeatures(VisualFeatures([]))
-        
         self._geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
-        hazardEvent.set('originalGeomType', self._geomType)
-        
         trigger = 'generation'
         boundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,self._geomType,[],trigger)        
                          

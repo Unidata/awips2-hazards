@@ -62,7 +62,7 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: A list of potential probabilistic hazard events. 
         '''
         import sys
-        sys.stderr.write("Running International SIGMET Tool.\n    trigger:    " +
+        sys.stderr.write("Running International Sigmet Tool.\n    trigger:    " +
                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
                          str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
@@ -76,7 +76,16 @@ class Recommender(RecommenderTemplate.Recommender):
         eventIdentifiers = eventSetAttrs.get('eventIdentifiers')
         self._eventIdentifier = next(iter(eventIdentifiers)) if eventIdentifiers else None
 
-        for event in eventSet:          
+        for event in eventSet:
+            phenomena = event.get("internationalSigmetPhenomenonComboBox")
+            if phenomena in ['turbulence', 'icing', 'icingFzra']:
+                startTime = event.getStartTime().replace(second=0, microsecond=0)
+                endTime = startTime + datetime.timedelta(hours=4)
+                event.setEndTime(endTime)
+            else:
+                startTime = event.getStartTime().replace(second=0, microsecond=0)
+                endTime = startTime + datetime.timedelta(hours=6)
+                event.setEndTime(endTime)                       
          # Event Modification
             changed = self._processEventModification(event, self._trigger, eventSetAttrs)
             if changed:
@@ -96,7 +105,6 @@ class Recommender(RecommenderTemplate.Recommender):
         return True            
     
     def _adjustForVisualFeatureChange(self, event, eventSetAttrs):
-        
         features = event.getVisualFeatures()
         if not features: features = []
         
@@ -116,6 +124,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     event.set('newGeometry', vertices)
                 if "vaFcstPoly" in featureIdentifier:
                     event.set(featureIdentifierAbbrev, vertices)
+                if "vaObsPoly" in featureIdentifier:
+                    event.set(featureIdentifierAbbrev, vertices)
                     
         self.updateVisualFeatures(event)    
         
@@ -126,7 +136,8 @@ class Recommender(RecommenderTemplate.Recommender):
         return vertices 
     
     def updateVisualFeatures(self, hazardEvent):
-        numLayers = hazardEvent.get("internationalSigmetVALayersSpinner")
+        numFcstLayers = hazardEvent.get("internationalSigmetVALayersSpinner")
+        numObsLayers = hazardEvent.get("internationalSigmetObservedLayerSpinner")
         
         startTime = hazardEvent.getStartTime().replace(second=0, microsecond=0)
         startTime = startTime - datetime.timedelta(hours=2)
@@ -145,6 +156,7 @@ class Recommender(RecommenderTemplate.Recommender):
             "dragCapability": "all",
             "borderColor": "eventType",
             "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
+            "label": "Observed Layer 1",            
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
             }
@@ -152,9 +164,8 @@ class Recommender(RecommenderTemplate.Recommender):
         selectedFeatures.append(basePoly) 
         
 
-        for i in range(0, numLayers):
-            
-            featureName = 'vaFcstPoly'+str(i+1)
+        for i in range(0, numFcstLayers):
+            featureName = 'vaFcstPoly_'+str(i+1)
             fcstGeometry = hazardEvent.get(featureName)
             poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(fcstGeometry), 0)           
             featureName = {
@@ -167,6 +178,22 @@ class Recommender(RecommenderTemplate.Recommender):
                     (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
                 }
             }                   
+            selectedFeatures.append(featureName)
+        
+        for i in range(0, numObsLayers):
+            featureName = 'vaObsPoly'+str(i+1)
+            obsGeometry = hazardEvent.get(featureName)
+            poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(obsGeometry), 0)
+            featureName = {
+                "identifier": featureName+"_" + eventID,
+                "dragCapability": "all",
+                "borderColor": {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 },
+                "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
+                "label": "Observed Layer"+str(i+2),
+                "geometry": {
+                    (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
+                }                           
+            }
             selectedFeatures.append(featureName)
         
         hazardEvent.setVisualFeatures(VisualFeatures(selectedFeatures))    

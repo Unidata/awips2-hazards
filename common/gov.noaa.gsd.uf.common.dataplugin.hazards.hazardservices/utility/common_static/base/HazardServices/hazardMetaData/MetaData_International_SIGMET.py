@@ -24,10 +24,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         CommonMetaData.writelines(sys.stderr, ['Calling SIGMET.International', '\n'])
         
         hazardEvent.setVisualFeatures(VisualFeatures([]))
-        
         self._geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
-        hazardEvent.set('originalGeomType', self._geomType)
-        
         volcanoDict = VolcanoMetaData.VolcanoMetaData().getVolcanoDict()
                          
         self.flush()

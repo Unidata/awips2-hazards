@@ -517,7 +517,7 @@ class MetaData(CommonMetaData.MetaData):
         if currentTime.minute > 25:
             enable = False
         else:
-            enable = True        
+            enable = True       
 
         
         correction = {
@@ -567,6 +567,11 @@ class MetaData(CommonMetaData.MetaData):
         return domain
     
     def getConvectiveSigmetEmbeddedSevere(self, geomType, values, hazards):
+        if "Severe" in values:
+            enable = True
+        else:
+            enable = False
+        
         embeddedSvr = {
             "fieldType": "Group",
             "fieldName": "convectiveSigmetEmbeddedSvrGroup",
@@ -593,7 +598,7 @@ class MetaData(CommonMetaData.MetaData):
                             "fieldType": "CheckBoxes",
                             "fieldName": "convectiveSigmetAdditionalHazards",
                             "label": "Additional Hazards:",
-                            "enable": False,
+                            "enable": enable,
                             "choices": [
                                        {
                                          "identifier": "tornadoesCheckBox",
@@ -607,7 +612,7 @@ class MetaData(CommonMetaData.MetaData):
                                                       "fieldType": "Text",
                                                       "fieldName": "hailText",
                                                       "expandHorizontally": False,
-                                                      "maxChars": 3,
+                                                      "maxChars": 1,
                                                       "visibleChars": 3,
                                                       "values": "1"
                                                       },    
@@ -670,7 +675,7 @@ class MetaData(CommonMetaData.MetaData):
                        "maxValue": 360,
                        "values": 0,
                        "incrementDelta": 10,
-                       "expandHorizontally": False,
+                       "expandHorizontally": True,
                        "showScale": False,
                        "modifyRecommender": "LineAndPointTool"                        
                        },
@@ -682,7 +687,7 @@ class MetaData(CommonMetaData.MetaData):
                        "maxValue": 60,
                        "values": 0,
                        "incrementDelta": 5,
-                       "expandHorizontally": False,
+                       "expandHorizontally": True,
                        "showScale": False,
                        "modifyRecommender": "LineAndPointTool"
                        }                                              
@@ -818,9 +823,11 @@ class MetaData(CommonMetaData.MetaData):
                         "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]
                        },
                        {
-                        "fieldType": "CheckBox",
+                        "fieldType": "ComboBox",
                         "fieldName": "internationalSigmetCancellation",
-                        "label": "CANCEL THIS SERIES",           
+                        "label": "Special Action:",
+                        "expandHorizontally": False,
+                        "choices": ["None", "Cancel This Series"]           
                        },                                                                    
             ]
         }
@@ -837,7 +844,7 @@ class MetaData(CommonMetaData.MetaData):
                    "fieldName": "internationalSigmetPhenomenonComboBox",
                    "label": "Phenomenon:",
                    "values": "obscuredThunderstorms",
-                   "modifyRecommender": "CreateVALayerForecastTool",
+                   "modifyRecommender": "InternationalSigmetTool",
                    "choices": [
                                {
                                 "identifier": "obscuredThunderstorms",
@@ -1190,182 +1197,386 @@ class MetaData(CommonMetaData.MetaData):
                                                   "label": "Select Volcano Name:",
                                                   "choices": volcanoNamesList,
                                                   "values": volcanoNamesList[0],                                               
-                                                  },                                               
-                                                 {
-                                                 "fieldType": "IntegerSpinner",
-                                                 "fieldName": "internationalSigmetVALayersSpinner",
-                                                 "label": "Number of Layers: ",
-                                                 "modifyRecommender": "CreateVALayerForecastTool",
-                                                 "minValue": 1,
-                                                 "maxValue": 3,
-                                                 "increment": 1,
-                                                 "expandHorizontally": False,
-                                                 },                                                 
-                                                 {
-                                                  "fieldType": "Group",
-                                                  "fieldName": "internationalSigmetVALayer1",
-                                                  "expandHorizontally": True,
-                                                  "numColumns": 2,
-                                                  "label": "Layer 1",
-                                                  "fields": [
-                                                             {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVAExtentBottom1",
-                                                              "expandHorizontally": False,
-                                                              "label": "Bottom: ",
-                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                                                          "FL500"],
-                                                              "values": "FL200",
-                                                              },
-                                                             {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVAExtentTop1",
-                                                              "expandHorizontally": False,
-                                                              "label": "Top: ",
-                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                                                          "FL500"],
-                                                              "values": "FL300",
-                                                              }, 
-                                                             {
-                                                              "fieldType": "IntegerSpinner",
-                                                              "fieldName": "internationalSigmetVASpeed1",
-                                                              "label": "Speed (kts):",
-                                                              "minValue": 0,
-                                                              "maxValue": 100,
-                                                              "values": 0,
-                                                              "incrementDelta": 5,
-                                                              "expandHorizontally": False,
-                                                              },
-                                                             {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVADirection1",
-                                                              "expandHorizontally": False,
-                                                              "label": "Towards:",
-                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
-                                                                          "WNW","NW","NNW"
-                                                                          ]
-                                                              },                                                                                                                                                           
-                                                             ],
                                                   },
                                                  {
-                                                  "fieldType": "Group",
-                                                  "fieldName": "internationalSigmetVALayer2",
-                                                  "expandHorizontally": True,
-                                                  "enable": False,
-                                                  "numColumns": 2,
-                                                  "label": "Layer 2",
-                                                  "fields": [
-                                                             {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVAExtentBottom2",
-                                                              "expandHorizontally": False,
-                                                              "label": "Bottom: ",
-                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                                                          "FL500"],
-                                                              "values": "FL200",
-                                                              },
-                                                             {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVAExtentTop2",
-                                                              "expandHorizontally": False,
-                                                              "label": "Top: ",
-                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                                                          "FL500"],
-                                                              "values": "FL300",
-                                                              }, 
-                                                             {
-                                                              "fieldType": "IntegerSpinner",
-                                                              "fieldName": "internationalSigmetVASpeed2",
-                                                              "label": "Speed (kts):",
-                                                              "minValue": 0,
-                                                              "maxValue": 100,
-                                                              "values": 0,
-                                                              "incrementDelta": 5,
-                                                              "expandHorizontally": False,
-                                                              },
-                                                             {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVADirection2",
-                                                              "expandHorizontally": False,
-                                                              "label": "Towards:",
-                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
-                                                                          "WNW","NW","NNW"
-                                                                          ]
-                                                              },                                                                                                                                                           
-                                                             ],
+                                                  "fieldType": "CheckBox",
+                                                  "fieldName": "internationalSigmetVolcanoResuspension",
+                                                  "label": "THIS IS A RESUSPENSION",           
                                                   },
+                                                 #OBSERVED LAYERS
                                                  {
                                                   "fieldType": "Group",
-                                                  "fieldName": "internationalSigmetVALayer3",
+                                                  "fieldName": "internationalSIGMETObservedLayerGroup",
+                                                  "enable": True,
                                                   "expandHorizontally": True,
-                                                  "enable": False,
-                                                  "numColumns": 2,
-                                                  "label": "Layer 3",
+                                                  "numColumns": 1,
+                                                  "label": "OBSERVED LAYERS",
+                                                  "fields": [
+{
+                                                              "fieldType": "Group",
+                                                              "fieldName": "internationalSigmetObservedLayer",
+                                                              "enable": True,
+                                                              "expandHorizontally": True,
+                                                              "numColumns": 2,
+                                                              "label": "Layer 1",
+                                                              "fields": [
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedExtentBottom",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Bottom: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL200",
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedExtentTop",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Top: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL300",
+                                                                          }, 
+                                                                         {
+                                                                          "fieldType": "IntegerSpinner",
+                                                                          "fieldName": "internationalSigmetObservedSpeed",
+                                                                          "label": "Speed (kts):",
+                                                                          "minValue": 0,
+                                                                          "maxValue": 100,
+                                                                          "values": 0,
+                                                                          "incrementDelta": 5,
+                                                                          "expandHorizontally": False,
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedDirection",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Towards:",
+                                                                          "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                                      "WNW","NW","NNW"
+                                                                                      ]
+                                                                          },                                                                                                                                                           
+                                                                         ],
+                                                              },                                                             
+                                                             {
+                                                             "fieldType": "IntegerSpinner",
+                                                             "fieldName": "internationalSigmetObservedLayerSpinner",
+                                                             "label": "Additional Observed Layers: ",
+                                                             "modifyRecommender": "CreateVALayerForecastTool", #"InternationalSIGMETTool"
+                                                             "minValue": 0,
+                                                             "maxValue": 2,
+                                                             "increment": 1,
+                                                             "expandHorizontally": False,
+                                                             },                                                 
+                                                             {
+                                                              "fieldType": "Group",
+                                                              "fieldName": "internationalSigmetObservedLayer1",
+                                                              "enable": False,
+                                                              "expandHorizontally": True,
+                                                              "numColumns": 2,
+                                                              "label": "Layer 1",
+                                                              "fields": [
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedExtentBottom1",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Bottom: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL200",
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedExtentTop1",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Top: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL300",
+                                                                          }, 
+                                                                         {
+                                                                          "fieldType": "IntegerSpinner",
+                                                                          "fieldName": "internationalSigmetObservedSpeed1",
+                                                                          "label": "Speed (kts):",
+                                                                          "minValue": 0,
+                                                                          "maxValue": 100,
+                                                                          "values": 0,
+                                                                          "incrementDelta": 5,
+                                                                          "expandHorizontally": False,
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedDirection1",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Towards:",
+                                                                          "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                                      "WNW","NW","NNW"
+                                                                                      ]
+                                                                          },                                                                                                                                                           
+                                                                         ],
+                                                              },
+                                                             {
+                                                              "fieldType": "Group",
+                                                              "fieldName": "internationalSigmetObservedLayer2",
+                                                              "expandHorizontally": True,
+                                                              "enable": False,
+                                                              "numColumns": 2,
+                                                              "label": "Layer 2",
+                                                              "fields": [
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedExtentBottom2",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Bottom: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL200",
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedExtentTop2",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Top: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL300",
+                                                                          }, 
+                                                                         {
+                                                                          "fieldType": "IntegerSpinner",
+                                                                          "fieldName": "internationalSigmetObservedSpeed2",
+                                                                          "label": "Speed (kts):",
+                                                                          "minValue": 0,
+                                                                          "maxValue": 100,
+                                                                          "values": 0,
+                                                                          "incrementDelta": 5,
+                                                                          "expandHorizontally": False,
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetObservedDirection2",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Towards:",
+                                                                          "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                                      "WNW","NW","NNW"
+                                                                                      ]
+                                                                          },                                                                                                                                                           
+                                                                    ],
+                                                              },                                                                                                                                                                                                
+                                                        ]
+                                                  },                                                 
+                                                 #FORECAST LAYERS
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSIGMETForecastLayerGroup",
+                                                  "enable": True,
+                                                  "expandHorizontally": True,
+                                                  "numColumns": 1,
+                                                  "label": "FORECAST LAYERS",
                                                   "fields": [
                                                              {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVAExtentBottom3",
-                                                              "expandHorizontally": False,
-                                                              "label": "Bottom: ",
-                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                                                          "FL500"],
-                                                              "values": "FL200",
+                                                             "fieldType": "IntegerSpinner",
+                                                             "fieldName": "internationalSigmetVALayersSpinner",
+                                                             "label": "Number of Forecast Layers: ",
+                                                             "modifyRecommender": "CreateVALayerForecastTool", #"InternationalSIGMETTool"
+                                                             "minValue": 0,
+                                                             "maxValue": 3,
+                                                             "increment": 1,
+                                                             "expandHorizontally": False,
+                                                             },                                                 
+                                                             {
+                                                              "fieldType": "Group",
+                                                              "fieldName": "internationalSigmetVALayer1",
+                                                              "enable": False,
+                                                              "expandHorizontally": True,
+                                                              "numColumns": 2,
+                                                              "label": "Layer 1",
+                                                              "fields": [
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVAExtentBottom1",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Bottom: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL200",
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVAExtentTop1",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Top: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL300",
+                                                                          }, 
+                                                                         {
+                                                                          "fieldType": "IntegerSpinner",
+                                                                          "fieldName": "internationalSigmetVASpeed1",
+                                                                          "label": "Speed (kts):",
+                                                                          "minValue": 0,
+                                                                          "maxValue": 100,
+                                                                          "values": 0,
+                                                                          "incrementDelta": 5,
+                                                                          "expandHorizontally": False,
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVADirection1",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Towards:",
+                                                                          "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                                      "WNW","NW","NNW"
+                                                                                      ]
+                                                                          },                                                                                                                                                           
+                                                                         ],
                                                               },
                                                              {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVAExtentTop3",
-                                                              "expandHorizontally": False,
-                                                              "label": "Top: ",
-                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                                                          "FL500"],
-                                                              "values": "FL300",
-                                                              }, 
-                                                             {
-                                                              "fieldType": "IntegerSpinner",
-                                                              "fieldName": "internationalSigmetVASpeed3",
-                                                              "label": "Speed (kts):",
-                                                              "minValue": 0,
-                                                              "maxValue": 100,
-                                                              "values": 0,
-                                                              "incrementDelta": 5,
-                                                              "expandHorizontally": False,
+                                                              "fieldType": "Group",
+                                                              "fieldName": "internationalSigmetVALayer2",
+                                                              "expandHorizontally": True,
+                                                              "enable": False,
+                                                              "numColumns": 2,
+                                                              "label": "Layer 2",
+                                                              "fields": [
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVAExtentBottom2",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Bottom: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL200",
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVAExtentTop2",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Top: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL300",
+                                                                          }, 
+                                                                         {
+                                                                          "fieldType": "IntegerSpinner",
+                                                                          "fieldName": "internationalSigmetVASpeed2",
+                                                                          "label": "Speed (kts):",
+                                                                          "minValue": 0,
+                                                                          "maxValue": 100,
+                                                                          "values": 0,
+                                                                          "incrementDelta": 5,
+                                                                          "expandHorizontally": False,
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVADirection2",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Towards:",
+                                                                          "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                                      "WNW","NW","NNW"
+                                                                                      ]
+                                                                          },                                                                                                                                                           
+                                                                         ],
                                                               },
                                                              {
-                                                              "fieldType": "ComboBox",
-                                                              "fieldName": "internationalSigmetVADirection3",
-                                                              "expandHorizontally": False,
-                                                              "label": "Towards:",
-                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
-                                                                          "WNW","NW","NNW"
-                                                                          ]
-                                                              },                                                                                                                                                           
-                                                             ],
-                                                  },                                                                                                                                                                                                
-                                                 ],
+                                                              "fieldType": "Group",
+                                                              "fieldName": "internationalSigmetVALayer3",
+                                                              "expandHorizontally": True,
+                                                              "enable": False,
+                                                              "numColumns": 2,
+                                                              "label": "Layer 3",
+                                                              "fields": [
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVAExtentBottom3",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Bottom: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL200",
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVAExtentTop3",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Top: ",
+                                                                          "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                      "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                      "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                      "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                      "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                      "FL500"],
+                                                                          "values": "FL300",
+                                                                          }, 
+                                                                         {
+                                                                          "fieldType": "IntegerSpinner",
+                                                                          "fieldName": "internationalSigmetVASpeed3",
+                                                                          "label": "Speed (kts):",
+                                                                          "minValue": 0,
+                                                                          "maxValue": 100,
+                                                                          "values": 0,
+                                                                          "incrementDelta": 5,
+                                                                          "expandHorizontally": False,
+                                                                          },
+                                                                         {
+                                                                          "fieldType": "ComboBox",
+                                                                          "fieldName": "internationalSigmetVADirection3",
+                                                                          "expandHorizontally": False,
+                                                                          "label": "Towards:",
+                                                                          "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                                      "WNW","NW","NNW"
+                                                                                      ]
+                                                                          },                                                                                                                                                           
+                                                                         ],
+                                                              },                                                                                                                                                                                                
+                                                             
+                                                             ]
+                                                  },                                                
+                                         ]
                                 },
                                {
                                 "identifier": "volcanicEruption",
@@ -1434,7 +1645,7 @@ class MetaData(CommonMetaData.MetaData):
             ]
         }        
         return phenomenon
-    
+
     def getInternationalSigmetAdditionalRemarks(self):
         additionalRemarks = {
             "fieldType": "Group",
@@ -1444,21 +1655,13 @@ class MetaData(CommonMetaData.MetaData):
             "enable": True,
             "fields": [
                        {
-                        "fieldType": "ComboBox",
-                        "fieldName": "internationalSigmetCannedRemarks",
-                        "expandHorizontally": True,
-                        "label": "Canned Remarks:",
-                        "choices": ["None", "Canned Response 1", "Canned Response 2"],
-                        "values": "None", 
-                        },
-                       {
                         "fieldType": "Text",
                         "fieldName": "internationalSigmetAdditionalRemarks",
                         "label": "Custom Remarks:",
                         "visibleChars": 40,
                         "lines": 4,
                         "expandHorizontally": True,
-                        "values": "***ADD CUSTOM REMARKS HERE...DELETE IF NOT USED***"                            
+                        "values": ""                            
                         },
                 ]
         }     
@@ -2048,86 +2251,72 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         if "internationalSigmetOffice" in triggerIdentifiers:
             if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
                 return {
-                      "internationalSigmetSequence": {
-                                "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
-                      },
-                      "internationalSigmetFIR": {
-                                "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK']                                
-                      }                             
+                      "internationalSigmetSequence": {"choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]},
+                      "internationalSigmetFIR": {"choices": ['KZWY','KZMA','KZHU','TZJS','KZAK'],"enable":True},                             
                 }
             elif "PAWU" in mutableProperties["internationalSigmetOffice"]["values"]:
                 return {
-                      "internationalSigmetSequence": {
-                                "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
-                      },
-                      "internationalSigmetFIR": {
-                                "choices": ['PAZA'],
-                                "enable": False,                                
-                      }                              
+                      "internationalSigmetSequence": {"choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]},
+                      "internationalSigmetFIR": {"choices": ['PAZA'],"enable": False,},                              
                 }
             elif "PHFO" in mutableProperties["internationalSigmetOffice"]["values"]:
-                return {
-                      "internationalSigmetSequence": {
-                                "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
-                      },
-                      "internationalSigmetFIR": {
-                                "choices": ['KZAK'],
-                                "enable": False,                                
-                      }                            
+                return {"internationalSigmetSequence": {"choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]},
+                      "internationalSigmetFIR": {"choices": ['KZAK'],"enable": False,},                            
                 } 
                 
         ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
         if "internationalSigmetCancellation" in triggerIdentifiers:
             if mutableProperties["internationalSigmetCancellation"]["values"] == True:
                 return {
-                        "internationalSigmetPhenomenonGroup": {
-                                "enable": False,                                      
-                        }
+                        "internationalSigmetPhenomenonGroup": {"enable": False,}
                 }
             else:
                 return {
-                        "internationalSigmetPhenomenonGroup": {
-                                "enable": True,                                      
-                        }
+                        "internationalSigmetPhenomenonGroup": {"enable": True,}
                 }            
-      
-        ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
-        if "internationalSigmetVALayersSpinner" in triggerIdentifiers:
-            if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
+        
+        ###CONTROLLING OBSERVED LAYER OPTION FOR INTL SIGMET FOR VA SELECTION###
+        if "internationalSigmetObservedLayerSpinner" in triggerIdentifiers:
+            if mutableProperties["internationalSigmetObservedLayerSpinner"]["values"] == 0:
                 return {
-                        "internationalSigmetVALayer3": {
-                              "enable": False
-                        },
-                        "internationalSigmetVALayer2": {
-                              "enable": False
-                        },
-                        "internationalSigmetVALayer1": {
-                              "enable": True
-                        },    
+                        "internationalSigmetObservedLayer2": {"enable": False},
+                        "internationalSigmetObservedLayer1": {"enable": False},
+                        }
+            elif mutableProperties["internationalSigmetObservedLayerSpinner"]["values"] == 1:
+                return {
+                        "internationalSigmetObservedLayer2": {"enable": False},
+                        "internationalSigmetObservedLayer1": {"enable": True},
+                        }
+            else:
+                return {
+                        "internationalSigmetObservedLayer2": {"enable": True},
+                        "internationalSigmetObservedLayer1": {"enable": True},                        
+                        }                
+              
+        ###CONTROLLING FORECAST LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
+        if "internationalSigmetVALayersSpinner" in triggerIdentifiers:
+            if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 0:
+                return {
+                        "internationalSigmetVALayer3": {"enable": False},
+                        "internationalSigmetVALayer2": {"enable": False},
+                        "internationalSigmetVALayer1": {"enable": False},
+                }            
+            elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
+                return {
+                        "internationalSigmetVALayer3": {"enable": False},
+                        "internationalSigmetVALayer2": {"enable": False},
+                        "internationalSigmetVALayer1": {"enable": True},
                 }                      
             elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 2:
-                return {
-                        "internationalSigmetVALayer3": {
-                                  "enable": False                                
-                        },
-                        "internationalSigmetVALayer2": {
-                                  "enable": True                                
-                        },
-                        "internationalSigmetVALayer1": {
-                                  "enable": True                                
-                        },
+                return {"internationalSigmetVALayer3": {"enable": False},
+                        "internationalSigmetVALayer2": {"enable": True},
+                        "internationalSigmetVALayer1": {"enable": True},
                 }
             else:
                 return {
-                        "internationalSigmetVALayer3": {
-                                  "enable": True                                
-                        },
-                        "internationalSigmetVALayer2": {
-                                  "enable": True                                
-                        },
-                        "internationalSigmetVALayer1": {
-                                  "enable": True                                
-                        },                                                    
+                        "internationalSigmetVALayer3": {"enable": True},
+                        "internationalSigmetVALayer2": {"enable": True},
+                        "internationalSigmetVALayer1": {"enable": True},                                                    
                 }                   
                     
         ###CONTROLLING LAYER SELECTIONS FOR ICING
@@ -2137,69 +2326,51 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
             else:
                 if "between" in mutableProperties["icingComboBox"]["values"]:
                     return {
-                          "icingBottom": {
-                                    "enable": True,                               
-                          },
-                          "icingTop": {
-                                    "enable": True,                               
-                          },                                                 
+                          "icingBottom": {"enable": True,},
+                          "icingTop": {"enable": True,},                                                 
                     }            
                 elif "below" in mutableProperties["icingComboBox"]["values"]:
                     return {
-                          "icingBottom": {
-                                    "enable": False,                               
-                          },
-                          "icingTop": {
-                                    "enable": True,                               
-                          },                            
+                          "icingBottom": {"enable": False,},
+                          "icingTop": {"enable": True,},                            
                     }            
                 elif "above" in mutableProperties["icingComboBox"]["values"]:
                     return {
-                          "icingBottom": {
-                                    "enable": True,                               
-                          },
-                          "icingTop": {
-                                    "enable": False,                               
-                          },                             
+                          "icingBottom": {"enable": True,},
+                          "icingTop": {"enable": False,},                             
                     }
                     
         ###CONTROLLING ZONES FOR AIRMET HAZARDS BASED ON ORIGINATING OFFICE(MWO)###
         if triggerIdentifiers is None or "llwsOffice" in triggerIdentifiers:
             if "KKCI" in mutableProperties["llwsOffice"]["values"]:
                 return {
-                      "llwsZone": {
-                                "choices": ['SFO','SLC','DFW','CHI','MIA','BOS'],
-                                "enable": True,
-                                "values": 'SFO',                                
-                      },
-                      "llwsHour": {
-                                "choices": ['0255', '0855', '1455', '2055'],
-                                "values": '0255',
-                      },                             
+                      "llwsZone": {"choices": ['SFO','SLC','DFW','CHI','MIA','BOS'],
+                                   "enable": True,
+                                   "values": 'SFO',                                
+                                   },
+                      "llwsHour": {"choices": ['0255', '0855', '1455', '2055'],
+                                   "values": '0255',
+                                   },                             
                 }
             elif "PAWU" in mutableProperties["llwsOffice"]["values"]:
                 return {
-                      "llwsZone": {
-                                "choices": ['JNU','ANC','FAI'],
-                                "enable": True,
-                                "values": 'JNU',                               
-                      },
-                      "llwsHour": {
-                                "choices": ['0145/0245', '0745/0845', '1345/1445', '1945/2045'],
-                                "values": '0145/0245',
-                      },                                                   
+                      "llwsZone": {"choices": ['JNU','ANC','FAI'],
+                                   "enable": True,
+                                   "values": 'JNU',                               
+                                   },
+                      "llwsHour": {"choices": ['0145/0245', '0745/0845', '1345/1445', '1945/2045'],
+                                   "values": '0145/0245',
+                                   },                                                   
                 }
             else:
                 return {
-                      "llwsZone": {
-                                "choices": ['HNL'],
-                                "enable": False,
-                                "values": 'HNL',                                
-                      },
-                      "llwsHour": {
-                                "choices": ['0400', '1000', '1600', '2200'],
-                                "values": '0400',
-                      },                                                 
+                      "llwsZone": {"choices": ['HNL'],
+                                   "enable": False,
+                                   "values": 'HNL',                                
+                                   },
+                      "llwsHour": {"choices": ['0400', '1000', '1600', '2200'],
+                                   "values": '0400',
+                                   },                                                 
                 }     
         
         ###DISABLE TIME IF CHOOSING OCCASIONAL FOR LLWS
@@ -2208,17 +2379,11 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 return None
             else:
                 if mutableProperties["llwsTimeConstraint"]["values"] == "Occasional":
-                    return {
-                            "llwsTime": {
-                                "enable": False,         
-                                }
-                            }
+                    return {"llwsTime": {"enable": False,}
+                    }
                 else:
-                    return {
-                            "llwsTime": {
-                                "enable": True,         
-                                }
-                            }            
+                    return {"llwsTime": {"enable": True,}
+                    }            
                     
         
         ###FOR CONVECTIVE SIGMET MUST HAVE HAIL/WIND IF SEVERE IS CHECKED###
@@ -2227,8 +2392,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 return None
             else:
                 if "Severe" in mutableProperties["convectiveSigmetEmbeddedSvr"]["values"]:
-                    return {
-                          "convectiveSigmetAdditionalHazards": {
+                    return {"convectiveSigmetAdditionalHazards": {
                                     "enable": True,
                                     "values": ["hailCheckBox", "windCheckBox"]
                           }
