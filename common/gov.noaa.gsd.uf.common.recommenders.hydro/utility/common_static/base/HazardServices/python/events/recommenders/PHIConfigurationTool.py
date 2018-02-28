@@ -255,6 +255,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
      
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
+
     returnDict = {}
     if triggerIdentifiers == None:
         return returnDict
@@ -264,13 +265,21 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         lrLatVal = mutableProperties['phiConfigLowerRightLat']['values']
         if ulLatVal <= lrLatVal + 1:
             lrLatVal =  ulLatVal - 1.0
+            if lrLatVal < LATMIN:
+                lrLatVal = LATMIN
+                ulLatVal = LATMIN + 1.0
         returnDict['phiConfigLowerRightLat'] = {'values': lrLatVal}
+        returnDict['phiConfigUpperLeftLat'] = {'values': ulLatVal}
 
     if 'phiConfigLowerRightLat' in triggerIdentifiers:
         ulLatVal = mutableProperties['phiConfigUpperLeftLat']['values']
         lrLatVal = mutableProperties['phiConfigLowerRightLat']['values']
         if ulLatVal <= lrLatVal + 1:
             ulLatVal =  lrLatVal + 1.0
+            if ulLatVal > LATMAX:
+                ulLatVal = LATMAX
+                lrLatVal= LATMAX - 1.0
+        returnDict['phiConfigLowerRightLat'] = {'values': lrLatVal}
         returnDict['phiConfigUpperLeftLat'] = {'values': ulLatVal}
 
     if 'phiConfigUpperLeftLon' in triggerIdentifiers:
@@ -278,14 +287,22 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         lrLonVal = mutableProperties['phiConfigLowerRightLon']['values']
         if ulLonVal >= lrLonVal - 1:
             lrLonVal =  ulLonVal + 1.0
+            if lrLonVal > LONMAX:
+                lrLonVal = LONMAX
+                ulLonVal = LONMAX - 1.0
         returnDict['phiConfigLowerRightLon'] = {'values': lrLonVal}
+        returnDict['phiConfigUpperLeftLon'] = {'values': ulLonVal}
 
     if 'phiConfigLowerRightLon' in triggerIdentifiers:
         ulLonVal = mutableProperties['phiConfigUpperLeftLon']['values']
         lrLonVal = mutableProperties['phiConfigLowerRightLon']['values']
         if ulLonVal >= lrLonVal - 1:
             ulLonVal =  lrLonVal - 1.0
+            if ulLonVal < LONMIN:
+                ulLonVal = LONMIN
+                lrLonVal = LONMIN + 1.0 
         returnDict['phiConfigUpperLeftLon'] = {'values': ulLonVal}
+        returnDict['phiConfigLowerRightLon'] = {'values': lrLonVal}
 
 
 

@@ -15,6 +15,7 @@ import datetime
 import EventFactory
 import EventSetFactory
 import GeometryFactory
+import AdvancedGeometry
 import RecommenderTemplate
 import numpy
 import JUtil
@@ -245,6 +246,21 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return dict(contents)
                 
+    def makeValid(self, polyString):
+        poly = loads(polyString)
+        #newPoly = loads(polyString)
+        tolerance = 0.01
+        valid = False
+        while not valid:
+           newPoly = poly.simplify(tolerance)
+           valid = newPoly.is_valid
+           tolerance+=0.01
+           if tolerance > 1:
+               break
+           
+        return str(newPoly)
+        
+        
 
     def latestEventSetFromHDFFile(self, hdfFilenameList, currentTime):
         ### Should be a single file with latest timestamp
@@ -281,8 +297,13 @@ class Recommender(RecommenderTemplate.Recommender):
             elif not loads(thisPolyString).centroid.within(self.domainPolygon):
                 continue
             elif not loads(thisPolyString).is_valid:
-                print 'CR: Inavlid polygon, skipping...', row.get('objectids')
-                continue
+                print 'CR: Invalid polygon, Attempting to validate...', row.get('objectids')
+                validPoly = self.makeValid(thisPolyString)
+                if loads(validPoly).is_valid:
+                    row['polygons'] = validPoly
+                else:
+                    print '\tSTILL INVALID, SKIPPING'
+                    continue
             
            
             if row.get('probabilities') < self.lowThreshold:
@@ -417,16 +438,22 @@ class Recommender(RecommenderTemplate.Recommender):
         return hazardEvent
 
 
-    def setEventTimes(self, event, values):
-        psStartTime = values.get('startTime', self.dataLayerTime)
-        event.set('probSevereStartTime', TimeUtils.datetimeToEpochTimeMillis(psStartTime))
-        psEndTime = psStartTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-        event.set('probSevereEndTime', TimeUtils.datetimeToEpochTimeMillis(psEndTime)) 
+    def setEventTimes(self, event, values=None):
+        
+        if event.getEndTime() is None:
+            durSecs = DEFAULT_DURATION_IN_SECS
+        else:
+            durSecs = self.probUtils.getDurationSecs(event)
+        
+        if values is not None:
+            psStartTime = values.get('startTime', self.dataLayerTime)
+            event.set('probSevereStartTime', TimeUtils.datetimeToEpochTimeMillis(psStartTime))
+            psEndTime = psStartTime + datetime.timedelta(seconds=durSecs)
+            event.set('probSevereEndTime', TimeUtils.datetimeToEpochTimeMillis(psEndTime)) 
         
         ### Per request from Greg
         event.setStartTime(self.latestDLTDT)
-        
-        endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        endTime = event.getStartTime() + datetime.timedelta(seconds=durSecs)
         event.setEndTime(endTime)
         
 
@@ -438,10 +465,11 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('convRecPast'+c, event.get(c))
 
 
-    def storeNextGeometry(self, event):
+    def storeNextGeometry(self, event, recommendedDict):
         geomList = deque(event.get('probSevereGeomList', []), maxlen=5)
-        st = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
-        geom = event.getGeometry()
+        
+        st = long(TimeUtils.datetimeToEpochTimeMillis(self.latestDLTDT))
+        geom = AdvancedGeometry.createShapelyWrapper(loads(recommendedDict.get('polygons')), 0)
         
         ### Only want to store if new startTime 
         times = sorted([t[1] for t in geomList])
@@ -457,7 +485,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # Store last update
         self.storeLastEvent(event)
-        self.storeNextGeometry(event)
+        self.storeNextGeometry(event, recommended)
         
         if event.get('motionAutomated', False):
             pastProbSeverePolys = event.get('probSevereGeomList', [])
@@ -466,6 +494,11 @@ class Recommender(RecommenderTemplate.Recommender):
             else:
                 event.set('convectiveObjectDir', recommended.get('wdir'))
                 event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+                
+            ### Requested by Greg (HWT 2018) to restrict uncertainty for automated events
+            event.set('convectiveObjectDirUnc', 12)
+            event.set('convectiveObjectSpdKtsUnc', 4)
+
             
         if event.get('probTrendAutomated', False):
             ### BUG ALERT: do we want DataLayerTime or ProbSevereTime?
@@ -483,9 +516,10 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('probSeverAttrs',probSevereAttrs)
         
         ### BUG ALERT: Do we want to set the 
-        event.setStartTime(self.latestDLTDT)
-        endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-        event.setEndTime(endTime)
+        self.setEventTimes(event)
+        #event.setStartTime(self.latestDLTDT)
+        #endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        #event.setEndTime(endTime)
 
 
     def updateEventGeometry(self, event, recommendedDict):
@@ -566,8 +600,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
             
-            ### Set below threshold to Proposed to hide
-            if currentEvent.get('probSeverAttrs').get('probabilities') < self.lowThreshold:
+            ### Set below threshold to Proposed to hide only for fully automated events
+            if currentEvent.get('probSeverAttrs').get('probabilities') < self.lowThreshold and currentEvent.get('geometryAutomated') and currentEvent.get('motionAutomated') and currentEvent.get('probTrendAutomated'):
                 currentEvent.setStatus('PROPOSED')
                 sys.stderr.write('\n\t' + currentEvent.get('objectID') + ' is below threshold ['+ str(self.lowThreshold) + '].Skipping...\n')
                 sys.stderr.flush()

@@ -112,6 +112,11 @@ class ProbUtils(object):
             # since that is the one upon which the grid should be based.
             # If it has never been added to the history list, then it
             # should not result in any grid generation.
+            objectID = str(event.get('objectID'))
+            if len(re.findall('[Mm]', objectID)) > 0:
+                event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), practice)
+
+
             event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), practice)
             if event is None:
                 continue
@@ -266,7 +271,7 @@ class ProbUtils(object):
         #oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
         oneMinuteProbs = np.interp(oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)
         
-        print "PU--oneMinuteProbs in Colors---", oneMinuteProbs
+        #print "PU--oneMinuteProbs in Colors---", oneMinuteProbs
 
         if returnOneMinuteTime:
             return {'oneMinuteProbs':oneMinuteProbs, 'oneMinuteTimeIntervals': oneMinuteTimeIntervalsNew}
@@ -705,7 +710,7 @@ class ProbUtils(object):
         #oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
         self.oneMinuteProbs = np.interp(self.oneMinuteTimeIntervalsNew, probTrendTimeIntervals, probTrend)
         
-        print "PU--oneMinuteProbs---", self.oneMinuteProbs            
+        #print "PU--oneMinuteProbs---", self.oneMinuteProbs            
         
     def getInterpolatedProbTrendColor(self, event, interval, numIvals):
         '''

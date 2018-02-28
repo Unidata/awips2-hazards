@@ -3100,16 +3100,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     if triggerIdentifiers and 'geometryAutomated' in triggerIdentifiers:
         pass
     
-    if triggerIdentifiers and 'motionAutomated' in triggerIdentifiers:
-        if mutableProperties['motionAutomated']["values"] == True:
-            returnDict["convectiveObjectDir"]["values"] = mutableProperties["convRecPastconvectiveObjectDirHID"]["values"]
-            returnDict["convectiveObjectSpdKts"]["values"] = mutableProperties["convRecPastconvectiveObjectSpdKtsHID"]["values"]
-            returnDict["convectiveObjectDirUnc"]["values"] = mutableProperties["convRecPastconvectiveObjectDirUncHID"]["values"]
-            returnDict["convectiveObjectSpdKtsUnc"]["values"] = mutableProperties["convRecPastconvectiveObjectSpdKtsUncHID"]["values"]
-    
-    if triggerIdentifiers and 'probTrendAutomated' in triggerIdentifiers:
-        if mutableProperties['probTrendAutomated']["values"] == True:
-            returnDict["convectiveProbTrendGraph"]["values"] = mutableProperties["convRecPastconvectiveProbTrendGraphHID"]["values"]
         
     if triggerIdentifiers:
         convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')

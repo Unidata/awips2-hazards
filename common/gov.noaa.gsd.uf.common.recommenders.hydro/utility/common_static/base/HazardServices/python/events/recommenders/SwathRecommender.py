@@ -319,7 +319,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if 'status' in self.attributeIdentifiers and event.getStatus() in ['ELAPSED', 'ENDED', 'ISSUED']:
                     self.keepLocked = False
                 
-                changes = self.adjustForEventModification(event, eventSetAttrs, resultEventSet)
+                changes = self.adjustForEventModification(event, eventSetAttrs)
                 #if not changes:
                 # Handle other dialog buttons
                 
@@ -674,7 +674,8 @@ class Recommender(RecommenderTemplate.Recommender):
             if event.get('lastSelectedTime') is not None:
                  resultEventSet.addAttribute(SELECTED_TIME_KEY, event.get('lastSelectedTime'))
 
-    def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
+#    def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
+    def adjustForEventModification(self, event, eventSetAttrs):        
         print '\n---SR: Entering adjustForEventModification...'
         print "SR entering adjustForEventModification -- YG"
 
@@ -698,6 +699,29 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'selected' in self.attributeIdentifiers:
             return False               
         
+        
+        if origin == 'user' and 'geometryAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
+            geomList = event.get('probSevereGeomList', [])
+            if len(geomList) > 0:
+                geomList.sort(key=lambda x: x[1])
+                geom = geomList[-1][0]
+                print '\t', geom
+                event.setGeometry(geom)
+                changed = True
+        
+        if origin == 'user' and 'motionAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
+            if event.get('motionAutomated', False):
+                event.set('convectiveObjectDir',event.get('convRecPastconvectiveObjectDirHID'))
+                event.set('convectiveObjectSpdKts', event.get('convRecPastconvectiveObjectSpdKtsHID'))
+                event.set('convectiveObjectDirUnc', event.get('convRecPastconvectiveObjectDirUncHID'))
+                event.set('convectiveObjectSpdKtsUnc', event.get('convRecPastconvectiveObjectSpdKtsUncHID'))
+            changed = True
+            
+        if origin == 'user' and 'probTrendAutomated' in attributeSet:
+            if event.get('probTrendAutomated', False):
+                event.set('convectiveProbTrendGraph', event.get('convRecPastconvectiveProbTrendGraphHID'))
+            changed = True
+            
         if origin == 'user' and len(attributeSet.intersection(megawidgetsRelatedToMotionAutomation)) > 0:
             event.set('motionAutomated', False)
             changed = True

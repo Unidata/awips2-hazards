@@ -72,14 +72,15 @@ RUNCR = True
 EventDrivenTools = []
 
 if CENTRAL_PROCESSOR:
-    cpEntry =  { "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender"],
-                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 2 }
-    EventDrivenTools.append(cpEntry)
-    
     if RUNCR:
         cpEntryCR = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender"],
                       "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
         EventDrivenTools.append(cpEntryCR)
+
+    cpEntry =  { "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender"],
+                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 2 }
+    EventDrivenTools.append(cpEntry)
+    
 else:
 #     cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
 #                        "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
