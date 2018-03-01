@@ -2998,7 +2998,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
                 "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail",
                 "convectiveStormCharsTorn", "convectiveObjectDir", "convectiveObjectSpdKts",
-                "convectiveObjectDirUnc", "convectiveObjectSpdKtsUnc", "cancelButton"]
+                "convectiveObjectDirUnc", "convectiveObjectSpdKtsUnc"]
 
     # Set of megawidgets that are related to motion automation.
     megawidgetsRelatedToMotionAutomation = set(["resetMotionVector", "convectiveObjectDir",
@@ -3070,6 +3070,9 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             
     # Ensure the Modify button is enabled or disabled as appropriate.
     returnDict['modifyButton'] = { 'editable' : editableModifyButton }
+    
+    # Ensure "end object" button is enabled for the owner
+    returnDict['cancelButton'] = {'editable' : True if isOwner else False}
     
     # Handle Modify, Automate All, and Automate None button presses. It's OK to
     # short-circuit returning here and return immediately instead of further

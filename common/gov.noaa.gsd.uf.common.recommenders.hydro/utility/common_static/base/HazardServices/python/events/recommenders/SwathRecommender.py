@@ -202,7 +202,8 @@ class Recommender(RecommenderTemplate.Recommender):
         resultEventSet = EventSetFactory.createEventSet(None)
         self.saveToDatabase = True
         self.saveToHistory = False
-        self.keepLocked = True
+        #self.keepLocked = True
+        self.doNotKeepLocked = set()
         self.doNotCountAsModification = False
         
         userName = eventSetAttrs.get('userName')
@@ -256,16 +257,23 @@ class Recommender(RecommenderTemplate.Recommender):
                 # it has been selected but has previously been issued,
                 # the changes made to its activate-related attributes
                 # do not keep it locked. 
-                if event.get('selected') is False or event.getStatus() != 'PENDING':
-                    self.keepLocked = False
+#                 if event.get('selected') is False or event.getStatus() != 'PENDING':
+#                     self.keepLocked = event.get('activate')
+                print 'SR: Hazard event activate (selection) is', event.get('activate')
+                if (event.get('selected') is False or event.getStatus() != 'PENDING') and event.get('activate') == False:
+                    self.doNotKeepLocked.add(event.getEventID())
+                
+                print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')                    
                 
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
-                #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
-                activateCurrent, activateModifyCurrent = self.probUtils.setActivation(event, self.caveUser)
+                
+                # Checking for the selection status is important
+                # for deselection, no setactivation is called
+                # therefore the activate/activateModify status will be reserved 
+                if event.get('selected'):
+                    self.probUtils.setActivation(event, self.caveUser)
+                
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-                print 'SR -- YG: - selected activate, activateModify-- ', activateCurrent, activateModifyCurrent
-                print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
-                self.flush()
                 
                 # We shouldn't need to regenerate visual features each
                 # time selection changes, and furthermore, when we
@@ -291,7 +299,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     continue
 
             elif origin == "revert":
-                self.keepLocked = False
+                #self.keepLocked = False
+                self.doNotKeepLocked.add(event.getEventID())                
                 self.doNotCountAsModification = True
                 self.probUtils.setActivation(event)
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
@@ -317,7 +326,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     continue
 
                 if 'status' in self.attributeIdentifiers and event.getStatus() in ['ELAPSED', 'ENDED', 'ISSUED']:
-                    self.keepLocked = False
+                    #self.keepLocked = False
+                    self.doNotKeepLocked.add(event.getEventID())
                 
                 changes = self.adjustForEventModification(event, eventSetAttrs)
                 #if not changes:
@@ -350,6 +360,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 # if len(pastProbSeverePolys) > 1:
                 #     self.updateMotionVector(event, pastProbSeverePolys)
                 #===============================================================
+                self.advanceForecastPolys(event, eventSetAttrs) 
                 changes = True
             
             if not changes:
@@ -372,9 +383,10 @@ class Recommender(RecommenderTemplate.Recommender):
             self.setVisualFeatures(event)         
                                 
             # Add revised event to result
-            event.set('lastSelectedTime', self.lastSelectedTime)
-            print "SR setting lastSelectedTime to --- YG --", self.lastSelectedTime
-            self.flush()
+            if self.lastSelectedTime:
+                event.set('lastSelectedTime', self.lastSelectedTime)
+                print "SR setting lastSelectedTime to --- YG --", self.lastSelectedTime
+                self.flush()
             resultEventSet.add(event)
         
         # Save to history list if appropriate; otherwise, if needed, save to database,
@@ -384,7 +396,15 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.addAttribute(SAVE_TO_HISTORY_KEY, True)
         elif self.saveToDatabase:
             resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
-            resultEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, self.keepLocked)
+            if self.doNotKeepLocked:
+                keepLocked = []
+                for event in resultEventSet:
+                    if not event.getEventID() in self.doNotKeepLocked:
+                        keepLocked.append(event.getEventID())
+                resultEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, keepLocked)
+            else:
+                resultEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, True)            
+            #resultEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, self.keepLocked)
             
         # Do not count the changes to the event as modification if appropriate.
         if self.doNotCountAsModification:
@@ -456,6 +476,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #             event.set('statusForHiddenField', 'ELAPSED')
 #             resultEventSet.add(event)            
 #             self.keepLocked = False
+#             self.doNotKeepLocked.add(event.getEventID())
             return False
         
         # Make sure that triggers resulting from database or revert changes
@@ -464,17 +485,6 @@ class Recommender(RecommenderTemplate.Recommender):
         # correct given the non-activated state of the event.
         if origin == 'database':
             return False
-#         elif origin == "revert":
-#             self.keepLocked = False
-#             self.doNotCountAsModification = True
-#             self.probUtils.setActivation(event)
-#             self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-#             self.advanceForecastPolys(event, eventSetAttrs)         
-#             graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
-#             event.set('convectiveProbTrendGraph', graphProbs)
-#             self.setVisualFeatures(event)
-#             resultEventSet.add(event)
-#             return False
 
         # For event modification, visual feature change, or selection change, 
         #   we only want to process the events identified in the eventSetAttrs,
@@ -492,7 +502,8 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('statusForHiddenField', 'ELAPSED')
             resultEventSet.add(event)
             self.saveToHistory = True
-            self.keepLocked = False
+            #self.keepLocked = False
+            self.doNotKeepLocked.add(event.getEventID())
             return False
 
         # Skip ending, previously ended, and potential events 
@@ -506,7 +517,8 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('statusForHiddenField', 'ENDED')
             resultEventSet.add(event)
             self.saveToHistory = True
-            self.keepLocked = False
+            #self.keepLocked = False
+            self.doNotKeepLocked.add(event.getEventID())
             return False
             # BUG ALERT?? Should we still process it?
 
@@ -635,8 +647,10 @@ class Recommender(RecommenderTemplate.Recommender):
         #       Move start time, advance polys
         #       return True
         # return False
+        print "YG--into adjustForFrameChange--"
         if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
             # BUG ALERT?? Is equality working here?
+            print "YG--check only non-auto events--"
             if self.selectedTime == self.latestDataLayerTime:
                 if self.eventSt_ms < self.selectedTime:
                     self.moveStartTime(event, self.latestDataLayerTime)
@@ -671,8 +685,8 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
             #resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)
             
-            if event.get('lastSelectedTime') is not None:
-                 resultEventSet.addAttribute(SELECTED_TIME_KEY, event.get('lastSelectedTime'))
+#             if event.get('lastSelectedTime') is not None:
+#                  resultEventSet.addAttribute(SELECTED_TIME_KEY, event.get('lastSelectedTime'))
 
 #    def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
     def adjustForEventModification(self, event, eventSetAttrs):        
@@ -705,7 +719,6 @@ class Recommender(RecommenderTemplate.Recommender):
             if len(geomList) > 0:
                 geomList.sort(key=lambda x: x[1])
                 geom = geomList[-1][0]
-                print '\t', geom
                 event.setGeometry(geom)
                 changed = True
         
@@ -859,13 +872,19 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
             return
         if 'cancelButton' in self.attributeIdentifiers: 
-            print "SR Setting to Elapsed"
+#             print "SR Setting to ELAPSED"
+#             self.flush()
+#             event.setStatus('ELAPSED')
+#             event.set('statusForHiddenField', 'ELAPSED')            
+            print "SR Setting to ENDED"
             self.flush()
-            event.setStatus('ELAPSED')
-            event.set('statusForHiddenField', 'ELAPSED')
+            event.setStatus('ENDED')
+            event.set('statusForHiddenField', 'ENDED')
+            event.setEndTime(datetime.datetime.utcfromtimestamp(self.currentTime / 1000))
             resultEventSet.add(event)
             self.saveToHistory = True
-            self.keepLocked = False
+            #self.keepLocked = False
+            self.doNotKeepLocked.add(event.getEventID())
             return        
 
     def ensureLastGraphProbZeroAndUneditable(self, event):
@@ -944,7 +963,10 @@ class Recommender(RecommenderTemplate.Recommender):
 #                     index = 0
 
                 break
-                
+
+        # we may not want to do anything if there is no need to advance
+        if i==0:
+            return                
         # Reset geometry to new interior start time shape
         geometry = event.getGeometry()
         centroid = forecastPolys[index].asShapely().centroid
@@ -992,7 +1014,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # Do not include the latest data layer time. 
             # DataLayerTimes are in ms past the epoch
             # Convert to secs relative to eventSt_ms
-            for dlTime in self.dataLayerTimes[:-1]:
+            for dlTime in self.dataLayerTimes[:]:
                 secs = int((dlTime - self.eventSt_ms) / 1000)
                 timeIntervals.append(secs)
                 if abs(secs) > self.upstreamTimeLimit()*3600:
@@ -1357,6 +1379,8 @@ class Recommender(RecommenderTemplate.Recommender):
             # Track Points self.probUtils.displayMsTime(st)
             centroid = poly.asShapely().centroid
             color = self.probUtils.getInterpolatedProbTrendColor(event, i, numIntervals)
+            #print "SR--YG--Trackpoint color--", color
+            #self.flush()
             trackPointFeature = {
               "identifier": "swathRec_trackPoint_" + str(polySt_ms),
               "visibilityConstraints": "selected",

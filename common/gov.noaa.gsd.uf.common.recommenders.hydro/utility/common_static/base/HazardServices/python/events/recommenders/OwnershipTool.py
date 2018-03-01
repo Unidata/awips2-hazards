@@ -112,9 +112,9 @@ class Recommender(RecommenderTemplate.Recommender):
                     if not self.probUtils.isEqualOwner(caveUser, newOwner):
                         # put up dialog for caveUser:
                         if forceTakenFlag:
-                            str = newOwner + " has taken the ownership of event " + event.getEventID()+"!"                        
+                            str = newOwner + " has taken the ownership of event " + event.get("objectID")+"!"                        
                         else:
-                            str = "Do you want "+ newOwner + " to take over event " + event.getEventID()+"?"
+                            str = "Do you want "+ newOwner + " to take over event " + event.get("objectID")+"?"
                     else:
                         # caveUser is already the newOwner, do nothing
                         continue
@@ -122,9 +122,9 @@ class Recommender(RecommenderTemplate.Recommender):
                     if self.probUtils.isEqualOwner(caveUser, newOwner):
                         # put up dialog for caveUser:
                         if forceTakenFlag:
-                            str = "You are being forced to take ownership of event " + event.getEventID()+"!"                        
+                            str = "You are being forced to take ownership of event " + event.get("objectID")+"!"                        
                         else:                        
-                            str = "Do you want to take over event " + event.getEventID()+"?"
+                            str = "Do you want to take over event " + event.get("objectID")+"?"
                     else:
                         # caveUser is not the newOwner either
                         continue
@@ -156,7 +156,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 return dialogDict  
                                 
             # Put up dialog to make ownerChangeRequest
-            labelFieldDict["label"] = " Selected Event: " + self.selectedEvent.getEventID()
+            labelFieldDict["label"] = " Selected Event: " + self.selectedEvent.get("objectID")
     
             currentOwner = self.selectedEvent.get("owner", caveUser)
             currentOwnerFieldDict = {}

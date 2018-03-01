@@ -246,6 +246,12 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      count as a modification" change by the
  *                                      recommender, and mergeHazardEvents() is now
  *                                      called using its new signature.
+ * Feb 28, 2018   47113    Chris.Golden Simplified recommender result handling code that
+ *                                      saves provided events to the history list or to
+ *                                      the database, and made it more flexible by now
+ *                                      allowing the "keep locked" result event set
+ *                                      attribute to specify event identifiers, instead
+ *                                      of only being a boolean.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1923,11 +1929,19 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              */
             Serializable addToHistoryAttribute = events.getAttribute(
                     HazardConstants.RECOMMENDER_RESULT_SAVE_TO_HISTORY);
+            boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
+            Set<Object> addToHistoryEventIdentifiers = (addToHistoryAttribute instanceof Collection
+                    ? new HashSet<>((Collection<?>) addToHistoryAttribute)
+                    : Collections.emptySet());
             Serializable addToDatabaseAttribute = events.getAttribute(
                     HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE);
-            boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
             boolean addToDatabase = ((addToHistory == false)
                     && Boolean.TRUE.equals(addToDatabaseAttribute));
+            Set<Object> addToDatabaseEventIdentifiers = ((addToHistory == false)
+                    && (addToDatabaseAttribute instanceof Collection)
+                            ? new HashSet<>(
+                                    (Collection<?>) addToDatabaseAttribute)
+                            : Collections.emptySet());
 
             /*
              * Determine whether or not the events that are to be saved to the
@@ -1936,8 +1950,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * any modifications being made to events should be counted as
              * modifications from the events' perspectives.
              */
-            boolean keepLocked = Boolean.TRUE.equals(events.getAttribute(
-                    HazardConstants.RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE));
+            Serializable keepLockedAttribute = events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE);
+            boolean keepLocked = Boolean.TRUE.equals(keepLockedAttribute);
+            if (addToHistory) {
+                keepLocked = false;
+            }
+            Set<Object> keepLockedEventIdentifiers = ((addToHistory == false)
+                    && (keepLockedAttribute instanceof Collection)
+                            ? new HashSet<>((Collection<?>) keepLockedAttribute)
+                            : Collections.emptySet());
             boolean doNotCountAsModification = Boolean.TRUE
                     .equals(events.getAttribute(
                             HazardConstants.RECOMMENDER_RESULT_DO_NOT_COUNT_AS_MODIFICATION));
@@ -1953,31 +1975,29 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             /*
              * Determine whether or not all hazard events that are brand new
              * (i.e., just created by the recommender) should be saved to either
-             * the history list or the database.
+             * the history list or the database, and for those that are being
+             * saved to the database, whether or not they should be kept locked.
              */
             boolean saveAllNewToHistory = isListContainingNullElement(
                     addToHistoryAttribute);
             boolean saveAllNewToDatabase = ((saveAllNewToHistory == false)
                     && isListContainingNullElement(addToDatabaseAttribute));
+            boolean keepAllNewLocked = (keepLocked
+                    || isListContainingNullElement(keepLockedAttribute));
             List<IHazardEventView> addedNewEvents = (saveAllNewToHistory
                     || saveAllNewToDatabase ? new ArrayList<IHazardEventView>()
                             : null);
 
             /*
-             * Create a list to hold the events to be saved if all events are
-             * specified as requiring saving. If instead specific events are
-             * specified that are to be saved one or both ways, create a map
-             * that will be used to pair the identifiers of events that are
-             * created with the events themselves.
+             * Create three lists to hold the events to be saved to history
+             * list, to database, and to database but kept locked, respectively.
              */
-            List<IHazardEventView> addedEvents = (addToHistory || addToDatabase
-                    ? new ArrayList<IHazardEventView>(events.size()) : null);
-            Map<String, IHazardEventView> addedEventsForIdentifiers = ((addedEvents == null)
-                    && ((addToHistoryAttribute instanceof List)
-                            || (addToDatabaseAttribute instanceof List))
-                                    ? new HashMap<String, IHazardEventView>(
-                                            events.size(), 1.0f)
-                                    : null);
+            List<IHazardEventView> addedEventsToSaveToHistory = new ArrayList<IHazardEventView>(
+                    events.size());
+            List<IHazardEventView> addedEventsToSaveToDatabase = new ArrayList<IHazardEventView>(
+                    events.size());
+            List<IHazardEventView> addedEventsToSaveToDatabaseLocked = new ArrayList<IHazardEventView>(
+                    events.size());
 
             /*
              * If a list of event identifiers for which the events are to be
@@ -2167,19 +2187,25 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         /*
                          * If the event is new and new events are to be all
                          * saved to history or database, add it to the new
-                         * events list; otherwise, if all events (new or
-                         * existing) are to be saved to history or database, add
-                         * it to the list for all events; otherwise, if only
-                         * some events are to be saved to one or both, place it
-                         * in the map of identifiers to events.
+                         * events list; otherwise, if the event is to be saved
+                         * to history or to the database, put it in the
+                         * appropriate list.
                          */
                         if (isNew && (addedNewEvents != null)) {
                             addedNewEvents.add(addedEvent);
-                        } else if (addedEvents != null) {
-                            addedEvents.add(addedEvent);
-                        } else if (addedEventsForIdentifiers != null) {
-                            addedEventsForIdentifiers
-                                    .put(addedEvent.getEventID(), addedEvent);
+                        } else if (addToHistory || addToHistoryEventIdentifiers
+                                .contains(addedEvent.getEventID())) {
+                            addedEventsToSaveToHistory.add(addedEvent);
+                        } else if (addToDatabase
+                                || addToDatabaseEventIdentifiers
+                                        .contains(addedEvent.getEventID())) {
+                            if (keepLocked || keepLockedEventIdentifiers
+                                    .contains(addedEvent.getEventID())) {
+                                addedEventsToSaveToDatabaseLocked
+                                        .add(addedEvent);
+                            } else {
+                                addedEventsToSaveToDatabase.add(addedEvent);
+                            }
                         }
                     }
                 }
@@ -2199,50 +2225,24 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              */
             if (addedNewEvents != null) {
                 eventManager.saveEvents(addedNewEvents, saveAllNewToHistory,
-                        keepLocked, treatAsIssuance, originator);
+                        keepAllNewLocked, treatAsIssuance, originator);
             }
 
             /*
-             * If the recommender indicated that all events it returned should
-             * be saved (to history lists or to the latest version set), do so.
-             * Otherwise, if the recommender specified the events to be saved to
-             * history lists and/or to the latest version set, get the events
-             * that go with the identifiers specified, and save them as
-             * appropriate.
+             * Save any events to the history list or the database as directed
+             * by the recommender.
              */
-            if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
-                eventManager.saveEvents(addedEvents, addToHistory, keepLocked,
+            if (addedEventsToSaveToHistory.isEmpty() == false) {
+                eventManager.saveEvents(addedEventsToSaveToHistory, true, false,
                         treatAsIssuance, originator);
-            } else if ((addedEventsForIdentifiers != null)
-                    && (addedEventsForIdentifiers.isEmpty() == false)) {
-                if (addToHistoryAttribute instanceof List) {
-                    eventManager.saveEvents(
-                            getEventsFromIdentifiers(
-                                    (List<?>) addToHistoryAttribute,
-                                    addedEventsForIdentifiers),
-                            true, false, treatAsIssuance, originator);
-                } else if (addToDatabaseAttribute instanceof List) {
-
-                    /*
-                     * Ensure that if a hazard identifier is present in both
-                     * this list and the list for history list saving, it is
-                     * removed from this list, since it has already been saved
-                     * above.
-                     */
-                    List<?> addToDatabaseList = null;
-                    if (addToHistoryAttribute instanceof List) {
-                        Set<?> pruned = Sets.difference(
-                                new HashSet<>((List<?>) addToDatabaseAttribute),
-                                new HashSet<>((List<?>) addToHistoryAttribute));
-                        addToDatabaseList = new ArrayList<>(pruned);
-                    } else {
-                        addToDatabaseList = (List<?>) addToDatabaseAttribute;
-                    }
-                    eventManager.saveEvents(
-                            getEventsFromIdentifiers(addToDatabaseList,
-                                    addedEventsForIdentifiers),
-                            false, keepLocked, treatAsIssuance, originator);
-                }
+            }
+            if (addedEventsToSaveToDatabase.isEmpty() == false) {
+                eventManager.saveEvents(addedEventsToSaveToDatabase, false,
+                        false, treatAsIssuance, originator);
+            }
+            if (addedEventsToSaveToDatabaseLocked.isEmpty() == false) {
+                eventManager.saveEvents(addedEventsToSaveToDatabaseLocked,
+                        false, true, treatAsIssuance, originator);
             }
 
             /*
@@ -2311,39 +2311,5 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             }
         }
         return false;
-    }
-
-    /**
-     * Given the specified event identifiers and map of event identifiers to
-     * their events, get a list of any events specified by the former that have
-     * an entry in the latter.
-     * 
-     * @param eventIdentifiers
-     *            Event identifiers for which to find events. The element type
-     *            is unknown as this makes invocation easier, since this
-     *            parameter is cast from {@link Object} by callers.
-     * @param eventsForIdentifiers
-     *            Map of event identifiers to their corresponding events.
-     * @return List of events that go with the event identifiers and that are
-     *         found in the map.
-     */
-    private List<IHazardEventView> getEventsFromIdentifiers(
-            List<?> eventIdentifiers,
-            Map<String, IHazardEventView> eventsForIdentifiers) {
-
-        Set<String> identifiersToSave = new HashSet<>(
-                eventsForIdentifiers.size(), 1.0f);
-        for (Object element : eventIdentifiers) {
-            if (element != null) {
-                identifiersToSave.add(element.toString());
-            }
-        }
-        List<IHazardEventView> eventsToSave = new ArrayList<>(
-                identifiersToSave.size());
-        for (String identifier : Sets.intersection(
-                eventsForIdentifiers.keySet(), identifiersToSave)) {
-            eventsToSave.add(eventsForIdentifiers.get(identifier));
-        }
-        return eventsToSave;
     }
 }
