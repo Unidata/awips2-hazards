@@ -16,7 +16,6 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
@@ -45,6 +44,10 @@ import com.google.common.collect.TreeRangeMap;
  *                                      the property for a specific time
  *                                      and there are no time-range-specific
  *                                      properties.
+ * Mar 02, 2018   47312    Chris.Golden Changed to allow the time range
+ *                                      enclosing a specified time to be
+ *                                      retrieved, if there is a property
+ *                                      value defined for that time range.
  * </pre>
  * 
  * @author Chris.Golden
@@ -52,6 +55,15 @@ import com.google.common.collect.TreeRangeMap;
  */
 class TemporallyVariantProperty<P extends Serializable>
         implements Serializable {
+
+    // Public Static Constants
+
+    /**
+     * Default time range, that is, the time range returned by
+     * {@link #getTimeRange(Date)} if the time range to be returned is for the
+     * default property.
+     */
+    public static final Range<Date> DEFAULT_TIME_RANGE = Range.all();
 
     // Private Static Constants
 
@@ -88,6 +100,24 @@ class TemporallyVariantProperty<P extends Serializable>
     }
 
     // Public Methods
+
+    /**
+     * Get the time range for the specified time.
+     * 
+     * @param time
+     *            Time for which to fetch the time range.
+     * @return Time range enclosing this time, or {@link #DEFAULT_TIME_RANGE} if
+     *         there is no range-specific value for this time but there is a
+     *         default property value, or <code>null</code> if there is no
+     *         range-specific value for this time nor is there a default
+     *         property value.
+     */
+    public Range<Date> getTimeRange(Date time) {
+        Range<Date> timeRange = (propertiesForTimeRanges == null ? null
+                : propertiesForTimeRanges.getEntry(time).getKey());
+        return (timeRange != null ? timeRange
+                : (defaultProperty != null ? DEFAULT_TIME_RANGE : null));
+    }
 
     /**
      * Get the property value for the specified time.
@@ -184,37 +214,6 @@ class TemporallyVariantProperty<P extends Serializable>
             propertiesForTimeRanges = TreeRangeMap.create();
         }
         propertiesForTimeRanges.put(timeRange, property);
-    }
-
-    /**
-     * Add the specified property for the time range that encompasses the
-     * specified time, or failing that, use it as the default property if a
-     * default property exists already.
-     * 
-     * @param time
-     *            Time that is encompassed by the time range for which the
-     *            property is to be set.
-     * @param property
-     *            Property value associated with the time range encompassing the
-     *            specified time; must not be <code>null</code>.
-     * @return <code>true</code> if the property was added or made the default
-     *         property, <code>false</code> otherwise.
-     */
-    boolean addPropertyForTimeRangeEncompassingTime(Date time, P property) {
-        if (propertiesForTimeRanges != null) {
-            Entry<Range<Date>, P> entry = propertiesForTimeRanges
-                    .getEntry(time);
-            if (entry == null) {
-                return false;
-            }
-            propertiesForTimeRanges.put(entry.getKey(), property);
-            return true;
-        }
-        if (defaultProperty != null) {
-            defaultProperty = property;
-            return true;
-        }
-        return false;
     }
 
     /**

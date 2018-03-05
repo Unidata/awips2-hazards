@@ -145,7 +145,7 @@ CENTRAL_PROCESSOR = False
 if CENTRAL_PROCESSOR_HOSTNAME == hostName:
     CENTRAL_PROCESSOR = True
 
-modRecsDict = {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'type', 'selection' ]}
+modRecsDict = {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'type' ]}
 if CENTRAL_PROCESSOR:
     modRecsDict = {}
     
@@ -2139,7 +2139,7 @@ HazardTypes = {
               'modifyRecommenders': modRecsDict,
               'regenMetadataUponSelection': True,
               'allowOverlappingPolygons': True,
-              'sessionAttributes': SESSION_ATTRS + ["editable", "showGrid"],
+              'sessionAttributes': SESSION_ATTRS + ["editable", "showGrid", "activate", "activateModify", "settingMotionVector"],
               "timeResolution": "seconds",
               },
     'Prob_Severe' : {
@@ -2169,7 +2169,7 @@ HazardTypes = {
               'modifyRecommenders': modRecsDict,
               'regenMetadataUponSelection': True,
               'allowOverlappingPolygons': True,
-              'sessionAttributes':  SESSION_ATTRS + ["editable", "showGrid"],
+              'sessionAttributes':  SESSION_ATTRS + ["editable", "showGrid", "activate", "activateModify", "settingMotionVector"],
               "timeResolution": "seconds",
               },
     ################

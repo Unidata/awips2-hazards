@@ -48,7 +48,8 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'PreviewGridRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-        
+        self.BUFFER_COLOR = { "red": 0.0, "green": 0.0, "blue": 0.0, "alpha": 0.7 }
+        self.BUFFER_THICKNESS = 1.0
 
     def defineScriptMetadata(self):
         '''
@@ -189,12 +190,16 @@ class Recommender(RecommenderTemplate.Recommender):
                     
             gridPreviewPoly = {
                 "identifier": "gridPreview_" + tuple,
+                "persist": False,
                 "visibilityConstraints": "selected",
                 "borderColor": colorFill[tuple],
                 "fillColor": colorFill[tuple],
+                "bufferColor": self.BUFFER_COLOR,
+                "bufferThickness": self.BUFFER_THICKNESS,
                 "geometry": {
                     (TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000): poly
-                }
+                },
+                "topmost": True
             }
 
             features.append(gridPreviewPoly)

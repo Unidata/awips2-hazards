@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +90,15 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
  *                                      useForCentering properties.
  * Feb 21, 2018   46736    Chris.Golden Added persist flag to visual features.
+ * Mar 02, 2018   47312    Chris.Golden Changed to allow geometry to be set for
+ *                                      a specified time even if the geometry
+ *                                      property is set only for one of the
+ *                                      visual feature's templates at the
+ *                                      specified time. Previously, the geometry
+ *                                      setting attempt would fail if the visual
+ *                                      feature itself (not its templates) did
+ *                                      not have the geometry defined for a time
+ *                                      range enclosing the given time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -215,21 +225,21 @@ public class VisualFeature implements Serializable {
     // Private Classes
 
     /**
-     * Property fetcher, each instance of which is used to fetch particular
-     * property's value from a specified visual feature at a particular time.
+     * Property fetcher, each instance of which is used to fetch a particular
+     * temporally variant property from a specified visual feature.
      */
-    private interface IPropertyFetcher<P> {
+    private interface IPropertyFetcher<P extends Serializable> {
 
         /**
-         * Get the value of the property for the specified visual feature at the
-         * specified time.
+         * Get the temporally variant property for the specified visual feature.
          * 
          * @param visualFeature
          *            Visual feature to be queried.
-         * @param time
-         *            Time for which to query the property value.
+         * @return Temporally variant property for the visual feature, or
+         *         <code>null</code> if it has no such property.
          */
-        P getPropertyValue(VisualFeature visualFeature, Date time);
+        TemporallyVariantProperty<P> getPropertyValue(
+                VisualFeature visualFeature);
     }
 
     // Public Static Constants
@@ -373,11 +383,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<IAdvancedGeometry> GEOMETRY_FETCHER = new IPropertyFetcher<IAdvancedGeometry>() {
 
         @Override
-        public IAdvancedGeometry getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<IAdvancedGeometry> property = visualFeature
-                    .getGeometry();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<IAdvancedGeometry> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getGeometry();
         }
     };
 
@@ -387,11 +395,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<SerializableColor> BORDER_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public SerializableColor getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<SerializableColor> property = visualFeature
-                    .getBorderColor();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<SerializableColor> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getBorderColor();
         }
     };
 
@@ -401,11 +407,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<SerializableColor> BUFFER_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public SerializableColor getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<SerializableColor> property = visualFeature
-                    .getBufferColor();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<SerializableColor> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getBufferColor();
         }
     };
 
@@ -415,11 +419,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<SerializableColor> FILL_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public SerializableColor getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<SerializableColor> property = visualFeature
-                    .getFillColor();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<SerializableColor> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getFillColor();
         }
     };
 
@@ -429,10 +431,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Double> BORDER_THICKNESS_FETCHER = new IPropertyFetcher<Double>() {
 
         @Override
-        public Double getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Double> property = visualFeature
-                    .getBorderThickness();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Double> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getBorderThickness();
         }
     };
 
@@ -442,10 +443,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Double> BUFFER_THICKNESS_FETCHER = new IPropertyFetcher<Double>() {
 
         @Override
-        public Double getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Double> property = visualFeature
-                    .getBufferThickness();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Double> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getBufferThickness();
         }
     };
 
@@ -455,11 +455,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<BorderStyle> BORDER_STYLE_FETCHER = new IPropertyFetcher<BorderStyle>() {
 
         @Override
-        public BorderStyle getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<BorderStyle> property = visualFeature
-                    .getBorderStyle();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<BorderStyle> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getBorderStyle();
         }
     };
 
@@ -469,11 +467,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<FillStyle> FILL_STYLE_FETCHER = new IPropertyFetcher<FillStyle>() {
 
         @Override
-        public FillStyle getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<FillStyle> property = visualFeature
-                    .getFillStyle();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<FillStyle> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getFillStyle();
         }
     };
 
@@ -483,10 +479,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Double> DIAMETER_FETCHER = new IPropertyFetcher<Double>() {
 
         @Override
-        public Double getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Double> property = visualFeature
-                    .getDiameter();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Double> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getDiameter();
         }
     };
 
@@ -496,11 +491,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<SymbolShape> SYMBOL_SHAPE_FETCHER = new IPropertyFetcher<SymbolShape>() {
 
         @Override
-        public SymbolShape getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<SymbolShape> property = visualFeature
-                    .getSymbolShape();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<SymbolShape> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getSymbolShape();
         }
     };
 
@@ -510,10 +503,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<String> LABEL_FETCHER = new IPropertyFetcher<String>() {
 
         @Override
-        public String getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<String> property = visualFeature
-                    .getLabel();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<String> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getLabel();
         }
     };
 
@@ -523,10 +515,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Double> TEXT_OFFSET_LENGTH_FETCHER = new IPropertyFetcher<Double>() {
 
         @Override
-        public Double getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Double> property = visualFeature
-                    .getTextOffsetLength();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Double> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getTextOffsetLength();
         }
     };
 
@@ -536,10 +527,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Double> TEXT_OFFSET_DIRECTION_FETCHER = new IPropertyFetcher<Double>() {
 
         @Override
-        public Double getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Double> property = visualFeature
-                    .getTextOffsetDirection();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Double> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getTextOffsetDirection();
         }
     };
 
@@ -549,11 +539,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Integer> TEXT_SIZE_FETCHER = new IPropertyFetcher<Integer>() {
 
         @Override
-        public Integer getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Integer> property = visualFeature
-                    .getTextSize();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Integer> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getTextSize();
         }
     };
 
@@ -563,11 +551,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<SerializableColor> TEXT_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public SerializableColor getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<SerializableColor> property = visualFeature
-                    .getTextColor();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<SerializableColor> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getTextColor();
         }
     };
 
@@ -577,11 +563,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<DragCapability> DRAG_CAPABILITY_FETCHER = new IPropertyFetcher<DragCapability>() {
 
         @Override
-        public DragCapability getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<DragCapability> property = visualFeature
-                    .getDragCapability();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<DragCapability> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getDragCapability();
         }
     };
 
@@ -591,11 +575,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getMultiGeometryPointsDraggable();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Boolean> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getMultiGeometryPointsDraggable();
         }
     };
 
@@ -605,11 +587,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> EDITABLE_USING_GEOMETRY_OPS_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getEditableUsingGeometryOps();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Boolean> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getEditableUsingGeometryOps();
         }
     };
 
@@ -619,11 +599,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> ROTATABLE_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getRotatable();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Boolean> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getRotatable();
         }
     };
 
@@ -633,11 +611,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> SCALEABLE_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getScaleable();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Boolean> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getScaleable();
         }
     };
 
@@ -647,11 +623,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> USE_FOR_CENTERING_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getUseForCentering();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Boolean> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getUseForCentering();
         }
     };
 
@@ -661,11 +635,9 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> TOPMOST_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getTopmost();
-            return (property == null ? null : property.getProperty(time));
+        public TemporallyVariantProperty<Boolean> getPropertyValue(
+                VisualFeature visualFeature) {
+            return visualFeature.getTopmost();
         }
     };
 
@@ -887,12 +859,14 @@ public class VisualFeature implements Serializable {
          * immutable components are encountered. Geometries are for all
          * practical purposes immutable.
          */
-        this.geometry = new TemporallyVariantProperty<>(
-                original.geometry.getDefaultProperty());
-        for (Map.Entry<Range<Date>, IAdvancedGeometry> entry : original.geometry
-                .getPropertiesForTimeRanges().entrySet()) {
-            this.geometry.addPropertyForTimeRange(entry.getKey(),
-                    entry.getValue());
+        if (original.geometry != null) {
+            this.geometry = new TemporallyVariantProperty<>(
+                    original.geometry.getDefaultProperty());
+            for (Map.Entry<Range<Date>, IAdvancedGeometry> entry : original.geometry
+                    .getPropertiesForTimeRanges().entrySet()) {
+                this.geometry.addPropertyForTimeRange(entry.getKey(),
+                        entry.getValue());
+            }
         }
     }
 
@@ -1501,22 +1475,40 @@ public class VisualFeature implements Serializable {
 
     /**
      * Set the geometry for the specified time. Note that this method only
-     * succeeds in setting the geometry if this object has a geometry for a time
-     * range encompassing the given time; if it does not, but a template from
-     * which this object inherits geometry does, this method will fail.
+     * succeeds in setting the geometry if this object or one of its templates
+     * has a geometry for a time range encompassing the given time; if it does
+     * not, this method will fail.
      * 
      * @param time
      *            Time for which to set the geometry of this object.
      * @param geometry
      *            New geometry to be used.
-     * @return <code>true</code> if the geometry was set successfully,
-     *         <code>false</code> otherwise. The latter will occur if
-     *         <code>time</code> does not fall within a time range for which a
-     *         geometry has already been defined.
+     * @throws IllegalArgumentException
+     *             If the specified time does not fall within a valid range for
+     *             this object's geometry, or one of its templates' geometries.
      */
-    public boolean setGeometry(Date time, IAdvancedGeometry geometry) {
-        return this.geometry.addPropertyForTimeRangeEncompassingTime(time,
-                geometry);
+    public void setGeometry(Date time, IAdvancedGeometry geometry) {
+        Range<Date> timeRange = getTimeRange(GEOMETRY_FETCHER, time);
+        if (timeRange == null) {
+            throw new IllegalArgumentException(
+                    "no time range found encompassing " + time);
+        }
+        if (timeRange.equals(TemporallyVariantProperty.DEFAULT_TIME_RANGE)) {
+            Map<Range<Date>, IAdvancedGeometry> geometriesForTimeRanges = (this.geometry == null
+                    ? Collections.<Range<Date>, IAdvancedGeometry> emptyMap()
+                    : this.geometry.getPropertiesForTimeRanges());
+            this.geometry = new TemporallyVariantProperty<>(geometry);
+            for (Map.Entry<Range<Date>, IAdvancedGeometry> entry : geometriesForTimeRanges
+                    .entrySet()) {
+                this.geometry.addPropertyForTimeRange(entry.getKey(),
+                        entry.getValue());
+            }
+        } else {
+            if (this.geometry == null) {
+                this.geometry = new TemporallyVariantProperty<>(null);
+            }
+            this.geometry.addPropertyForTimeRange(timeRange, geometry);
+        }
     }
 
     @Override
@@ -2056,6 +2048,76 @@ public class VisualFeature implements Serializable {
     // Private Methods
 
     /**
+     * Get the time range enclosing a property value for specified fetcher at
+     * the specified time, if any, checking first this instance, then any
+     * templates.
+     * 
+     * @param propertyFetcher
+     *            Property fetcher to be used.
+     * @param time
+     *            Time for which to get the time range.
+     * @return Time range enclosing a property value at the specified time, or
+     *         <code>null</code> if no such time range is found.
+     */
+    private <P extends Serializable> Range<Date> getTimeRange(
+            IPropertyFetcher<P> propertyFetcher, Date time) {
+
+        /*
+         * If the property is provided by this visual feature, find the time
+         * range within it.
+         */
+        Range<Date> timeRange = getPropertyTimeRange(this, propertyFetcher,
+                time);
+        if (timeRange != null) {
+            return timeRange;
+        }
+
+        /*
+         * If no time range was found for the property within this visual
+         * feature, iterate through any templates provided, querying each in
+         * turn for the time range, and using the first one that provides it.
+         */
+        if (templates != null) {
+            List<VisualFeature> visualFeatures = templates.getProperty(time);
+            if (visualFeatures != null) {
+                for (VisualFeature visualFeature : visualFeatures) {
+                    timeRange = getPropertyTimeRange(visualFeature,
+                            propertyFetcher, time);
+                    if (timeRange != null) {
+                        return timeRange;
+                    }
+                }
+            }
+        }
+
+        /*
+         * If no time range was found anywhere, return nothing.
+         */
+        return null;
+    }
+
+    /**
+     * Get the specified property's time range enclosing the specified time for
+     * the specified visual feature, if any.
+     * 
+     * @param visualFeature
+     *            Visual feature from which to fetch the property time range.
+     * @param propertyFetcher
+     *            Property fetcher to be used.
+     * @param time
+     *            Time for which to fetch the time range.
+     * @return Time range enclosing the specified time, or <code>null</code> if
+     *         there is no value for that time.
+     */
+    public <P extends Serializable> Range<Date> getPropertyTimeRange(
+            VisualFeature visualFeature, IPropertyFetcher<P> propertyFetcher,
+            Date time) {
+        TemporallyVariantProperty<P> property = propertyFetcher
+                .getPropertyValue(visualFeature);
+        return (property == null ? null : property.getTimeRange(time));
+    }
+
+    /**
      * Get a property value using the specified fetcher, checking first this
      * instance, then any templates. If the value is not found, use the
      * specified default.
@@ -2066,14 +2128,15 @@ public class VisualFeature implements Serializable {
      *            Time for which to get the property.
      * @param defaultProperty
      *            Default property.
+     * @return Value for the specified time.
      */
-    private <P> P getValue(IPropertyFetcher<P> propertyFetcher, Date time,
-            P defaultProperty) {
+    private <P extends Serializable> P getValue(
+            IPropertyFetcher<P> propertyFetcher, Date time, P defaultProperty) {
 
         /*
          * If the property is provided by this visual feature, use it.
          */
-        P property = propertyFetcher.getPropertyValue(this, time);
+        P property = getPropertyValue(this, propertyFetcher, time);
         if (property != null) {
             return property;
         }
@@ -2087,7 +2150,7 @@ public class VisualFeature implements Serializable {
             List<VisualFeature> visualFeatures = templates.getProperty(time);
             if (visualFeatures != null) {
                 for (VisualFeature visualFeature : visualFeatures) {
-                    property = propertyFetcher.getPropertyValue(visualFeature,
+                    property = getPropertyValue(visualFeature, propertyFetcher,
                             time);
                     if (property != null) {
                         return property;
@@ -2100,6 +2163,27 @@ public class VisualFeature implements Serializable {
          * If no property value was found anywhere, use the default value.
          */
         return defaultProperty;
+    }
+
+    /**
+     * Get the specified property value for the specified visual feature at the
+     * specified time.
+     * 
+     * @param visualFeature
+     *            Visual feature from which to fetch the property value.
+     * @param propertyFetcher
+     *            Property fetcher to be used.
+     * @param time
+     *            Time for which to fetch the property value.
+     * @return Value at the specified time, or <code>null</code> if there is no
+     *         value for that time.
+     */
+    public <P extends Serializable> P getPropertyValue(
+            VisualFeature visualFeature, IPropertyFetcher<P> propertyFetcher,
+            Date time) {
+        TemporallyVariantProperty<P> property = propertyFetcher
+                .getPropertyValue(visualFeature);
+        return (property == null ? null : property.getProperty(time));
     }
 
     /**

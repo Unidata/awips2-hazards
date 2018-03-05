@@ -2170,14 +2170,12 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "fieldName": "manuallyCreatedStatus",
              "values": self.hazardEvent.get('manuallyCreated', True)
              },
-
             {
             "fieldType": "HiddenField",
             "fieldName": "owner",
             "doesNotAffectModifyFlag": True,
             "values": self.hazardEvent.get("owner", None)
             },  
- 
             {
             "fieldType": "HiddenField",
             "fieldName": "ownerChangeRequest",
@@ -2185,7 +2183,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "doesNotAffectModifyFlag": True,
             "values": self.hazardEvent.get("ownerChangeRequest", None)
             },  
-
+            {
+             "fieldType": "HiddenField",
+             "fieldName": "potentiallyEditableVisualFeatureIdentifiers",
+             "values": [],
+             "doesNotAffectModifyFlag": True,
+             "modifyRecommender": self.RECOMMENDER,
+             },
         ]        
         return mwList
 
@@ -3047,7 +3051,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     # was clicked, these should be set to true and false, respectively.
     editable = False
     isOwner = isEqualOwner(mutableProperties['owner'].get("values", None), getCaveUser())
-    print "CM-- isOwner--", isOwner
+    print "CM-- isOwner--", isOwner   
     if "activate" in mutableProperties:
         editable = mutableProperties["activate"].get("values", False) if isOwner else False
     editableModifyButton = True

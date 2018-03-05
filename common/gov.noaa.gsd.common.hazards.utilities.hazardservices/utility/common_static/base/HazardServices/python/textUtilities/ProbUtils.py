@@ -1286,11 +1286,11 @@ class ProbUtils(object):
                 activate = False
                 activateModify = False
                 print "PU-- DO We NEED even to get here???"
-#                 print "PU Setting activate, activateModify", activate, activateModify
-#                 self.flush()            
-#                 if modify:
-#                     event.set('activate', activate)
-#                     event.set('activateModify', activateModify)            
+                print "PU Setting activate, activateModify", activate, activateModify
+                self.flush()            
+                if modify:
+                    event.set('activate', activate)
+                    event.set('activateModify', activateModify)            
                 return activate, activateModify
         
         #automationLevel = event.get('automationLevel')

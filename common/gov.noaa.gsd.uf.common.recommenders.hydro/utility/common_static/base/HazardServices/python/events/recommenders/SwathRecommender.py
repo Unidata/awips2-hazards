@@ -230,16 +230,24 @@ class Recommender(RecommenderTemplate.Recommender):
             if not self.selectEventForProcessing(event, trigger, origin, eventSetAttrs, resultEventSet):
 
                 # If the invocation is due to a database-originated change, and the
-                # preview grid is showing, update only the preview grid visual
-                # features.
-                if origin == 'database' and event.get('showGrid'):
-                    self.updatePreviewGridFeaturesOnly(event, resultEventSet)
+                # event has been modified, regenerate the non-persistent visual
+                # features, including the preview grid ones if appropriate.
+                if origin == 'database':
+                    if trigger == "hazardEventModification":
+                        if "status" in self.attributeIdentifiers:
+                            self.probUtils.setActivation(event, self.caveUser)
+                        self.editableHazard, self.selectedHazard = self.isEditableSelected(event)            
+                        self.label = str(event.get('objectID')) + " " + event.getHazardType()
+                        self.updatePotentiallyEditableFeaturesOnly(event, resultEventSet)
+                    if event.get('showGrid'):
+                        self.updatePreviewGridFeaturesOnly(event, resultEventSet)
+
                 continue
 
             # Begin Graph Draw
             if self.beginGraphDraw(event, trigger):
-                 resultEventSet.add(event)
-                 continue
+                resultEventSet.add(event)
+                continue
 
             self.movedStartTime = False
             self.initializeEvent(event)
@@ -248,49 +256,6 @@ class Recommender(RecommenderTemplate.Recommender):
             print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
             print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
             self.flush()
-            
-            # React to the change in selection state, if that is what
-            # triggered this execution of the recommender.
-            if trigger == 'hazardEventSelection':
-                
-                # Ensure that if the event has been deselected, or if
-                # it has been selected but has previously been issued,
-                # the changes made to its activate-related attributes
-                # do not keep it locked. 
-#                 if event.get('selected') is False or event.getStatus() != 'PENDING':
-#                     self.keepLocked = event.get('activate')
-                print 'SR: Hazard event activate (selection) is', event.get('activate')
-                if (event.get('selected') is False or event.getStatus() != 'PENDING') and event.get('activate') == False:
-                    self.doNotKeepLocked.add(event.getEventID())
-                
-                print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')                    
-                
-                print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
-                
-                # Checking for the selection status is important
-                # for deselection, no setactivation is called
-                # therefore the activate/activateModify status will be reserved 
-                if event.get('selected'):
-                    self.probUtils.setActivation(event, self.caveUser)
-                
-                self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-                
-                # We shouldn't need to regenerate visual features each
-                # time selection changes, and furthermore, when we
-                # regenerate them, it messes up re-centering because
-                # the proper visual features are not available to
-                # center upon in the Spatial Display until after the
-                # recommender responds to the selection. Therefore, if
-                # this causes problems, therthis line probably should
-                # not be uncommented; instead, we need to figure out
-                # why visual features are not being generated properly
-                # so as to work whether selected or not.
-
-                # self.setVisualFeatures(event)
-                self.updateVisualFeatures(event)
-
-                resultEventSet.add(event)
-                continue
             
             # Adjust Hazard Event Attributes
             changes = False
@@ -360,7 +325,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 # if len(pastProbSeverePolys) > 1:
                 #     self.updateMotionVector(event, pastProbSeverePolys)
                 #===============================================================
-                self.advanceForecastPolys(event, eventSetAttrs) 
+                self.advanceAutoPolys(event)
                 changes = True
             
             if not changes:
@@ -523,6 +488,21 @@ class Recommender(RecommenderTemplate.Recommender):
             # BUG ALERT?? Should we still process it?
 
         return True
+
+    # Update the potentially editable visual features for the specified event.
+    def updatePotentiallyEditableFeatures(self, event):
+        features = self.getPersistentAndPreviewGridFeatures(event)
+        features += self.potentiallyEditableVisualFeatures(event)
+        event.setVisualFeatures(VisualFeatures(features))
+
+    # Update the potentially editable visual features only for the specified event,
+    # adding it to the specified result event set and setting flags appropriately
+    # for a potentially-editable-feature-only update.
+    def updatePotentiallyEditableFeaturesOnly(self, event, resultEventSet):
+        self.updatePotentiallyEditableFeatures(event)
+        resultEventSet.add(event)
+        self.saveToDatabase = False
+        self.doNotCountAsModification = True
 
     # Update the preview grid visual features for the specified event.
     def updatePreviewGridFeatures(self, event):
@@ -709,10 +689,6 @@ class Recommender(RecommenderTemplate.Recommender):
         self.flush()
         
         changed = False
-
-        if 'selected' in self.attributeIdentifiers:
-            return False               
-        
         
         if origin == 'user' and 'geometryAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
             geomList = event.get('probSevereGeomList', [])
@@ -778,7 +754,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.flush()
                 event.set('activate', True)
                 event.set('activateModify', False)
-                #self.probUtils.setActivation(event)
                 self.editableHazard = True
             return True
         
@@ -867,10 +842,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def handleAdditionalEventModifications(self, event, resultEventSet):
         print "SR- Entering handleAdditionalEventModification --YG"
         self.flush()
-        if "status" in self.attributeIdentifiers or "showGrid" in self.attributeIdentifiers:
-            self.setVisualFeatures(event)
-            resultEventSet.add(event)
-            return
+
         if 'cancelButton' in self.attributeIdentifiers: 
 #             print "SR Setting to ELAPSED"
 #             self.flush()
@@ -993,6 +965,28 @@ class Recommender(RecommenderTemplate.Recommender):
         self.flush()
         event.set('pastPolys', newPastPolys)
         event.set('pastTimes', newPastTimes)
+
+    def advanceAutoPolys(self, event):
+        forecastPolys = event.get('forecastPolys', [])
+        forecastTimes = event.get('forecastTimes', [])
+
+        pastPolys = event.get('pastPolys', [])
+        pastTimes = event.get('pastTimes', [])
+   
+        if len(forecastTimes) > 0:
+            forecastTimes.sort()
+            if len(pastTimes) > 0:
+                pastTimes.sort()
+                if forecastTimes[0] > pastTimes[-1]:
+                    pastPolys.append(forecastPolys[0])
+                    pastTimes.append(forecastTimes[0])
+            else:
+                pastPolys.append(forecastPolys[0])
+                pastTimes.append(forecastTimes[0])
+                    
+        
+        event.set('pastPolys', pastPolys)
+        event.set('pastTimes', pastTimes)
       
     def setEventGeometry(self, event, shape):
         '''
@@ -1167,6 +1161,8 @@ class Recommender(RecommenderTemplate.Recommender):
         print self.logMessage("Setting Visual Features")
         self.flush()
 
+        self.potentiallyEditableVisualFeatureIdentifiers = []
+
         forecastPolys = event.get('forecastPolys')
         if not forecastPolys:
             return
@@ -1188,117 +1184,20 @@ class Recommender(RecommenderTemplate.Recommender):
         if featuresDisplay.get('motionVectorCentroids'):
             features += self.motionVectorFeatures(event, startTime_ms)     
         
-        # Previous Time Features
-        features += self.previousTimeVisualFeatures(event)
-        
         # Preview Grid
         if featuresDisplay.get('previewGrid'):
             features += self.getPreviewGridFeatures(event, startTime_ms)
+
+        event.set('potentiallyEditableVisualFeatureIdentifiers',
+                  self.potentiallyEditableVisualFeatureIdentifiers)
+
+        features += self.potentiallyEditableVisualFeatures(event)
                            
         if features:
             event.setVisualFeatures(VisualFeatures(features))
             
         if self.printVisualFeatures:
              self.printFeatures(event, "Visual Features", features)
-             
-    def updateVisualFeatures(self, event):
-        print self.logMessage("Updating Visual Features")
-        self.flush()
-
-        forecastPolys = event.get('forecastPolys')
-        if not forecastPolys:
-            return
-        
-        features = event.getVisualFeatures()
-        
-        newfeatures = []
-        for feature in features:
-            featureIdentifier = feature.get('identifier')
-            if featureIdentifier.startswith("swathRec_relocated_"):
-                continue
-            newfeatures.append(feature)
-        
-        startTime_ms = self.dataLayerTimes[0]
-        featuresDisplay = self.featuresDisplay()
-        
-        # Forecast Features -- polygons, track points, relocated dashed, last motionVector
-        newfeatures += self.updateRelocatedVisualFeatures(event, startTime_ms)
-
-        if newfeatures:
-            event.setVisualFeatures(VisualFeatures(newfeatures))
-            
-        if self.printVisualFeatures:
-             self.printFeatures(event, "Visual Features", newfeatures)             
-
-    def updateRelocatedVisualFeatures(self, event, startTime_ms):
-        print "SR -- entering updateRelocatedVisualFeatures --YG"
-        self.flush()
-        forecastPolys = event.get('forecastPolys')
-        if not forecastPolys:
-            return
-        forecastTimes = event.get('forecastTimes')
-        featuresDisplay = self.featuresDisplay()
-        
-        geometry = event.getGeometry()
-                
-        features = []
-                
-        # Forecast Polygons, Track Points, Relocated Forecast 
-        numIntervals = len(forecastPolys)
-      
-        # Border thickness
-        if self.selectedHazard:
-            borderThickness = 'eventType'
-        else:
-            borderThickness = 4
-
-        print "SR Forecast Visual Features  eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
-        #print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'], event.get('automationLevel')
-        self.flush()
-           
-        for i in range(numIntervals):
-            poly = forecastPolys[i]
-            polySt_ms, polyEt_ms = forecastTimes[i]
-           
-            centroid = poly.asShapely().centroid           
-            # Dashed relocated shape and centroid show up if editable 
-            dragCapability = 'none'
-            editable = False                
-            relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
-                                                                   createRelocatedShape(geometry, centroid))    
-            if polySt_ms == self.eventSt_ms:
-                print "SR ======================= editableHazard ", self.editableHazard
-                if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                    dragCapability = 'all'
-                    editable = True 
-                    print "SR relocatedShape, editable -YG ", self.eventSt_ms
-                    self.flush()
-              
-            relocatedFeature = {
-              "identifier": "swathRec_relocated_" + str(polySt_ms),
-              "visibilityConstraints": "selected",
-              "borderColor": "eventType",
-              "borderThickness": "eventType",
-              "borderStyle": "dashed",
-              "bufferColor": self.BUFFER_COLOR,
-              "bufferThickness": self.BUFFER_THICKNESS,
-              "textSize": "eventType",
-              "dragCapability": dragCapability,
-              "scaleable": editable,
-              "rotatable": editable,
-              "editableUsingGeometryOps": editable,
-              "useForCentering": True,
-              "geometry": {
-                  (polySt_ms, polyEt_ms): relocatedShape
-                   }
-            }
-            #print "SR Test I 34 -- dashed polys", featuresDisplay.get('dashedPolys'),  self.selectedHazard,  event.get('automationLevel') in ['userOwned', 'attributesOnly']
-            #self.flush()
-#            if featuresDisplay.get('dashedPolys') and self.selectedHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-            if featuresDisplay.get('dashedPolys') and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                features.append(relocatedFeature)
-            
-        return features
         
     def forecastVisualFeatures(self, event, startTime_ms):
         print "SR -- entering forecastVisualFeatures --YG"
@@ -1397,42 +1296,41 @@ class Recommender(RecommenderTemplate.Recommender):
                 features.append(trackPointFeature)
              
             # Dashed relocated shape and centroid show up if editable 
-            dragCapability = 'none'
-            editable = False                
             relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
                                                                    createRelocatedShape(geometry, centroid))    
+            
+            identifier = "swathRec_relocated_" + str(polySt_ms)
+            originalIdentifier = ""
+            visibilityConstraints = "selected"
             if polySt_ms == self.eventSt_ms:
                 print "SR ======================= editableHazard ", self.editableHazard
-                if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                    dragCapability = 'all'
-                    editable = True 
-                    print "SR relocatedShape, editable -YG ", self.eventSt_ms
-                    self.flush()
+
+                originalIdentifier = identifier
+                identifier = identifier + "_base"
+                visibilityConstraints = "never"
               
             relocatedFeature = {
-              "identifier": "swathRec_relocated_" + str(polySt_ms),
-              "visibilityConstraints": "selected",
+              "identifier": identifier,
+              "visibilityConstraints": visibilityConstraints,
               "borderColor": "eventType",
               "borderThickness": "eventType",
               "borderStyle": "dashed",
               "bufferColor": self.BUFFER_COLOR,
               "bufferThickness": self.BUFFER_THICKNESS,
               "textSize": "eventType",
-              "dragCapability": dragCapability,
-              "scaleable": editable,
-              "rotatable": editable,
-              "editableUsingGeometryOps": editable,
+              "dragCapability": "none",
+              "scaleable": False,
+              "rotatable": False,
+              "editableUsingGeometryOps": False,
               "useForCentering": True,
               "geometry": {
                   (polySt_ms, polyEt_ms): relocatedShape
                    }
             }
-            #print "SR Test I 34 -- dashed polys", featuresDisplay.get('dashedPolys'),  self.selectedHazard,  event.get('automationLevel') in ['userOwned', 'attributesOnly']
-            #self.flush()
-#            if featuresDisplay.get('dashedPolys') and self.selectedHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-            if featuresDisplay.get('dashedPolys') and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+            if featuresDisplay.get('dashedPolys'):
                 features.append(relocatedFeature)
-            
+                if originalIdentifier:
+                    self.potentiallyEditableVisualFeatureIdentifiers.append(originalIdentifier)
 
             centroidFeature = {
               "identifier": "swathRec_relocatedCentroid_" + str(polySt_ms),
@@ -1454,17 +1352,10 @@ class Recommender(RecommenderTemplate.Recommender):
         if not startTimeShapeFound:
             print "****SR startTimeShape not found -- attempt to use geometry"
             self.flush()
-            if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                #print "SR forecast poly equal to start time -- setting editable"
-                print "SR setting editable...YG "
-                self.flush()
-                dragCapability = 'all'
-                editable = True
-            else:
-                dragCapability = 'none'
-                editable = False
-            # print "SR dragCapability", dragCapability
-            self.flush()
+
+            originalIdentifier = "swathRec_forecast_" + str(polySt_ms)
+            identifier = originalIdentifier + "_base"
+            visibilityConstraints = "never"
                 
             polySt_ms = self.eventSt_ms
             polyEt_ms = firstForecastSt_ms
@@ -1476,8 +1367,8 @@ class Recommender(RecommenderTemplate.Recommender):
             label = self.label + probStr
 
             startTimeFeature = {
-              "identifier": "swathRec_forecast_" + str(polySt_ms),
-              "visibilityConstraints": "always",
+              "identifier": identifier,
+              "visibilityConstraints": visibilityConstraints,
               "borderColor": "eventType",
               "borderThickness": borderThickness,
               "borderStyle": "eventType",
@@ -1486,15 +1377,16 @@ class Recommender(RecommenderTemplate.Recommender):
               "textSize": "eventType",
               "label": label,
               "textColor": { "red": 1.0, "green": 1.0, "blue": 1.0 },
-              "dragCapability": dragCapability,
-              "scaleable": editable,
-              "rotatable": editable,
+              "dragCapability": "none",
+              "scaleable": False,
+              "rotatable": False,
               "geometry": {
                    (polySt_ms, polyEt_ms): geometry
                   }
                 }
             if featuresDisplay.get('startTimeShape'):
-               features.append(startTimeFeature)
+                self.potentiallyEditableVisualFeatureIdentifiers.append(originalIdentifier)
+                features.append(startTimeFeature)
                
             # centroid
             centroid = poly.asShapely().centroid
@@ -1649,6 +1541,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 previousFeature = {              
                   "identifier": "swathRec_previous_" + str(polySt_ms),
                   "visibilityConstraints": "selected",
+                  "persist": False,
                   "borderColor":  color,  
                   "borderThickness": "eventType",
                   "borderStyle": "eventType",
@@ -1666,9 +1559,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 
             # Display the past polygons if selected and not resetting motion vector (could be editable)
             # BUG ALERT?? May need to only display past IF we are selected AND not editable
-            else:          
+            else: 
+                         
                 if not pastTimes:
                     continue
+
                 poly, polyType = self.findPreviousPoly(event, polySt_ms,
                                           [], [], pastPolys, pastTimes, [], []) 
                 if not poly:
@@ -1681,6 +1576,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 previousFeature = {              
                   "identifier": "swathRec_previous_" + str(polySt_ms),
                   "visibilityConstraints": "always",
+                  "persist": False,
                   "borderColor":  color,   
                   "borderThickness": "eventType",
                   "borderStyle": "eventType",
@@ -1698,6 +1594,44 @@ class Recommender(RecommenderTemplate.Recommender):
             
         return previousFeatures
 
+    def getPersistentAndPreviewGridFeatures(self, event):
+        persistentAndPreviewGridVisualFeatures = []
+        for visualFeature in event.getVisualFeatures():
+            if visualFeature.get("persist", True) or \
+                    visualFeature["identifier"].startswith("swathRec_gridPreview_"):
+                persistentAndPreviewGridVisualFeatures.append(visualFeature)
+        return persistentAndPreviewGridVisualFeatures
+
+    def potentiallyEditableVisualFeatures(self, event):
+        
+        potentiallyEditableFeatures = []
+
+        # Determine whether the potentially editable visual features should indeed
+        # be editable or not.        
+        if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+            dragCapability = 'all'
+            editable = True 
+        else:
+            dragCapability = 'none'
+            editable = False
+
+        # Create the potentially editable visual features.
+        for identifier in event.get('potentiallyEditableVisualFeatureIdentifiers', []):
+            potentiallyEditableFeatures.append({
+                                          "identifier": identifier,
+                                          "visibilityConstraints": "selected" if "relocated" in identifier else "always",
+                                          "persist": False,
+                                          "templates": [ identifier + "_base" ],
+                                          "dragCapability": dragCapability,
+                                          "scaleable": editable,
+                                          "rotatable": editable,
+                                          "editableUsingGeometryOps": editable if "relocated" in identifier else False
+                                          })
+
+        # Add the previous time visual features.
+        potentiallyEditableFeatures += self.previousTimeVisualFeatures(event)
+
+        return potentiallyEditableFeatures
 
     def findPreviousPoly(self, event, polySt_ms, motionVectorCentroids, motionVectorTimes, pastPolys, pastTimes,
                           upstreamPolys, upstreamTimes):
@@ -1777,7 +1711,8 @@ class Recommender(RecommenderTemplate.Recommender):
                         # (TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 
                          TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                                  AdvancedGeometry.createShapelyWrapper(poly, 0)
-                    }
+                    },
+                    "topmost": True
                 }
                 
                 gridFeatures.append(gridPreviewPoly)
