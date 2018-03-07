@@ -2383,7 +2383,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldName": "cancelButton",
             "label": "*** End Object ***",
             "editable": enable,
-            "modifyRecommender": self.RECOMMENDER,
+            "modifyRecommender": "ConfirmRecommender", #self.RECOMMENDER,
         }
         return grp
     
