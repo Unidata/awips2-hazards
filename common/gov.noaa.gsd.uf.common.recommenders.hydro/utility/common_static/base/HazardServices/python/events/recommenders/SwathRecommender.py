@@ -27,6 +27,7 @@ import numpy as np
 
 import JUtil     
 
+DEFAULT_DURATION_IN_SECS = 3600
 #===============================================================================
 # Users wanting to add new storm paths should enter a new method in this class
 # with the same name as one of the choices found in 
@@ -323,12 +324,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 changes = True
                 
             elif trigger == 'autoUpdate':
-                #===============================================================
-                # pastProbSeverePolys = event.get('probSevereGeomList', [])
-                # if len(pastProbSeverePolys) > 1:
-                #     self.updateMotionVector(event, pastProbSeverePolys)
-                #===============================================================
-                self.advanceAutoPolys(event) 
+                self.advanceAutoPolys(event)
                 changes = True
             
             if not changes:
@@ -701,14 +697,25 @@ class Recommender(RecommenderTemplate.Recommender):
         self.flush()
         
         changed = False
+
+        if origin == 'user' and 'durationAutomated' not in attributeSet:
+            duration = self.probUtils.getDurationSecs(event)
+            if duration != DEFAULT_DURATION_IN_SECS:
+                event.set('durationAutomated', False)
+
+        if origin == 'user' and 'durationAutomated' in attributeSet:
+            if event.get('durationAutomated', False):
+                endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+                event.setEndTime(endTime)
         
         if origin == 'user' and 'geometryAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
-            geomList = event.get('probSevereGeomList', [])
-            if len(geomList) > 0:
-                geomList.sort(key=lambda x: x[1])
-                geom = geomList[-1][0]
-                event.setGeometry(geom)
-                changed = True
+            if event.get('geometryAutomated', False):
+                geomList = event.get('probSevereGeomList', [])
+                if len(geomList) > 0:
+                    geomList.sort(key=lambda x: x[1])
+                    geom = geomList[-1][0]
+                    event.setGeometry(geom)
+                    changed = True
         
         if origin == 'user' and 'motionAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
             if event.get('motionAutomated', False):
@@ -717,6 +724,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 event.set('convectiveObjectDirUnc', event.get('convRecPastconvectiveObjectDirUncHID'))
                 event.set('convectiveObjectSpdKtsUnc', event.get('convRecPastconvectiveObjectSpdKtsUncHID'))
             changed = True
+            
             
         if origin == 'user' and 'probTrendAutomated' in attributeSet:
             if event.get('probTrendAutomated', False):
@@ -912,7 +920,6 @@ class Recommender(RecommenderTemplate.Recommender):
     ##############################################
     # Forecast bookkeeping                     #
     ##############################################    
-                        
     def advanceForecastPolys(self, event, eventSetAttrs):
         ''' 
         Move forecastPolys to pastPolys
@@ -1143,7 +1150,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
             value = int(newMotion.get(key))
             # Save new motion vector to Application Dictionary
-            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts','convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
                 updateDict[key] = value           
             event.set(key, value)
         print "SR updateApplicationDict adjust", updateDict

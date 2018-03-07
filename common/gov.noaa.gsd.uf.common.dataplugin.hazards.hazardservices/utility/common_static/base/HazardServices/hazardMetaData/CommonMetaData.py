@@ -2193,6 +2193,27 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         ]        
         return mwList
 
+    def getConvectiveDuration(self, enable):        
+        
+        print "\nCM-ACTIVATE-getConvectiveDuration:", enable
+        self.flush()
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveDurationGroup",
+            "label": "Duration",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
+            "numColumns":1,
+            "fields": [
+                        self.getAutoDuration(enable),
+                       ],
+        }  
+        
+        return grp 
+    
     def getConvectiveShape(self, enable):        
         
         print "\nCM-ACTIVATE-getConvectiveShape:", enable
@@ -2257,10 +2278,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Composite",
             "fieldName": "AutomationSettingCompositeGroup",
             "label": "Automation",
-            "numColumns":2,
+            "numColumns":3,
             "fields": [
                        self.getAutomationButtons(activate),
                        self.getConvectiveShape(activate),                          
+                       self.getConvectiveDuration(activate),                          
                     ],
             }
         
@@ -2327,6 +2349,26 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                     ]
         }        
         return grp
+    
+    def getAutoDuration(self, enable):
+        enableAutomated = self.getEnableAutomated(enable)
+        print "\nCM-ACTIVATE-getAutoDuration:", enable
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+
+        if self.hazardEvent.get("durationAutomated"):
+            durationAutomated = True
+        else:
+            durationAutomated = False
+        return {
+            "fieldType": "CheckBox",
+            "fieldName": "durationAutomated",
+            "label": "Automate",
+            "sendEveryChange": False,
+            "values": durationAutomated,
+            "modifyRecommender": self.RECOMMENDER,
+            "editable": enableAutomated,
+            }
     
     def getAutoShape(self, enable):
         enableAutomated = self.getEnableAutomated(enable)
@@ -3004,17 +3046,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 "convectiveStormCharsTorn", "convectiveObjectDir", "convectiveObjectSpdKts",
                 "convectiveObjectDirUnc", "convectiveObjectSpdKtsUnc"]
 
-    # Set of megawidgets that are related to motion automation.
-    megawidgetsRelatedToMotionAutomation = set(["resetMotionVector", "convectiveObjectDir",
-                                                "convectiveObjectSpdKts", "convectiveObjectDirUnc",
-                                                "convectiveObjectSpdKtsUnc"])
-
-    # Set of megawidgets that are related to prob trend automation.
-    megawidgetsRelatedToProbTrendAutomation = set(["convectiveProbTrendDraw", "convectiveProbTrendLinear",
-                                                   "convectiveProbTrendExp1", "convectiveProbTrendExp2",
-                                                   "convectiveProbTrendBell", "convectiveProbTrendPlus5",
-                                                   "convectiveProbTrendMinus5", "convectiveProbTrendGraph"])
-
     # Determine whether or not the Modify, Automate All, or Automate None
     # button was clicked.
     modifyButtonChosen = False
@@ -3028,22 +3059,18 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     # If one of the properties related to motion automation changed value,
     # uncheck motion automated; and if one of the properties related to
     # prob trend automation changed value, uncheck prob trend automated.
-    motionAutomated = (mutableProperties['motionAutomated'].get("values", False) if 'motionAutomated' in mutableProperties else False)
-    probTrendAutomated = (mutableProperties['probTrendAutomated'].get("values", False) if 'probTrendAutomated' in mutableProperties else False)
     if triggerIdentifiers:
         triggerSet = set(triggerIdentifiers)
         if automateAllButtonChosen:
             returnDict['motionAutomated'] = {'values' : True}
             returnDict['probTrendAutomated'] = {'values' : True}
             returnDict['geometryAutomated'] = {'values' : True}
-            motionAutomated = True
-            probTrendAutomated = True
+            returnDict['durationAutomated'] = {'values' : True}
         elif automateNoneButtonChosen:
             returnDict['motionAutomated'] = {'values' : False}
             returnDict['probTrendAutomated'] = {'values' : False}
             returnDict['geometryAutomated'] = {'values' : False}
-            motionAutomated = False
-            probTrendAutomated = False
+            returnDict['durationAutomated'] = {'values' : False}
 
     # Determine whether the editable flag is true or not (controlling
     # the editability of all the megawidgets listed above), and whether
@@ -3087,7 +3114,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         manuallyCreated = manuallyCreatedStatus.get('values') # Should always be present
         print "CM-MANUALLY_CREATED:",manuallyCreatedStatus, manuallyCreated , '<<<'
         if manuallyCreated == 0 or manuallyCreated == False:
-            for key in ['geometryAutomated', "motionAutomated", 'probTrendAutomated','automateAllButton', 'automateNoneButton']:
+            for key in ['geometryAutomated', "motionAutomated", 'probTrendAutomated','automateAllButton', 'automateNoneButton', 'durationAutomated']:
                 returnDict[key] = { 'editable' : editable }
         return returnDict
     elif automateAllButtonChosen:
@@ -3103,10 +3130,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
 
     ### The next 3 if statements are to immediately update respective fields
     ### if reautomated, per Greg.
-    # Note: This does nothing; is that what we really want?
-    if triggerIdentifiers and 'geometryAutomated' in triggerIdentifiers:
-        pass
-    
         
     if triggerIdentifiers:
         convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')

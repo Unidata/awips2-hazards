@@ -430,6 +430,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.set('manuallyCreated', False)
         hazardEvent.set('geometryAutomated', True)
         hazardEvent.set('motionAutomated', True)
+        hazardEvent.set('durationAutomated', True)
         hazardEvent.set('probTrendAutomated', True)
         
         graphProbs = self.probUtils.getGraphProbs(hazardEvent, int(probSevereTime.strftime('%s'))*1000)
@@ -440,7 +441,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def setEventTimes(self, event, values=None):
         
-        if event.getEndTime() is None:
+        if event.getEndTime() is None or event.get('durationAutomated'):
             durSecs = DEFAULT_DURATION_IN_SECS
         else:
             durSecs = self.probUtils.getDurationSecs(event)
@@ -505,8 +506,7 @@ class Recommender(RecommenderTemplate.Recommender):
             graphProbs = self.probUtils.getGraphProbs(event, dataLayerTimeMS)
             event.set('convectiveProbTrendGraph', graphProbs)
             
-        if event.get('geometryAutomated', False):
-            self.updateEventGeometry(event, recommended)
+        self.updateEventGeometry(event, recommended)
             
         probSevereAttrs = event.get('probSeverAttrs')
         for k,v in recommended.iteritems():
@@ -523,12 +523,41 @@ class Recommender(RecommenderTemplate.Recommender):
 
 
     def updateEventGeometry(self, event, recommendedDict):
-        try:
-            newShape = loads(recommendedDict.get('polygons'))
-            event.setGeometry(newShape)
-        except:
-            print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
-            sys.stdout.flush()
+        
+        if event.get('geometryAutomated', False):
+            try:
+                newShape = loads(recommendedDict.get('polygons'))
+                event.setGeometry(newShape)
+            except:
+                print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
+                sys.stdout.flush()
+        ### We want to get the nearest location of forecast (relocated inner) poly nearest the given time and use that
+        else:
+            polyGeom = None
+            timeMin = sys.maxint
+            recommendedStartTimeDT = recommendedDict.get('startTime')
+            recommendedEpochMillis = TimeUtils.datetimeToEpochTimeMillis(recommendedStartTimeDT)
+            latestDLTMillis = TimeUtils.datetimeToEpochTimeMillis(self.latestDLTDT)
+            features = event.getVisualFeatures()
+            for feature in features:
+                featureIdentifier = feature.get('identifier')
+                if featureIdentifier.startswith("swathRec_relocated_"):
+                    geomDict = feature.get('geometry')
+                    if geomDict is None:
+                        continue
+                    #"geometry": {(polySt_ms, polyEt_ms): relocatedShape}
+                    polySt_ms = int(geomDict.keys()[0][0])
+                    polyShape = geomDict.values()[0]
+                        
+                    timeDiff = np.abs(recommendedEpochMillis-polySt_ms)
+                    
+                    if timeDiff < timeMin:
+                        timeMin = timeDiff
+                        polyGeom = polyShape
+
+            if polyGeom is not None:
+                event.setGeometry(polyGeom)
+                    
 
       
     ### Update the current events, and return a list of identifiers of

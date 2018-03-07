@@ -28,6 +28,7 @@ from ConfigurationUtils import ConfigUtils
 
 import GenericRegistryObjectDataAccess
 from HazardConstants import *
+from HazardEventLockUtils import HazardEventLockUtils
 
 from socket import gethostname
 from ufpy import qpidingest
@@ -50,13 +51,13 @@ class ProbUtils(object):
                 hazardEvent.set('objectID', 'M'+hazardObjectID)
         else:
             #### Fully automated should have nothing prepended
-            if hazardEvent.get("geometryAutomated") and hazardEvent.get("motionAutomated") and hazardEvent.get("probTrendAutomated"):
+            if hazardEvent.get("geometryAutomated") and hazardEvent.get("motionAutomated") and hazardEvent.get("probTrendAutomated") and hazardEvent.get("durationAutomated"):
                 if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
                     recommendedID = re.findall('\d+', str(hazardObjectID))[0]
                     hazardEvent.set('objectID', recommendedID)
 
             #### automated but all automation taken over should have 'm' prepended
-            elif not hazardEvent.get("geometryAutomated") and not hazardEvent.get("motionAutomated") and not hazardEvent.get("probTrendAutomated"):
+            elif not hazardEvent.get("geometryAutomated") and not hazardEvent.get("motionAutomated") and not hazardEvent.get("probTrendAutomated") and not hazardEvent.get("durationAutomated"):
                 if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
                     recommendedID = re.findall('\d+', str(hazardObjectID))[0]
                 else:
@@ -97,6 +98,9 @@ class ProbUtils(object):
         if mode == 'OPERATIONAL':
             practice = False
         
+        hazardEventLockUtils = HazardEventLockUtils(practice)
+        identifiersOfLockedEvents = hazardEventLockUtils.getLockedEvents()
+        
         for event in eventSet:
             
             ### Kludgey fix for HWT Week 3
@@ -112,12 +116,16 @@ class ProbUtils(object):
             # since that is the one upon which the grid should be based.
             # If it has never been added to the history list, then it
             # should not result in any grid generation.
-            objectID = str(event.get('objectID'))
-            if len(re.findall('[Mm]', objectID)) > 0:
+#            objectID = str(event.get('objectID'))
+#            if len(re.findall('[Mm]', objectID)) > 0:
+#                event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), practice)
+            if event.getEventID() in identifiersOfLockedEvents:
+                print '\n\n-->[PU] event is locked. Processing as HISTORICAL event'
                 event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), practice)
+                print '\t', event.getEventID()
+                print '<<<<<<<<<<<<'
+            
 
-
-            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), practice)
             if event is None:
                 continue
             
@@ -624,8 +632,7 @@ class ProbUtils(object):
         ### Challenge is to get the graph to show the "rounded up" value, but we 
         ### don't want to muck with the duration, so still uncertain the best way
         newGraphVals = self.getGraphProbsBasedOnDuration(event)
-#         if event.get('automationLevel') == 'automated':
-        if event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated'):
+        if event.get('probTrendAutomated'):
             graphVals = newGraphVals
         else:
             graphVals = self.updateGraphValsDuration(graphVals, newGraphVals)
