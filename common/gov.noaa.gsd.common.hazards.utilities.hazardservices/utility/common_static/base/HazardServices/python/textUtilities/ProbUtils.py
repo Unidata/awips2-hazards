@@ -792,9 +792,15 @@ class ProbUtils(object):
         newMotion = self.computeMotionVector(motionVectorTuples) 
         updateDict = {}
         for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+            ### BUG ALERT
+            #### Emergency Fix: Sometimes we're not getting the *Unc values to write, so we're hardcoding them in here for now.
+            if key == 'convectiveObjectDirUnc':
+                value = 12
+            if key == 'convectiveObjectSpdKtsUnc':
+                value = 4
             value = int(newMotion.get(key))
             # Save new motion vector to Application Dictionary
-            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
                 updateDict[key] = value           
             event.set(key, value)
         print "PU updateApplicationDict adjust", updateDict
@@ -1037,10 +1043,12 @@ class ProbUtils(object):
         dirVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectDir')             
         ### get dirUncertainty (degrees)
         dirUVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectDirUnc')
+        dirUVal = dirUVal if isinstance(dirUVal, int) else 12
         ### get speed
         speedVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectSpdKts')
         # get speedUncertainty
         spdUVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectSpdKtsUnc')
+        spdUVal = spdUVal if isinstance(spdUVal, int) else 4
                             
         ### Get initial shape.  
         # This represents the shape at the event start time resulting from the last
@@ -1266,7 +1274,11 @@ class ProbUtils(object):
         return appDict.get(key, default)
     
     def getDefaultMotionVectorKey(self, event, key): 
-        return int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0)))) 
+        val = event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0)))
+        if val is not None:
+            return int(val)
+        else:
+            return None
     
     #########################################
     ### Common Methods shared among modules

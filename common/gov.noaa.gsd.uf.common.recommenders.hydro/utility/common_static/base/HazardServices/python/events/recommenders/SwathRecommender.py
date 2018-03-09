@@ -237,8 +237,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     if trigger == "hazardEventModification":
                         if "status" in self.attributeIdentifiers:
                             self.probUtils.setActivation(event, self.caveUser)
-                            #update the eventSt_ms for all workstations, include the owner or non-owner
-                            self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
+                        #update the eventSt_ms for all workstations, include the owner or non-owner
+                        self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
                         self.editableHazard, self.selectedHazard = self.isEditableSelected(event)            
                         self.label = str(event.get('objectID')) + " " + event.getHazardType()
                         self.updatePotentiallyEditableFeaturesOnly(event, resultEventSet)
@@ -276,7 +276,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 #self.advanceForecastPolys(event, eventSetAttrs)         
                 graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
                 #revert to previous event start time
-                resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)           
+                #resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)           
                 event.set('convectiveProbTrendGraph', graphProbs)
                 changes = True
                     
@@ -308,10 +308,14 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.handleAdditionalEventModifications(event, resultEventSet)
                     #continue
                 if 'modifyButton' in self.attributeIdentifiers or (self.editableHazard and self.movedStartTime): 
-                    resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)
-                    self.lastSelectedTime = self.eventSt_ms
-                    print "SR Setting selected time to eventSt", self.eventSt_ms
-                    self.flush()
+                    if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
+                        resultEventSet.addAttribute(SELECTED_TIME_KEY, self.latestDataLayerTime)
+                        self.lastSelectedTime = self.latestDataLayerTime
+                    else:
+                        resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)
+                        self.lastSelectedTime = self.eventSt_ms
+                        print "SR Setting selected time to eventSt", self.eventSt_ms
+                        self.flush()
                     changes = True
                     
             elif trigger == 'hazardEventVisualFeatureChange':
@@ -393,6 +397,28 @@ class Recommender(RecommenderTemplate.Recommender):
     #     self.probUtils.updateApplicationDict(updateDict)
     #===========================================================================
     
+    def printOrphanVisualFeaturesError(self, event, features):
+            baseIds = set()
+            derivedIds = set()
+            for feature in features:
+                templates = feature.get("templates", None)
+                if templates:
+                    derivedIds.add(templates[0])
+                else:
+                    baseIds.add(feature["identifier"])
+            problemIds = derivedIds - baseIds
+            if problemIds:
+                import sys
+                sys.stderr.write("Error while setting visual features for hazard event " + str(11) + ".\n")
+                sys.stderr.write("Derived visual features found with missing base identifiers:" + "".join(str(problemIds)) + ".\n")
+                sys.stderr.write("Potentially editable visual feature identifiers attribute:" + "".join(str(event.get('potentiallyEditableVisualFeatureIdentifiers', [])), ",") + ".\n")
+                sys.stderr.write("Total number of base vs. derived visual features:" + str(len(baseIds)) + "/" + str(len(derivedIds)) + ".\n")
+                sys.stderr.write("Called from:\n")
+                import traceback
+                for line in traceback.format_stack():
+                    sys.stderr.write("    " + str(line))
+                sys.stderr.flush()
+
     
     def setDataLayerTimes(self, eventSetAttrs):
         # Data Layer Times are in ms past the epoch
@@ -501,6 +527,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def updatePotentiallyEditableFeatures(self, event):
         features = self.getPersistentAndPreviewGridFeatures(event)
         features += self.potentiallyEditableVisualFeatures(event)
+        self.printOrphanVisualFeaturesError(event, features)
         event.setVisualFeatures(VisualFeatures(features))
 
     # Update the potentially editable visual features only for the specified event,
@@ -517,6 +544,7 @@ class Recommender(RecommenderTemplate.Recommender):
         features = self.getNonPreviewGridFeatures(event)
         if self.featuresDisplay().get('previewGrid'):
             features += self.getPreviewGridFeatures(event, self.dataLayerTimes[0])
+        self.printOrphanVisualFeaturesError(event, features)
         event.setVisualFeatures(VisualFeatures(features))
 
     # Update the preview grid visual features only for the specified event,
@@ -667,7 +695,16 @@ class Recommender(RecommenderTemplate.Recommender):
             if self.latestDataLayerTime <= self.selectedTime:
                 resultEventSet.addAttribute(SELECTED_TIME_KEY, self.latestDataLayerTime)
                 print "SR Setting selected time to latestDataLayer due to time interval update", self.editableHazard, self.editableObjects
+                print "===latestDataLayerTime--SelectedTime====", self.latestDataLayerTime, self.selectedTime
                 self.flush()
+                #refreshing the prob trend graph, age off when automation control is turned off on probabilities. 
+                if not event.get('probTrendAutomated'):
+                    graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+                    event.set('convectiveProbTrendGraph', graphProbs)
+                    resultEventSet.add(event)
+                    self.doNotKeepLocked.add(event.getEventID()) 
+                    self.doNotCountAsModification = True
+                
         elif self.editableHazard:
             self.visualCueForDataLayerUpdate(event)
             resultEventSet.add(event)
@@ -738,6 +775,13 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('probTrendAutomated', False)
             changed = True
         
+        if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
+            # automate event, no owner
+            if event.get("owner", None):
+                event.set("owner", None)
+        else:
+            if not event.get("owner", None):
+                event.set("owner", self.caveUser)
         
         
         if 'status' in self.attributeIdentifiers:
@@ -777,36 +821,36 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.editableHazard = True
             return True
         
-        # Handle Auto Shape and other auto events
-        if 'geometryAutomated' in self.attributeIdentifiers or "motionAutomated" in self.attributeIdentifiers or "probTrendAutomated" in self.attributeIdentifiers:
-            # check if all three automation are there, and current status
-            # to see if we need to set the new owner
-            if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
-                # automate event, no owner
-                if event.get("owner", None):
-                    event.set("owner", None)
-                    print "SW: manual to automate, reset the owner to NONE" 
-                # reset the object ID as well
-#                if event.get("objectID") and event.get("objectID").startswith('m'):
-#                    event.set("objectID", event.get('objectID')[1:])
-                    
-                # automate event, no need to check the owner
-                #print "SW: automated event, set activation "
-                #self.probUtils.setActivation(event)                                   
-            else:
-                # not all are automate, have to be manual
-                if not event.get("owner", None):
-                    event.set("owner", self.caveUser)
-                    print "SW: automate to manual, set the owner to ", self.caveUser
-                # manual event, need to change the object ID as well
-#                if event.get('objectID') and not event.get('objectID').startswith('m'):
-#                    event.set('objectID', 'm'+event.get('objectID'))
-                    
-                #print "SW: manual event, set activation"
-                #self.probUtils.setActivation(event, self.caveUser)                         
-            
-            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)            
-            #return True
+#        # Handle Auto Shape and other auto events
+#        if 'geometryAutomated' in self.attributeIdentifiers or "motionAutomated" in self.attributeIdentifiers or "probTrendAutomated" in self.attributeIdentifiers:
+#            # check if all three automation are there, and current status
+#            # to see if we need to set the new owner
+#            if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
+#                # automate event, no owner
+#                if event.get("owner", None):
+#                    event.set("owner", None)
+#                    print "SW: manual to automate, reset the owner to NONE" 
+#                # reset the object ID as well
+##                if event.get("objectID") and event.get("objectID").startswith('m'):
+##                    event.set("objectID", event.get('objectID')[1:])
+#                    
+#                # automate event, no need to check the owner
+#                #print "SW: automated event, set activation "
+#                #self.probUtils.setActivation(event)                                   
+#            else:
+#                # not all are automate, have to be manual
+#                if not event.get("owner", None):
+#                    event.set("owner", self.caveUser)
+#                    print "SW: automate to manual, set the owner to ", self.caveUser
+#                # manual event, need to change the object ID as well
+##                if event.get('objectID') and not event.get('objectID').startswith('m'):
+##                    event.set('objectID', 'm'+event.get('objectID'))
+#                    
+#                #print "SW: manual event, set activation"
+#                #self.probUtils.setActivation(event, self.caveUser)                         
+#            
+#            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)            
+#            #return True
                 
         # Get Convective Attributes from the MetaData. 
         # These should supercede and update the ones stored in the event
@@ -863,12 +907,13 @@ class Recommender(RecommenderTemplate.Recommender):
         print "SR- Entering handleAdditionalEventModification --YG"
         self.flush()
 
-        if 'cancelButton' in self.attributeIdentifiers: 
+#        "End Object" button is taken care of in ConfirmRecommender.py now
+#        if 'cancelButton' in self.attributeIdentifiers: 
 #             print "SR Setting to ELAPSED"
 #             self.flush()
 #             event.setStatus('ELAPSED')
 #             event.set('statusForHiddenField', 'ELAPSED')
-            print "SR Setting to ENDED"
+#            print "SR Setting to ENDED"
 #             self.flush()
 #             event.setStatus('ENDED')
 #             event.set('statusForHiddenField', 'ENDED')
@@ -877,7 +922,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #             self.saveToHistory = True
 #             #self.keepLocked = False
 #             self.doNotKeepLocked.add(event.getEventID())
-            return        
+#            return        
 
     def ensureLastGraphProbZeroAndUneditable(self, event):
         probVals = event.get('convectiveProbTrendGraph', [])
@@ -1094,8 +1139,6 @@ class Recommender(RecommenderTemplate.Recommender):
         else:
             changedIdentifier = list(eventSetAttrs.get('attributeIdentifiers'))[0]
  
-        print "changed identifier---", str(changedIdentifier)
-        self.flush()
         if not changedIdentifier:
             return True
                 
@@ -1233,6 +1276,7 @@ class Recommender(RecommenderTemplate.Recommender):
         features += self.potentiallyEditableVisualFeatures(event)
                            
         if features:
+            self.printOrphanVisualFeaturesError(event, features)
             event.setVisualFeatures(VisualFeatures(features))
             
         if self.printVisualFeatures:

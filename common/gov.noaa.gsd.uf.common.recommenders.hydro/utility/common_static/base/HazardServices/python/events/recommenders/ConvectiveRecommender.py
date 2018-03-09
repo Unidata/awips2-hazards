@@ -40,6 +40,7 @@ import HazardDataAccess
 from com.raytheon.uf.common.time import SimulatedTime
 from edu.wisc.ssec.cimss.common.dataplugin.probsevere import ProbSevereRecord
 from SwathRecommender import Recommender as SwathRecommender 
+from HazardEventLockUtils import HazardEventLockUtils
 #
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -150,8 +151,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
         ### Make sure we are getting the latest PHIConfig info each time we run.
         caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
-        practice = (False if caveMode == 'OPERATIONAL' else True)
-        self.initialize(practice)
+        self.practice = (False if caveMode == 'OPERATIONAL' else True)
+        self.initialize(self.practice)
 
         sessionAttributes = eventSet.getAttributes()
         if sessionAttributes:
@@ -501,10 +502,12 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('convectiveObjectSpdKtsUnc', 4)
 
             
-        if event.get('probTrendAutomated', False):
-            ### BUG ALERT: do we want DataLayerTime or ProbSevereTime?
-            graphProbs = self.probUtils.getGraphProbs(event, dataLayerTimeMS)
-            event.set('convectiveProbTrendGraph', graphProbs)
+#        if event.get('probTrendAutomated', False):
+#            ### BUG ALERT: do we want DataLayerTime or ProbSevereTime?
+#            graphProbs = self.probUtils.getGraphProbs(event, dataLayerTimeMS)
+#            event.set('convectiveProbTrendGraph', graphProbs)
+        graphProbs = self.probUtils.getGraphProbs(event, dataLayerTimeMS)
+        event.set('convectiveProbTrendGraph', graphProbs)
             
         self.updateEventGeometry(event, recommended)
             
@@ -614,6 +617,9 @@ class Recommender(RecommenderTemplate.Recommender):
         
         identifiersOfEventsToSaveToDatabase = []
         
+        hazardEventLockUtils = HazardEventLockUtils(self.practice)
+        identifiersOfLockedEvents = hazardEventLockUtils.getLockedEvents()
+        
         for currentEvent in currentEventsList:
             
             currentEventObjectID = currentEvent.get('objectID')
@@ -622,6 +628,13 @@ class Recommender(RecommenderTemplate.Recommender):
 
             rawRecommendedID = re.findall('\d+', str(currentEventObjectID))[0]
 
+            if currentEvent.getEventID() in identifiersOfLockedEvents:
+                print 'CR: skipping update because event is locked', currentEvent.getEventID()
+                ### Need to make sure that we don't create a new object
+                if rawRecommendedID in recommendedObjectIDsList:
+                    recommendedObjectIDsList.remove(rawRecommendedID)
+                continue
+            
             
             #if currentEvent.get('automationLevel') == 'userOwned':
             if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated'):
@@ -702,8 +715,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 mergedEvents.add(recommendedEvent)
                 identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
 
-        #for e in mergedEvents:
-        #    print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
+        for e in mergedEvents:
+            e.setIssuanceCount(e.getIssuanceCount() + 1)
+            #print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
                     
         return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     

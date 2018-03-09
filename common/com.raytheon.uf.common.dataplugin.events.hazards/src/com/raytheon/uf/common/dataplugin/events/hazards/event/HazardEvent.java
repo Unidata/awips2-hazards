@@ -340,7 +340,10 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setCreationTime(event.getCreationTime());
         setInsertTime(event.getInsertTime());
         setGeometry(event.getGeometry());
-        setVisualFeatures(new VisualFeaturesList(event.getVisualFeatures()));
+        if (event.getVisualFeatures() != null) {
+            setVisualFeatures(
+                    new VisualFeaturesList(event.getVisualFeatures()));
+        }
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
