@@ -155,6 +155,17 @@ def pyVisualFeaturesToJavaVisualFeatures(val):
         # Convert the list of dictionaries to JSON.
         asJson = json.dumps(val, cls = VisualFeaturesListJsonEncoder)
         
+        if "NaN" in asJson:
+            import sys
+            sys.stderr.write("Error while converting Python \visual features to Java.\n")
+            sys.stderr.write("NaN found as JSON element..\n")
+            sys.stderr.write("JSON: " + str(asJson) + "\n")
+            sys.stderr.write("Called from:\n")
+            import traceback
+            for line in traceback.format_stack():
+                sys.stderr.write("    " + str(line)+ "\n")
+            sys.stderr.flush()
+        
         # Convert the JSON to Java objects.
         return True, VisualFeaturesListJsonConverter.fromJson(asJson)
     return False, val

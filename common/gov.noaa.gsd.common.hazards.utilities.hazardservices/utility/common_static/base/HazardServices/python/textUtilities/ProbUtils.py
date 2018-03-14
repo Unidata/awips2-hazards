@@ -74,6 +74,14 @@ class ProbUtils(object):
         
         return hazardEvent.get('objectID')
     
+    
+    def isFullyManual(self, event):
+        return not event.get('geometryAutomated') and not event.get('motionAutomated') and not event.get('probTrendAutomated') and not event.get('durationAutomated')
+    
+    def isFullyAuto(self, event):
+        return event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated') and event.get('durationAutomated')
+    
+    
     def processEvents(self, eventSet, writeToFile=False):
         if writeToFile and not os.path.exists(self.OUTPUTDIR):
             try:

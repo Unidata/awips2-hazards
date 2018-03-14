@@ -698,12 +698,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 print "===latestDataLayerTime--SelectedTime====", self.latestDataLayerTime, self.selectedTime
                 self.flush()
                 #refreshing the prob trend graph, age off when automation control is turned off on probabilities. 
-                if not event.get('probTrendAutomated'):
-                    graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
-                    event.set('convectiveProbTrendGraph', graphProbs)
-                    resultEventSet.add(event)
-                    self.doNotKeepLocked.add(event.getEventID()) 
-                    self.doNotCountAsModification = True
+#                if not event.get('probTrendAutomated'):
+#                    graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+#                    event.set('convectiveProbTrendGraph', graphProbs)
+#                    resultEventSet.add(event)
+#                    self.doNotKeepLocked.add(event.getEventID()) 
+#                    self.doNotCountAsModification = True
                 
         elif self.editableHazard:
             self.visualCueForDataLayerUpdate(event)
@@ -1148,7 +1148,9 @@ class Recommender(RecommenderTemplate.Recommender):
             # Find the feature that has changed
             if featureIdentifier == changedIdentifier:
                 # Get feature polygon
-                polyDict = feature["geometry"]
+                polyDict = feature.get("geometry", None)
+                if not polyDict:
+                    return True
                 #  This will work because we only have one polygon in our features
                 #  TODO refactor to have multiple polygons per feature
                 for timeBounds, geometry in polyDict.iteritems():
@@ -1923,7 +1925,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def elapsedTimeLimit(self):
         # Number of milliseconds past the end time to elapse an object
-        return 10 * 60000  # 60 minutes
+        return 60 * 60000  # 60 minutes
 
     def maxPastPolygons(self):
         # Maximum number of past polygons to store

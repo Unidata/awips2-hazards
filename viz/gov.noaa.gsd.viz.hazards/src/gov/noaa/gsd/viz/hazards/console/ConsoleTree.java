@@ -17,39 +17,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_NUMBER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.Sort;
-import gov.noaa.gsd.common.utilities.Sort.SortDirection;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
-import gov.noaa.gsd.viz.hazards.alerts.ICountdownTimersDisplayListener;
-import gov.noaa.gsd.viz.hazards.console.ConsoleColumns.ColumnDefinition;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
-import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.megawidgets.IMenuSpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-import gov.noaa.gsd.viz.widgets.CustomToolTip;
-import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
-import gov.noaa.gsd.viz.widgets.IMultiValueTooltipTextProvider;
-import gov.noaa.gsd.viz.widgets.ImageUtilities;
-import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
-import gov.noaa.gsd.viz.widgets.MultiValueLinearControl.ChangeSource;
-import gov.noaa.gsd.viz.widgets.MultiValueRuler;
-import gov.noaa.gsd.viz.widgets.MultiValueScale;
-import gov.noaa.gsd.viz.widgets.WidgetUtilities;
 
 import java.awt.image.BufferedImage;
 import java.io.Serializable;
@@ -124,6 +91,40 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.icon.IconUtil;
 
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.Sort;
+import gov.noaa.gsd.common.utilities.Sort.SortDirection;
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
+import gov.noaa.gsd.viz.hazards.alerts.ICountdownTimersDisplayListener;
+import gov.noaa.gsd.viz.hazards.console.ConsoleColumns.ColumnDefinition;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
+import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
+import gov.noaa.gsd.viz.megawidgets.IMenuSpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
+import gov.noaa.gsd.viz.widgets.CustomToolTip;
+import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
+import gov.noaa.gsd.viz.widgets.IMultiValueTooltipTextProvider;
+import gov.noaa.gsd.viz.widgets.ImageUtilities;
+import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
+import gov.noaa.gsd.viz.widgets.MultiValueLinearControl.ChangeSource;
+import gov.noaa.gsd.viz.widgets.MultiValueRuler;
+import gov.noaa.gsd.viz.widgets.MultiValueScale;
+import gov.noaa.gsd.viz.widgets.WidgetUtilities;
+
 /**
  * Description: Encapsulation of a tree widget in the console that holds tabular
  * representations of hazard events, including a column holding time scales with
@@ -169,6 +170,14 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  * Jun 30, 2017   19223    Chris.Golden Added ability to change the text and
  *                                      enabled state of a row menu's menu item
  *                                      after it is displayed.
+ * Mar 13, 2018   47141    Chris.Golden Fixed potential bug caused by an item
+ *                                      to be replaced not being found (this has
+ *                                      occurred due to the asynchronous nature
+ *                                      of changes made by the presenter, so that
+ *                                      perhaps a tree item would be removed in
+ *                                      between the presenter asking for the item
+ *                                      to be replaced and the code executing; at
+ *                                      least, that's the guess).
  * </pre>
  * 
  * @author Chris.Golden
@@ -214,7 +223,8 @@ class ConsoleTree implements IConsoleTree {
          *            ruler was zoomed in by one step, in milliseconds.
          */
         public void timeLineRulerVisibleRangeChanged(long lowerVisibleValue,
-                long upperVisibleValue, long zoomedOutRange, long zoomedInRange);
+                long upperVisibleValue, long zoomedOutRange,
+                long zoomedInRange);
 
         /**
          * Respond to a change in the selected time mode.
@@ -795,8 +805,8 @@ class ConsoleTree implements IConsoleTree {
     /**
      * Selected time color.
      */
-    private final Color selectedTimeColor = new Color(Display.getCurrent(),
-            170, 56, 56);
+    private final Color selectedTimeColor = new Color(Display.getCurrent(), 170,
+            56, 56);
 
     /**
      * Time range (along the ruler) edge color.
@@ -922,11 +932,12 @@ class ConsoleTree implements IConsoleTree {
             } else {
                 if (selectedTimeStart == selectedTimeEnd) {
                     selectedTimeEnd = selectedTimeStart
-                            + (lastSelectedTimeRangeDelta > 0L ? lastSelectedTimeRangeDelta
+                            + (lastSelectedTimeRangeDelta > 0L
+                                    ? lastSelectedTimeRangeDelta
                                     : DEFAULT_SELECTED_TIME_RANGE);
                 }
-                setSelectedTimeRange(Range.closed(selectedTimeStart,
-                        selectedTimeEnd));
+                setSelectedTimeRange(
+                        Range.closed(selectedTimeStart, selectedTimeEnd));
             }
             notifyHandlerOfSelectedTimeRangeChange();
         }
@@ -1041,7 +1052,8 @@ class ConsoleTree implements IConsoleTree {
         }
 
         @Override
-        public void setStates(Map<String, ConsoleColumns> valuesForIdentifiers) {
+        public void setStates(
+                Map<String, ConsoleColumns> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states for columns");
         }
@@ -1252,8 +1264,8 @@ class ConsoleTree implements IConsoleTree {
                             if (index > 0) {
                                 newTopItem = tree.getItem(index - 1);
                                 if (newTopItem.getExpanded()) {
-                                    newTopItem = newTopItem.getItem(newTopItem
-                                            .getItemCount() - 1);
+                                    newTopItem = newTopItem.getItem(
+                                            newTopItem.getItemCount() - 1);
                                 }
                             }
                         } else {
@@ -1265,11 +1277,12 @@ class ConsoleTree implements IConsoleTree {
                              * the topmost.
                              */
                             if ((index < tree.getItemCount() - 1)
-                                    || (topItem.getExpanded() && (topItem
-                                            .getItemCount() > 0))) {
+                                    || (topItem.getExpanded()
+                                            && (topItem.getItemCount() > 0))) {
                                 newTopItem = (topItem.getExpanded()
-                                        && (topItem.getItemCount() > 0) ? topItem
-                                        .getItem(0) : tree.getItem(index + 1));
+                                        && (topItem.getItemCount() > 0)
+                                                ? topItem.getItem(0)
+                                                : tree.getItem(index + 1));
                             }
                         }
                     } else {
@@ -1383,7 +1396,8 @@ class ConsoleTree implements IConsoleTree {
                  * the end.
                  */
                 int[] columnOrder = tree.getColumnOrder();
-                if (columnOrder[columnOrder.length - 1] != columnOrder.length - 1) {
+                if (columnOrder[columnOrder.length - 1] != columnOrder.length
+                        - 1) {
                     boolean foundLastColumn = false;
                     for (int j = 0; j < columnOrder.length - 1; j++) {
                         if (columnOrder[j] == columnOrder.length - 1) {
@@ -1392,7 +1406,8 @@ class ConsoleTree implements IConsoleTree {
                         columnOrder[j] = columnOrder[foundLastColumn ? j + 1
                                 : j];
                     }
-                    columnOrder[columnOrder.length - 1] = columnOrder.length - 1;
+                    columnOrder[columnOrder.length - 1] = columnOrder.length
+                            - 1;
                     tree.setColumnOrder(columnOrder);
                 }
 
@@ -1451,7 +1466,8 @@ class ConsoleTree implements IConsoleTree {
          * Array of text strings to be shown when displaying a tooltip for event
          * time range start.
          */
-        private final String[] eventStartTimeText = { "Event Start Time:", null };
+        private final String[] eventStartTimeText = { "Event Start Time:",
+                null };
 
         /**
          * Array of text strings to be shown when displaying a tooltip for event
@@ -1480,15 +1496,15 @@ class ConsoleTree implements IConsoleTree {
         @Override
         public String[] getTooltipTextForConstrainedThumb(
                 MultiValueLinearControl widget, int index, long value) {
-            String[] text = (widget == ruler ? (index == 0 ? selectedRangeStartText
-                    : selectedRangeEndText)
+            String[] text = (widget == ruler
+                    ? (index == 0 ? selectedRangeStartText
+                            : selectedRangeEndText)
                     : (index == 0 ? eventStartTimeText : eventEndTimeText));
             if (widget == ruler) {
                 text[1] = getDateTimeString(value, timeResolution);
             } else {
                 text[1] = getDateTimeString(value,
-                        entitiesForTreeItems
-                                .get(treeItemsForScales.get(widget))
+                        entitiesForTreeItems.get(treeItemsForScales.get(widget))
                                 .getTimeResolution());
             }
             return text;
@@ -1549,8 +1565,8 @@ class ConsoleTree implements IConsoleTree {
                     int columnIndex = getIndexOfColumnInTree(columnName);
                     if (columnIndex != -1) {
                         updateCell(columnIndex,
-                                columnDefinitionsForNames.get(columnName),
-                                item, entity);
+                                columnDefinitionsForNames.get(columnName), item,
+                                entity);
                     }
                 }
 
@@ -1836,7 +1852,8 @@ class ConsoleTree implements IConsoleTree {
         /*
          * Ensure initialization and tree creation has happened.
          */
-        if ((tree == null) || tree.isDisposed() || (filterMegawidgets == null)) {
+        if ((tree == null) || tree.isDisposed()
+                || (filterMegawidgets == null)) {
             return;
         }
 
@@ -1928,8 +1945,8 @@ class ConsoleTree implements IConsoleTree {
         }
         tree.setHeaderVisible(true);
         tree.setLinesVisible(true);
-        tree.setBackground(Display.getCurrent().getSystemColor(
-                SWT.COLOR_WIDGET_BACKGROUND));
+        tree.setBackground(Display.getCurrent()
+                .getSystemColor(SWT.COLOR_WIDGET_BACKGROUND));
 
         /*
          * Give the countdown timer manager its base font if initialization has
@@ -1966,7 +1983,8 @@ class ConsoleTree implements IConsoleTree {
                  * the row is not a bolded row, handle the paint normally.
                  */
                 countdownTimerDisplayProperties = null;
-                boolean countdown = ((event.index == countdownTimerColumnIndex) && (countdownTimersDisplayManager != null));
+                boolean countdown = ((event.index == countdownTimerColumnIndex)
+                        && (countdownTimersDisplayManager != null));
                 boolean unsaved = entitiesForTreeItems.get(event.item)
                         .isUnsaved();
                 if ((countdown == false) && (unsaved == false)) {
@@ -2006,11 +2024,10 @@ class ConsoleTree implements IConsoleTree {
                  * but make sure the foreground is not drawn in the default
                  * manner.
                  */
-                if (countdown
-                        && (((event.detail & SWT.SELECTED) != 0) || countdownTimerDisplayProperties
-                                .getBackgroundColor().equals(
-                                        Display.getCurrent().getSystemColor(
-                                                SWT.COLOR_WHITE)))) {
+                if (countdown && (((event.detail & SWT.SELECTED) != 0)
+                        || countdownTimerDisplayProperties.getBackgroundColor()
+                                .equals(Display.getCurrent()
+                                        .getSystemColor(SWT.COLOR_WHITE)))) {
                     event.detail &= ~(SWT.FOREGROUND | SWT.HOT);
                     return;
                 }
@@ -2049,9 +2066,10 @@ class ConsoleTree implements IConsoleTree {
                  * not, or the cell does not have custom display properties, or
                  * the row is not a bolded row, handle the paint normally.
                  */
-                boolean countdown = ((event.index == countdownTimerColumnIndex) && (countdownTimerDisplayProperties != null));
-                if ((countdown == false)
-                        && (entitiesForTreeItems.get(event.item).isUnsaved() == false)) {
+                boolean countdown = ((event.index == countdownTimerColumnIndex)
+                        && (countdownTimerDisplayProperties != null));
+                if ((countdown == false) && (entitiesForTreeItems
+                        .get(event.item).isUnsaved() == false)) {
                     return;
                 }
 
@@ -2069,18 +2087,17 @@ class ConsoleTree implements IConsoleTree {
                     foreground = countdownTimerDisplayProperties
                             .getForegroundColor();
                     if (((event.detail & SWT.SELECTED) != 0)
-                            && (countdownTimerDisplayProperties.isBlinking() == false)
+                            && (countdownTimerDisplayProperties
+                                    .isBlinking() == false)
                             && foreground.equals(Display.getCurrent()
                                     .getSystemColor(SWT.COLOR_BLACK))) {
-                        foreground = Display.getCurrent().getSystemColor(
-                                SWT.COLOR_WHITE);
+                        foreground = Display.getCurrent()
+                                .getSystemColor(SWT.COLOR_WHITE);
                     }
                 } else {
-                    foreground = Display
-                            .getCurrent()
-                            .getSystemColor(
-                                    ((event.detail & SWT.SELECTED) != 0 ? SWT.COLOR_WHITE
-                                            : SWT.COLOR_BLACK));
+                    foreground = Display.getCurrent()
+                            .getSystemColor(((event.detail & SWT.SELECTED) != 0
+                                    ? SWT.COLOR_WHITE : SWT.COLOR_BLACK));
                 }
                 event.gc.setForeground(foreground);
 
@@ -2088,8 +2105,8 @@ class ConsoleTree implements IConsoleTree {
                  * Use the countdown timer font if appropriate, or the bold font
                  * otherwise.
                  */
-                event.gc.setFont(countdown ? countdownTimerDisplayProperties
-                        .getFont() : boldFont);
+                event.gc.setFont(countdown
+                        ? countdownTimerDisplayProperties.getFont() : boldFont);
 
                 /*
                  * Get the extent of the text, and paint the text in the
@@ -2101,15 +2118,12 @@ class ConsoleTree implements IConsoleTree {
                 int textWidth = size.x + 5;
                 int yOffset = (event.height - size.y) / 2;
                 int alignment = tree.getColumn(event.index).getAlignment();
-                event.gc.drawText(
-                        text,
-                        event.x
-                                + (alignment == SWT.LEFT ? 0
-                                        : (columnWidthsForColumnIndices
-                                                .get(event.index) - textWidth)
-                                                / (alignment == SWT.RIGHT ? 1
-                                                        : 2)), event.y
-                                + yOffset, true);
+                event.gc.drawText(text,
+                        event.x + (alignment == SWT.LEFT ? 0
+                                : (columnWidthsForColumnIndices.get(event.index)
+                                        - textWidth)
+                                        / (alignment == SWT.RIGHT ? 1 : 2)),
+                        event.y + yOffset, true);
 
                 /*
                  * Reset the color and font.
@@ -2194,8 +2208,8 @@ class ConsoleTree implements IConsoleTree {
                             }
                         });
                     } else {
-                        fitRulerToColumn(tree
-                                .getColumn(getIndexOfColumnInTree(TIME_SCALE_COLUMN_NAME)));
+                        fitRulerToColumn(tree.getColumn(getIndexOfColumnInTree(
+                                TIME_SCALE_COLUMN_NAME)));
                     }
                 }
             }
@@ -2217,7 +2231,8 @@ class ConsoleTree implements IConsoleTree {
                         new Point(e.x, e.y));
                 int headerTop = tree.getClientArea().y;
                 int headerBottom = headerTop + tree.getHeaderHeight();
-                boolean headerClicked = ((point.y >= headerTop) && (point.y < headerBottom));
+                boolean headerClicked = ((point.y >= headerTop)
+                        && (point.y < headerBottom));
 
                 /*
                  * Deploy the header menu if appropriate, or the item menu if an
@@ -2300,8 +2315,8 @@ class ConsoleTree implements IConsoleTree {
                                     .get(item);
                             String hintTextIdentifier = hintTextIdentifiersForVisibleColumnNames
                                     .get(columnName);
-                            Object value = entity.getAttributes().get(
-                                    hintTextIdentifier);
+                            Object value = entity.getAttributes()
+                                    .get(hintTextIdentifier);
                             String text = (value != null ? value.toString()
                                     : null);
 
@@ -2315,8 +2330,8 @@ class ConsoleTree implements IConsoleTree {
                             if ((text != null) && (text.equals("") == false)) {
                                 treeToolTip.setMessage(text);
                                 treeToolTip.setToolTipBounds(cellBounds);
-                                treeToolTip.setLocation(tree
-                                        .toDisplay(e.x, e.y));
+                                treeToolTip
+                                        .setLocation(tree.toDisplay(e.x, e.y));
                                 treeToolTip.setVisible(true);
                             }
                             break;
@@ -2374,8 +2389,8 @@ class ConsoleTree implements IConsoleTree {
                                     .get(item);
                             String dateIdentifier = dateIdentifiersForVisibleColumnNames
                                     .get(columnName);
-                            Object value = entity.getAttributes().get(
-                                    dateIdentifier);
+                            Object value = entity.getAttributes()
+                                    .get(dateIdentifier);
                             if (value != null) {
                                 showTime(((Number) value).longValue());
                             }
@@ -2471,48 +2486,53 @@ class ConsoleTree implements IConsoleTree {
          * Ensure that changes to the visible time range or the selected
          * time/time range propagate appropriately.
          */
-        ruler.addMultiValueLinearControlListener(new IMultiValueLinearControlListener() {
-            @Override
-            public void visibleValueRangeChanged(
-                    MultiValueLinearControl widget, long lowerValue,
-                    long upperValue, ChangeSource source) {
-                updateWidgetsForNewVisibleTimeRange(lowerValue, upperValue);
-                if (source != ChangeSource.METHOD_INVOCATION) {
-                    notifyHandlerOfVisibleTimeRangeChange(lowerValue,
-                            upperValue);
-                }
-            }
+        ruler.addMultiValueLinearControlListener(
+                new IMultiValueLinearControlListener() {
+                    @Override
+                    public void visibleValueRangeChanged(
+                            MultiValueLinearControl widget, long lowerValue,
+                            long upperValue, ChangeSource source) {
+                        updateWidgetsForNewVisibleTimeRange(lowerValue,
+                                upperValue);
+                        if (source != ChangeSource.METHOD_INVOCATION) {
+                            notifyHandlerOfVisibleTimeRangeChange(lowerValue,
+                                    upperValue);
+                        }
+                    }
 
-            @Override
-            public void constrainedThumbValuesChanged(
-                    MultiValueLinearControl widget, long[] values,
-                    ChangeSource source) {
-                if (values.length == 0) {
-                    return;
-                }
-                selectedTimeStart = values[0];
-                selectedTimeEnd = values[1];
-                for (TreeEditor editor : treeEditorsForEntities.values()) {
-                    ((MultiValueScale) editor.getEditor())
-                            .setConstrainedMarkedValues(values);
-                }
-                notifyHandlerOfSelectedTimeRangeChange(source);
-            }
+                    @Override
+                    public void constrainedThumbValuesChanged(
+                            MultiValueLinearControl widget, long[] values,
+                            ChangeSource source) {
+                        if (values.length == 0) {
+                            return;
+                        }
+                        selectedTimeStart = values[0];
+                        selectedTimeEnd = values[1];
+                        for (TreeEditor editor : treeEditorsForEntities
+                                .values()) {
+                            ((MultiValueScale) editor.getEditor())
+                                    .setConstrainedMarkedValues(values);
+                        }
+                        notifyHandlerOfSelectedTimeRangeChange(source);
+                    }
 
-            @Override
-            public void freeThumbValuesChanged(MultiValueLinearControl widget,
-                    long[] values, ChangeSource source) {
-                if (values.length == 0) {
-                    return;
-                }
-                selectedTimeStart = selectedTimeEnd = values[0];
-                for (TreeEditor editor : treeEditorsForEntities.values()) {
-                    ((MultiValueScale) editor.getEditor()).setFreeMarkedValue(
-                            1, selectedTimeStart);
-                }
-                notifyHandlerOfSelectedTimeRangeChange(source);
-            }
-        });
+                    @Override
+                    public void freeThumbValuesChanged(
+                            MultiValueLinearControl widget, long[] values,
+                            ChangeSource source) {
+                        if (values.length == 0) {
+                            return;
+                        }
+                        selectedTimeStart = selectedTimeEnd = values[0];
+                        for (TreeEditor editor : treeEditorsForEntities
+                                .values()) {
+                            ((MultiValueScale) editor.getEditor())
+                                    .setFreeMarkedValue(1, selectedTimeStart);
+                        }
+                        notifyHandlerOfSelectedTimeRangeChange(source);
+                    }
+                });
 
         /*
          * Give the ruler a right-click popup menu that allows the user to
@@ -2622,14 +2642,15 @@ class ConsoleTree implements IConsoleTree {
     private void updateColumnSortVisualCues() {
         if (sorts.isEmpty() == false) {
             Sort primarySort = sorts.get(0);
-            String columnName = columnNamesForIdentifiers.get(primarySort
-                    .getAttributeIdentifier());
+            String columnName = columnNamesForIdentifiers
+                    .get(primarySort.getAttributeIdentifier());
             if (columnName != null) {
                 for (TreeColumn column : tree.getColumns()) {
                     if (columnName.equals(column.getText())) {
                         tree.setSortColumn(column);
-                        tree.setSortDirection(primarySort.getSortDirection() == SortDirection.ASCENDING ? SWT.UP
-                                : SWT.DOWN);
+                        tree.setSortDirection(primarySort
+                                .getSortDirection() == SortDirection.ASCENDING
+                                        ? SWT.UP : SWT.DOWN);
                         return;
                     }
                 }
@@ -2802,8 +2823,10 @@ class ConsoleTree implements IConsoleTree {
          * hidden by collapsed parents. Then prune them further to remove any
          * unselected entities.
          */
-        Set<Pair<String, Integer>> potentiallyVisibleEntityIdentifiers = getVisibleEntityIdentifiers(previouslyVisibleEntityIdentifiers);
-        Set<Pair<String, Integer>> potentiallyVisibleSelectedEntityIdentifiers = getSelectedVisibleEntityIdentifiers(previouslyVisibleEntityIdentifiers);
+        Set<Pair<String, Integer>> potentiallyVisibleEntityIdentifiers = getVisibleEntityIdentifiers(
+                previouslyVisibleEntityIdentifiers);
+        Set<Pair<String, Integer>> potentiallyVisibleSelectedEntityIdentifiers = getSelectedVisibleEntityIdentifiers(
+                previouslyVisibleEntityIdentifiers);
 
         /*
          * Ensure that the proper tree items are visible; these may be one or
@@ -2811,9 +2834,10 @@ class ConsoleTree implements IConsoleTree {
          * potentially visible unselected ones, or just a selected one that was
          * not visible previously.
          */
-        showAppropriateTreeItem(potentiallyVisibleSelectedEntityIdentifiers
-                .isEmpty() ? potentiallyVisibleEntityIdentifiers
-                : potentiallyVisibleSelectedEntityIdentifiers);
+        showAppropriateTreeItem(
+                potentiallyVisibleSelectedEntityIdentifiers.isEmpty()
+                        ? potentiallyVisibleEntityIdentifiers
+                        : potentiallyVisibleSelectedEntityIdentifiers);
 
         ruler.setRedraw(true);
         tree.setRedraw(true);
@@ -2996,7 +3020,8 @@ class ConsoleTree implements IConsoleTree {
      *            course of this invocation that are to be selected themselves.
      */
     private void addTreeItemsForEntity(int index, TabularEntity entity,
-            TreeItem parent, boolean expanded, Set<TreeItem> selectedTreeItems) {
+            TreeItem parent, boolean expanded,
+            Set<TreeItem> selectedTreeItems) {
 
         /*
          * Create the tree item as either a child of the tree itself, if it is a
@@ -3066,7 +3091,8 @@ class ConsoleTree implements IConsoleTree {
      */
     private void replaceTreeItemsForEntity(int index, TabularEntity oldEntity,
             TabularEntity entity, TreeItem parent,
-            Set<TreeItem> selectedTreeItems, Set<TreeItem> deselectedTreeItems) {
+            Set<TreeItem> selectedTreeItems,
+            Set<TreeItem> deselectedTreeItems) {
 
         /*
          * Remove any tree items for child entities that will not be needed with
@@ -3074,21 +3100,31 @@ class ConsoleTree implements IConsoleTree {
          */
         List<TabularEntity> oldChildEntities = oldEntity.getChildren();
         List<TabularEntity> childEntities = entity.getChildren();
-        for (int childIndex = childEntities.size(); childIndex < oldChildEntities
-                .size(); childIndex++) {
+        for (int childIndex = childEntities
+                .size(); childIndex < oldChildEntities.size(); childIndex++) {
             removeTreeItemsForEntity(oldChildEntities.get(childIndex),
                     deselectedTreeItems);
         }
 
         /*
          * Get the tree item that was associated with the old entity, and remove
-         * said association; then associate it with the new entity. If the
+         * said association; if no item was associated with the old entity, then
+         * treat this as an addition of new tree items and do nothing more.
+         */
+        TreeItem item = treeItemsForEntities.remove(oldEntity);
+        if (item == null) {
+            addTreeItemsForEntity(index, entity, parent, (parent == null),
+                    selectedTreeItems);
+            return;
+        }
+
+        /*
+         * Associate the item to be reused with the new entity. If the
          * replacement is of a parent entity and the new entity does not have
          * the same identifier as the old one, collapse the reused item.
          */
-        TreeItem item = treeItemsForEntities.remove(oldEntity);
-        if ((parent == null)
-                && (oldEntity.getIdentifier().equals(entity.getIdentifier()) == false)) {
+        if ((parent == null) && (oldEntity.getIdentifier()
+                .equals(entity.getIdentifier()) == false)) {
             item.setExpanded(false);
         }
         treeItemsForEntities.put(entity, item);
@@ -3139,16 +3175,16 @@ class ConsoleTree implements IConsoleTree {
          * for as many as possible, and creating new items for any remaining
          * entities for which there were no tree items to reuse.
          */
-        for (int childIndex = 0; childIndex < childEntities.size(); childIndex++) {
+        for (int childIndex = 0; childIndex < childEntities
+                .size(); childIndex++) {
             if (childIndex < oldChildEntities.size()) {
                 replaceTreeItemsForEntity(childIndex,
                         oldChildEntities.get(childIndex),
                         childEntities.get(childIndex), item, selectedTreeItems,
                         deselectedTreeItems);
             } else {
-                addTreeItemsForEntity(childIndex,
-                        childEntities.get(childIndex), item, false,
-                        selectedTreeItems);
+                addTreeItemsForEntity(childIndex, childEntities.get(childIndex),
+                        item, false, selectedTreeItems);
             }
         }
     }
@@ -3179,18 +3215,24 @@ class ConsoleTree implements IConsoleTree {
         removeTimeScaleAndAssociatedEditor(entity);
 
         /*
-         * Get the item that goes with the entity, removing its linkage with the
-         * entity, and then dispose of it.
+         * Get the item that goes with the entity, if one is found.
          */
         TreeItem item = treeItemsForEntities.remove(entity);
-        entitiesForTreeItems.remove(item);
-        item.dispose();
+        if (item != null) {
 
-        /*
-         * Determine whether or not the row was selected.
-         */
-        if (entity.isSelected()) {
-            deselectedTreeItems.add(item);
+            /*
+             * Removing the item's linkage with the entity, and then dispose of
+             * it.
+             */
+            entitiesForTreeItems.remove(item);
+            item.dispose();
+
+            /*
+             * Determine whether or not the row was selected.
+             */
+            if (entity.isSelected()) {
+                deselectedTreeItems.add(item);
+            }
         }
     }
 
@@ -3205,8 +3247,8 @@ class ConsoleTree implements IConsoleTree {
                 tabularEntities.size(), 1.0f);
         for (TreeItem item : tree.getItems()) {
             if (item.getExpanded() && (item.getItemCount() > 0)) {
-                expandedEntityIdentifiers.add(entitiesForTreeItems.get(item)
-                        .getIdentifier());
+                expandedEntityIdentifiers
+                        .add(entitiesForTreeItems.get(item).getIdentifier());
             }
         }
         return expandedEntityIdentifiers;
@@ -3332,13 +3374,14 @@ class ConsoleTree implements IConsoleTree {
     private Set<Pair<String, Integer>> getEntityIdentifiersWithVisibleItems() {
         Set<Pair<String, Integer>> entityIdentifiers = new HashSet<>();
         Point size = tree.getSize();
-        Rectangle bounds = new Rectangle(0, 0, size.x, size.y
-                - tree.getHeaderHeight());
+        Rectangle bounds = new Rectangle(0, 0, size.x,
+                size.y - tree.getHeaderHeight());
         for (Map.Entry<TreeItem, TabularEntity> entry : entitiesForTreeItems
                 .entrySet()) {
             if (entry.getKey().getBounds().intersects(bounds)) {
-                entityIdentifiers.add(new Pair<>(entry.getValue()
-                        .getIdentifier(), entry.getValue().getHistoryIndex()));
+                entityIdentifiers
+                        .add(new Pair<>(entry.getValue().getIdentifier(),
+                                entry.getValue().getHistoryIndex()));
             }
         }
         return entityIdentifiers;
@@ -3362,14 +3405,13 @@ class ConsoleTree implements IConsoleTree {
             Set<Pair<String, Integer>> entityIdentifiers = new HashSet<>();
             for (TreeItem item : tree.getItems()) {
                 TabularEntity entity = entitiesForTreeItems.get(item);
-                entityIdentifiers.add(new Pair<String, Integer>(entity
-                        .getIdentifier(), null));
+                entityIdentifiers.add(new Pair<String, Integer>(
+                        entity.getIdentifier(), null));
                 if (item.getExpanded() && (item.getItemCount() > 0)) {
                     for (TreeItem childItem : item.getItems()) {
                         entity = entitiesForTreeItems.get(childItem);
-                        entityIdentifiers.add(new Pair<>(
-                                entity.getIdentifier(), entity
-                                        .getHistoryIndex()));
+                        entityIdentifiers.add(new Pair<>(entity.getIdentifier(),
+                                entity.getHistoryIndex()));
                     }
                 }
             }
@@ -3399,8 +3441,8 @@ class ConsoleTree implements IConsoleTree {
             for (TreeItem item : tree.getItems()) {
                 TabularEntity entity = entitiesForTreeItems.get(item);
                 if (entity.isSelected()) {
-                    entityIdentifiers.add(new Pair<String, Integer>(entity
-                            .getIdentifier(), null));
+                    entityIdentifiers.add(new Pair<String, Integer>(
+                            entity.getIdentifier(), null));
                 }
                 if (item.getExpanded() && (item.getItemCount() > 0)) {
                     for (TreeItem childItem : item.getItems()) {
@@ -3588,8 +3630,8 @@ class ConsoleTree implements IConsoleTree {
              * Divide all the items that changed selection state into parents
              * and children.
              */
-            Set<TreeItem> changedItems = Sets.symmetricDifference(
-                    oldSelectedItems, newSelectedItems);
+            Set<TreeItem> changedItems = Sets
+                    .symmetricDifference(oldSelectedItems, newSelectedItems);
             Set<TreeItem> changedParentItems = Sets.newIdentityHashSet();
             Set<TreeItem> changedChildItems = Sets.newIdentityHashSet();
             for (TreeItem item : changedItems) {
@@ -3623,8 +3665,7 @@ class ConsoleTree implements IConsoleTree {
                  * selection state.
                  */
                 TabularEntity entity = entitiesForTreeItems.get(item);
-                entity = handleUserChangeOfEntity(entity,
-                        entity.getTimeRange(),
+                entity = handleUserChangeOfEntity(entity, entity.getTimeRange(),
                         entity.isEndTimeUntilFurtherNotice(),
                         newSelectedItems.contains(item), entity.isChecked(),
                         entity.getChildren(), item);
@@ -3652,7 +3693,8 @@ class ConsoleTree implements IConsoleTree {
              */
             Set<TabularEntity> changedEntities = new HashSet<>(
                     changedParentItems.size()
-                            + parentItemsWithChangedChildren.size(), 1.0f);
+                            + parentItemsWithChangedChildren.size(),
+                    1.0f);
             for (TreeItem item : Sets.union(changedParentItems,
                     parentItemsWithChangedChildren)) {
 
@@ -3680,13 +3722,13 @@ class ConsoleTree implements IConsoleTree {
                 /*
                  * Create the new version of the entity.
                  */
-                changedEntities.add(handleUserChangeOfEntity(
-                        entity,
-                        entity.getTimeRange(),
-                        entity.isEndTimeUntilFurtherNotice(),
-                        (changedParentItems.contains(item) ? newSelectedItems
-                                .contains(item) : entity.isSelected()), entity
-                                .isChecked(), children, item));
+                changedEntities.add(
+                        handleUserChangeOfEntity(entity, entity.getTimeRange(),
+                                entity.isEndTimeUntilFurtherNotice(),
+                                (changedParentItems.contains(item)
+                                        ? newSelectedItems.contains(item)
+                                        : entity.isSelected()),
+                                entity.isChecked(), children, item));
             }
 
             /*
@@ -3872,8 +3914,8 @@ class ConsoleTree implements IConsoleTree {
          */
         ColumnDefinition columnDefinition = columnDefinitionsForNames.get(name);
         if (columnDefinition == null) {
-            statusHandler.error("Problem: no column definition for \"" + name
-                    + "\".");
+            statusHandler.error(
+                    "Problem: no column definition for \"" + name + "\".");
             return;
         }
 
@@ -3883,8 +3925,9 @@ class ConsoleTree implements IConsoleTree {
         if (index == -1) {
             index = tree.getColumnCount();
         }
-        TreeColumn column = new TreeColumn(tree, (columnDefinition.getType()
-                .equals(SETTING_COLUMN_TYPE_NUMBER) ? SWT.RIGHT : SWT.NONE),
+        TreeColumn column = new TreeColumn(tree,
+                (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_NUMBER)
+                        ? SWT.RIGHT : SWT.NONE),
                 index);
         column.setText(name);
         if (spacerImage != null) {
@@ -4031,14 +4074,13 @@ class ConsoleTree implements IConsoleTree {
                  * time scale column's width, and update the column definitions
                  * to include the new column widths.
                  */
-                if ((visibleColumnNames.size() > 0)
-                        && (visibleColumnNames
-                                .get(visibleColumnNames.size() - 1)
-                                .equals(column.getText()))) {
+                if ((visibleColumnNames.size() > 0) && (visibleColumnNames
+                        .get(visibleColumnNames.size() - 1)
+                        .equals(column.getText()))) {
                     if (timeScaleColumnWidthBeforeResize == -1) {
                         for (TreeColumn otherColumn : tree.getColumns()) {
-                            if (otherColumn.getText().equals(
-                                    TIME_SCALE_COLUMN_NAME)) {
+                            if (otherColumn.getText()
+                                    .equals(TIME_SCALE_COLUMN_NAME)) {
                                 timeScaleColumnWidthBeforeResize = otherColumn
                                         .getWidth();
                                 break;
@@ -4081,8 +4123,8 @@ class ConsoleTree implements IConsoleTree {
             int[] columnOrder = tree.getColumnOrder();
             if (columnOrder[columnOrder.length - 1] != columnOrder.length - 1) {
                 tree.setRedraw(false);
-                Display.getCurrent().asyncExec(
-                        ensureTimeScaleIsLastColumnAction);
+                Display.getCurrent()
+                        .asyncExec(ensureTimeScaleIsLastColumnAction);
             } else {
                 handleColumnReorderingViaDrag(true);
             }
@@ -4117,7 +4159,8 @@ class ConsoleTree implements IConsoleTree {
         /*
          * Get the index of the countdown timer column, if it is showing.
          */
-        countdownTimerColumnIndex = getIndexOfColumnInTree(countdownTimerColumnName);
+        countdownTimerColumnIndex = getIndexOfColumnInTree(
+                countdownTimerColumnName);
 
         /*
          * Update the order of the columns in the dictionaries.
@@ -4259,18 +4302,18 @@ class ConsoleTree implements IConsoleTree {
          * otherwise, use the ascending direction.
          */
         SortDirection primarySortDirection = ((sortColumn == tree
-                .getSortColumn()) && (tree.getSortDirection() == SWT.UP) ? SortDirection.DESCENDING
-                : SortDirection.ASCENDING);
-        tree.setSortDirection(primarySortDirection == SortDirection.ASCENDING ? SWT.UP
-                : SWT.DOWN);
+                .getSortColumn()) && (tree.getSortDirection() == SWT.UP)
+                        ? SortDirection.DESCENDING : SortDirection.ASCENDING);
+        tree.setSortDirection(primarySortDirection == SortDirection.ASCENDING
+                ? SWT.UP : SWT.DOWN);
 
         /*
          * Notify the handler of the new sort.
          */
         if (sortInvocationHandler != null) {
-            sortInvocationHandler.commandInvoked(new Sort(
-                    columnNamesForIdentifiers.inverse().get(sortName),
-                    primarySortDirection, 1));
+            sortInvocationHandler.commandInvoked(
+                    new Sort(columnNamesForIdentifiers.inverse().get(sortName),
+                            primarySortDirection, 1));
         }
     }
 
@@ -4303,17 +4346,17 @@ class ConsoleTree implements IConsoleTree {
                     }
                 }
             }
-            tree.setSortDirection(sortDirection == SortDirection.ASCENDING ? SWT.UP
-                    : SWT.DOWN);
+            tree.setSortDirection(sortDirection == SortDirection.ASCENDING
+                    ? SWT.UP : SWT.DOWN);
         }
 
         /*
          * Notify the handler of the new sort.
          */
         if (sortInvocationHandler != null) {
-            sortInvocationHandler.commandInvoked(new Sort(
-                    columnNamesForIdentifiers.inverse().get(sortName),
-                    sortDirection, sortPriority));
+            sortInvocationHandler.commandInvoked(
+                    new Sort(columnNamesForIdentifiers.inverse().get(sortName),
+                            sortDirection, sortPriority));
         }
     }
 
@@ -4328,14 +4371,15 @@ class ConsoleTree implements IConsoleTree {
          * button masquerading as a tri-state checkbox, use the icon it was
          * displaying to determine whether the new toggle state is on or off.
          */
-        boolean newUntilFurtherNotice = (untilFurtherNoticeMenuItem.getImage() == uncheckedMenuItemImage);
+        boolean newUntilFurtherNotice = (untilFurtherNoticeMenuItem
+                .getImage() == uncheckedMenuItemImage);
 
         /*
          * Iterate through the selected entities, ensuring that each in turn has
          * the correct until further notice state.
          */
-        Set<TabularEntity> changedEntities = new HashSet<>(
-                selectedItems.length, 1.0f);
+        Set<TabularEntity> changedEntities = new HashSet<>(selectedItems.length,
+                1.0f);
         for (TreeItem item : selectedItems) {
 
             /*
@@ -4350,10 +4394,9 @@ class ConsoleTree implements IConsoleTree {
                 /*
                  * Create a new entity that replaces the old one.
                  */
-                entity = handleUserChangeOfEntity(entity,
-                        entity.getTimeRange(), newUntilFurtherNotice,
-                        entity.isSelected(), entity.isChecked(),
-                        entity.getChildren(), item);
+                entity = handleUserChangeOfEntity(entity, entity.getTimeRange(),
+                        newUntilFurtherNotice, entity.isSelected(),
+                        entity.isChecked(), entity.getChildren(), item);
                 changedEntities.add(entity);
 
                 /*
@@ -4371,8 +4414,8 @@ class ConsoleTree implements IConsoleTree {
          */
         if ((treeContentsChangeHandler != null)
                 && (changedEntities.isEmpty() == false)) {
-            treeContentsChangeHandler
-                    .listElementsChanged(null, changedEntities);
+            treeContentsChangeHandler.listElementsChanged(null,
+                    changedEntities);
         }
     }
 
@@ -4468,8 +4511,8 @@ class ConsoleTree implements IConsoleTree {
          */
         if ((treeContentsChangeHandler != null)
                 && (changedEntities.isEmpty() == false)) {
-            treeContentsChangeHandler
-                    .listElementsChanged(null, changedEntities);
+            treeContentsChangeHandler.listElementsChanged(null,
+                    changedEntities);
         }
     }
 
@@ -4552,8 +4595,8 @@ class ConsoleTree implements IConsoleTree {
                  * column has already added the delta to this column's size).
                  */
                 int width = columns[j].getWidth();
-                if (columns[j].getText().equals(
-                        visibleColumnNames.get(visibleColumnNames.size() - 1))) {
+                if (columns[j].getText().equals(visibleColumnNames
+                        .get(visibleColumnNames.size() - 1))) {
                     width -= delta;
                 }
 
@@ -4608,8 +4651,8 @@ class ConsoleTree implements IConsoleTree {
                  */
                 float proportionalWidth = ((float) indexAndWidth.width)
                         / (float) totalWidth;
-                int widthChange = ((int) ((proportionalWidth * lastDeltaRemaining) + 0.5f))
-                        * (delta < 0 ? -1 : 1);
+                int widthChange = ((int) ((proportionalWidth
+                        * lastDeltaRemaining) + 0.5f)) * (delta < 0 ? -1 : 1);
                 if (Math.abs(widthChange) > deltaRemaining) {
                     widthChange = deltaRemaining * (widthChange < 0 ? -1 : 1);
                 }
@@ -4620,7 +4663,8 @@ class ConsoleTree implements IConsoleTree {
                  */
                 indexAndWidth.width += widthChange;
             }
-        } while ((deltaRemaining > 0) && (lastDeltaRemaining != deltaRemaining));
+        } while ((deltaRemaining > 0)
+                && (lastDeltaRemaining != deltaRemaining));
 
         /*
          * If there is still delta remaining, just apply it to the largest
@@ -4636,7 +4680,8 @@ class ConsoleTree implements IConsoleTree {
          * delta applied to it.
          */
         for (ColumnIndexAndWidth indexAndWidth : columnIndicesAndWidths) {
-            if (columns[indexAndWidth.index].getWidth() != indexAndWidth.width) {
+            if (columns[indexAndWidth.index]
+                    .getWidth() != indexAndWidth.width) {
                 columns[indexAndWidth.index].setWidth(indexAndWidth.width);
             }
         }
@@ -4690,17 +4735,16 @@ class ConsoleTree implements IConsoleTree {
         for (TreeColumn column : tree.getColumns()) {
             ColumnDefinition columnDefinition = columnDefinitionsForNames
                     .get(column.getText());
-            if ((columnDefinition != null)
-                    && ((columnDefinition.getWidth() == null) || (columnDefinition
-                            .getWidth() != column.getWidth()))) {
+            if ((columnDefinition != null) && ((columnDefinition
+                    .getWidth() == null)
+                    || (columnDefinition.getWidth() != column.getWidth()))) {
                 if (newColumnDefinitionsForNames == null) {
                     newColumnDefinitionsForNames = new HashMap<>(
                             columnDefinitionsForNames);
                 }
-                newColumnDefinitionsForNames.put(
-                        column.getText(),
-                        new ColumnDefinition(columnDefinition, column
-                                .getWidth()));
+                newColumnDefinitionsForNames.put(column.getText(),
+                        new ColumnDefinition(columnDefinition,
+                                column.getWidth()));
             }
         }
 
@@ -4736,9 +4780,8 @@ class ConsoleTree implements IConsoleTree {
          */
         ColumnDefinition columnDefinition = columnDefinitionsForNames
                 .get(column.getText());
-        if ((columnDefinition != null)
-                && ((columnDefinition.getWidth() == null) || (columnDefinition
-                        .getWidth() != column.getWidth()))) {
+        if ((columnDefinition != null) && ((columnDefinition.getWidth() == null)
+                || (columnDefinition.getWidth() != column.getWidth()))) {
             Map<String, ColumnDefinition> newColumnDefinitionsForNames = new HashMap<>(
                     columnDefinitionsForNames);
             newColumnDefinitionsForNames.put(column.getText(),
@@ -4829,7 +4872,8 @@ class ConsoleTree implements IConsoleTree {
      *            Tree item representing the entity.
      * @return Created time scale widget.
      */
-    private MultiValueScale createTimeScale(TabularEntity entity, TreeItem item) {
+    private MultiValueScale createTimeScale(TabularEntity entity,
+            TreeItem item) {
 
         /*
          * Create a time scale widget with two thumbs and configure it
@@ -4843,19 +4887,24 @@ class ConsoleTree implements IConsoleTree {
          */
         MultiValueScale scale = new MultiValueScale(tree,
                 HazardConstants.MIN_TIME, HazardConstants.MAX_TIME);
-        scale.setSnapValueCalculator(entity.getTimeResolution() == TimeResolution.SECONDS ? WidgetUtilities
-                .getTimeLineSnapValueCalculatorWithSecondsResolution()
-                : WidgetUtilities
-                        .getTimeLineSnapValueCalculatorWithMinutesResolution());
+        scale.setSnapValueCalculator(
+                entity.getTimeResolution() == TimeResolution.SECONDS
+                        ? WidgetUtilities
+                                .getTimeLineSnapValueCalculatorWithSecondsResolution()
+                        : WidgetUtilities
+                                .getTimeLineSnapValueCalculatorWithMinutesResolution());
         scale.setTooltipTextProvider(thumbTooltipTextProvider);
         scale.setComponentDimensions(SCALE_THUMB_WIDTH, SCALE_THUMB_HEIGHT,
                 SCALE_TRACK_THICKNESS);
-        int verticalPadding = (tree.getItemHeight() - scale.computeSize(
-                SWT.DEFAULT, SWT.DEFAULT).y) / 2;
-        scale.setInsets(TIME_HORIZONTAL_PADDING
-                - (CELL_PADDING_LEFT - timeRulerMarginWidth), verticalPadding,
-                TIME_HORIZONTAL_PADDING + timeRulerMarginWidth, verticalPadding);
-        scale.setMinimumDeltaBetweenConstrainedThumbs(TIME_RANGE_MINIMUM_INTERVAL);
+        int verticalPadding = (tree.getItemHeight()
+                - scale.computeSize(SWT.DEFAULT, SWT.DEFAULT).y) / 2;
+        scale.setInsets(
+                TIME_HORIZONTAL_PADDING
+                        - (CELL_PADDING_LEFT - timeRulerMarginWidth),
+                verticalPadding, TIME_HORIZONTAL_PADDING + timeRulerMarginWidth,
+                verticalPadding);
+        scale.setMinimumDeltaBetweenConstrainedThumbs(
+                TIME_RANGE_MINIMUM_INTERVAL);
 
         /*
          * Associate the tree item with the created time scale.
@@ -4887,8 +4936,8 @@ class ConsoleTree implements IConsoleTree {
          */
         scale.setSnapValueCalculator(null);
         for (int j = 0; j < 2; j++) {
-            scale.setAllowableConstrainedValueRange(j,
-                    HazardConstants.MIN_TIME, HazardConstants.MAX_TIME);
+            scale.setAllowableConstrainedValueRange(j, HazardConstants.MIN_TIME,
+                    HazardConstants.MAX_TIME);
         }
         scale.removeMultiValueLinearControlListener(timeScaleListener);
 
@@ -4907,15 +4956,17 @@ class ConsoleTree implements IConsoleTree {
      * @param entity
      *            Entity for which to configure the widget.
      */
-    private void configureTimeScale(MultiValueScale scale, TabularEntity entity) {
+    private void configureTimeScale(MultiValueScale scale,
+            TabularEntity entity) {
         scale.setVisibleValueRange(ruler.getLowerVisibleValue(),
                 ruler.getUpperVisibleValue());
         scale.setConstrainedThumbValues(entity.getTimeRange().lowerEndpoint(),
                 entity.getTimeRange().upperEndpoint());
         scale.setConstrainedThumbRangeColor(1,
                 getTimeRangeColorForEntity(entity));
-        Range<Long> startTimeRange = (entity.getLowerTimeBoundaries() == null ? Range
-                .closed(HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
+        Range<Long> startTimeRange = (entity.getLowerTimeBoundaries() == null
+                ? Range.closed(HazardConstants.MIN_TIME,
+                        HazardConstants.MAX_TIME)
                 : entity.getLowerTimeBoundaries());
         scale.setAllowableConstrainedValueRange(0,
                 startTimeRange.lowerEndpoint(), startTimeRange.upperEndpoint());
@@ -4924,7 +4975,8 @@ class ConsoleTree implements IConsoleTree {
         if (selectedTimeMode == SelectedTimeMode.RANGE) {
             scale.setFreeMarkedValues(currentTime);
             scale.setFreeMarkedValueColor(0, currentTimeColor);
-            scale.setConstrainedMarkedValues(selectedTimeStart, selectedTimeEnd);
+            scale.setConstrainedMarkedValues(selectedTimeStart,
+                    selectedTimeEnd);
             scale.setConstrainedMarkedValueColor(0, timeRangeEdgeColor);
             scale.setConstrainedMarkedValueColor(1, timeRangeEdgeColor);
             scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
@@ -4954,26 +5006,25 @@ class ConsoleTree implements IConsoleTree {
          * is marked as such by the entity, and if its end time is not currently
          * "until further notice".
          */
-        boolean lock = (entity.isTimeRangeIntervalLocked() && (entity
-                .isEndTimeUntilFurtherNotice() == false));
+        boolean lock = (entity.isTimeRangeIntervalLocked()
+                && (entity.isEndTimeUntilFurtherNotice() == false));
         scale.setConstrainedThumbIntervalLocked(lock);
         Range<Long> endTimeRange = (lock
-                || (entity.getUpperTimeBoundaries() == null) ? Range.closed(
-                HazardConstants.MIN_TIME, HazardConstants.MAX_TIME) : entity
-                .getUpperTimeBoundaries());
-        scale.setAllowableConstrainedValueRange(1,
-                endTimeRange.lowerEndpoint(), endTimeRange.upperEndpoint());
+                || (entity.getUpperTimeBoundaries() == null)
+                        ? Range.closed(HazardConstants.MIN_TIME,
+                                HazardConstants.MAX_TIME)
+                        : entity.getUpperTimeBoundaries());
+        scale.setAllowableConstrainedValueRange(1, endTimeRange.lowerEndpoint(),
+                endTimeRange.upperEndpoint());
 
         /*
          * If the end time can only be one value, or the interval is locked and
          * the start time can only be one value, make the end time uneditable.
          */
-        scale.setConstrainedThumbEditable(
-                1,
-                (endTimeRange.lowerEndpoint().equals(
-                        endTimeRange.upperEndpoint()) == false)
-                        && ((lock == false) || (scale
-                                .getMinimumAllowableConstrainedValue(0) != scale
+        scale.setConstrainedThumbEditable(1, (endTimeRange.lowerEndpoint()
+                .equals(endTimeRange.upperEndpoint()) == false)
+                && ((lock == false) || (scale
+                        .getMinimumAllowableConstrainedValue(0) != scale
                                 .getMaximumAllowableConstrainedValue(0))));
     }
 
@@ -5021,12 +5072,19 @@ class ConsoleTree implements IConsoleTree {
      *            Entity for which to remove the widget.
      */
     private void removeTimeScaleAndAssociatedEditor(TabularEntity entity) {
+        TreeItem treeItem = null;
         TreeEditor editor = treeEditorsForEntities.remove(entity);
-        MultiValueScale scale = (MultiValueScale) editor.getEditor();
-        TreeItem treeItem = treeItemsForScales.remove(scale);
-        scale.dispose();
-        editor.dispose();
-        refreshTimeScalePositionsAndSizes(treeItem);
+        if (editor != null) {
+            MultiValueScale scale = (MultiValueScale) editor.getEditor();
+            if (scale != null) {
+                treeItem = treeItemsForScales.remove(scale);
+                scale.dispose();
+            }
+            editor.dispose();
+        }
+        if (treeItem != null) {
+            refreshTimeScalePositionsAndSizes(treeItem);
+        }
     }
 
     /**
@@ -5038,7 +5096,8 @@ class ConsoleTree implements IConsoleTree {
      *            follow this item are to be refreshed. If <code>null</code>,
      *            all the time scales are to be refreshed.
      */
-    private void refreshTimeScalePositionsAndSizes(TreeItem itemToRefreshAfter) {
+    private void refreshTimeScalePositionsAndSizes(
+            TreeItem itemToRefreshAfter) {
 
         /*
          * Annoyingly, it seems that any time scale widgets acting as editors
@@ -5050,8 +5109,8 @@ class ConsoleTree implements IConsoleTree {
          * re-add it.
          */
         boolean foundItem = (itemToRefreshAfter == null);
-        Deque<TreeItem> treeItems = new LinkedList<>(Arrays.asList(tree
-                .getItems()));
+        Deque<TreeItem> treeItems = new LinkedList<>(
+                Arrays.asList(tree.getItems()));
         while (treeItems.isEmpty() == false) {
             TreeItem item = treeItems.pop();
             if (itemToRefreshAfter == item) {
@@ -5083,8 +5142,9 @@ class ConsoleTree implements IConsoleTree {
         if (ruler == null) {
             return;
         }
-        ruler.setSnapValueCalculator(timeResolution == TimeResolution.SECONDS ? WidgetUtilities
-                .getTimeLineSnapValueCalculatorWithSecondsResolution()
+        ruler.setSnapValueCalculator(timeResolution == TimeResolution.SECONDS
+                ? WidgetUtilities
+                        .getTimeLineSnapValueCalculatorWithSecondsResolution()
                 : WidgetUtilities
                         .getTimeLineSnapValueCalculatorWithMinutesResolution());
     }
@@ -5197,8 +5257,8 @@ class ConsoleTree implements IConsoleTree {
                     || (entity.getHistoryIndex() != null)) {
                 return null;
             }
-            return countdownTimersDisplayManager.getTextForEvent(entity
-                    .getIdentifier());
+            return countdownTimersDisplayManager
+                    .getTextForEvent(entity.getIdentifier());
         }
 
         /*
@@ -5233,23 +5293,25 @@ class ConsoleTree implements IConsoleTree {
         if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_DATE)) {
             Number number = (Number) value;
             if (number != null) {
-                if (columnDefinition.getIdentifier().equals(
-                        HAZARD_EVENT_END_TIME)
-                        && (number.longValue() == UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
+                if (columnDefinition.getIdentifier()
+                        .equals(HAZARD_EVENT_END_TIME)
+                        && (number
+                                .longValue() == UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
                     return UNTIL_FURTHER_NOTICE_COLUMN_TEXT;
                 }
                 return getDateTimeString(number.longValue(), timeResolution);
             } else {
                 return EMPTY_STRING;
             }
-        } else if (columnDefinition.getType().equals(
-                SETTING_COLUMN_TYPE_BOOLEAN)) {
-            Boolean flag = (value instanceof Number ? (((Number) value)
-                    .intValue() != 0 ? Boolean.TRUE : Boolean.FALSE)
+        } else if (columnDefinition.getType()
+                .equals(SETTING_COLUMN_TYPE_BOOLEAN)) {
+            Boolean flag = (value instanceof Number
+                    ? (((Number) value).intValue() != 0 ? Boolean.TRUE
+                            : Boolean.FALSE)
                     : (Boolean) value);
-            return (flag == null ? BOOLEAN_COLUMN_NULL_TEXT : (Boolean.TRUE
-                    .equals(flag) ? BOOLEAN_COLUMN_TRUE_TEXT
-                    : BOOLEAN_COLUMN_FALSE_TEXT));
+            return (flag == null ? BOOLEAN_COLUMN_NULL_TEXT
+                    : (Boolean.TRUE.equals(flag) ? BOOLEAN_COLUMN_TRUE_TEXT
+                            : BOOLEAN_COLUMN_FALSE_TEXT));
         } else if (value != null) {
             return value.toString();
         } else {
@@ -5268,8 +5330,8 @@ class ConsoleTree implements IConsoleTree {
     private String getEmptyFieldText(ColumnDefinition columnDefinition) {
         if (columnDefinition.getDisplayWhenEmpty() != null) {
             return columnDefinition.getDisplayWhenEmpty();
-        } else if (columnDefinition.getType().equals(
-                SETTING_COLUMN_TYPE_BOOLEAN)) {
+        } else if (columnDefinition.getType()
+                .equals(SETTING_COLUMN_TYPE_BOOLEAN)) {
             return BOOLEAN_COLUMN_NULL_TEXT;
         } else {
             return EMPTY_STRING;
@@ -5292,9 +5354,8 @@ class ConsoleTree implements IConsoleTree {
      */
     private void setCellText(int columnIndex, TreeItem item, String text,
             String emptyValueDisplayString) {
-        item.setText(columnIndex,
-                (text == null || text.length() == 0 ? emptyValueDisplayString
-                        : text));
+        item.setText(columnIndex, (text == null || text.length() == 0
+                ? emptyValueDisplayString : text));
     }
 
     /**
@@ -5417,8 +5478,8 @@ class ConsoleTree implements IConsoleTree {
      *            no sort for this menu.
      */
     private void prepareSortMenuForDisplay(Menu menu, Sort sort) {
-        String columnName = (sort == null ? null : columnNamesForIdentifiers
-                .get(sort.getAttributeIdentifier()));
+        String columnName = (sort == null ? null
+                : columnNamesForIdentifiers.get(sort.getAttributeIdentifier()));
         for (MenuItem columnMenuItem : menu.getItems()) {
             for (MenuItem directionMenuItem : columnMenuItem.getMenu()
                     .getItems()) {
@@ -5459,16 +5520,16 @@ class ConsoleTree implements IConsoleTree {
                 if (menuItem.getStyle() == SWT.SEPARATOR) {
                     break;
                 }
-                menuItem.setSelection(visibleColumnNames.contains(menuItem
-                        .getText()));
+                menuItem.setSelection(
+                        visibleColumnNames.contains(menuItem.getText()));
                 menuItem.setEnabled(!menuItem.getSelection()
                         || (visibleColumnNames.size() > 1));
             }
             prepareSortMenuForDisplay(primarySortMenusForColumnMenus.get(menu),
                     (sorts.isEmpty() == false ? sorts.get(0) : null));
             Menu secondarySortMenu = secondarySortMenusForColumnMenus.get(menu);
-            secondarySortMenu.getParentItem().setEnabled(
-                    sorts.isEmpty() == false);
+            secondarySortMenu.getParentItem()
+                    .setEnabled(sorts.isEmpty() == false);
             if (sorts.isEmpty() == false) {
                 prepareSortMenuForDisplay(
                         secondarySortMenusForColumnMenus.get(menu),
@@ -5481,8 +5542,9 @@ class ConsoleTree implements IConsoleTree {
                     megawidgetManager
                             .setState(headerFilterStatesForColumnIdentifiers);
                 } catch (MegawidgetStateException exception) {
-                    statusHandler.error("Unable to set megawidget manager "
-                            + "state.", exception);
+                    statusHandler.error(
+                            "Unable to set megawidget manager " + "state.",
+                            exception);
                 }
             }
             tree.setMenu(menu);
@@ -5569,7 +5631,8 @@ class ConsoleTree implements IConsoleTree {
          */
         untilFurtherNoticeMenuItem
                 .setImage(numUntilFurtherNotice == 0 ? uncheckedMenuItemImage
-                        : (numUntilFurtherNotice == selectedItems.length ? checkedMenuItemImage
+                        : (numUntilFurtherNotice == selectedItems.length
+                                ? checkedMenuItemImage
                                 : semiCheckedMenuItemImage));
 
         /*
@@ -5606,8 +5669,9 @@ class ConsoleTree implements IConsoleTree {
         List<MenuItem> items = new ArrayList<>();
         boolean separatorCreated = false;
         for (IContributionItem item : user.getContextMenuItems(
-                (treeItem != null ? entitiesForTreeItems.get(treeItem)
-                        .getIdentifier() : null),
+                (treeItem != null
+                        ? entitiesForTreeItems.get(treeItem).getIdentifier()
+                        : null),
                 (treeItem != null ? entitiesForTreeItems.get(treeItem)
                         .getPersistedTimestamp() : null))) {
             MenuItem menuItem = null;
@@ -5685,12 +5749,16 @@ class ConsoleTree implements IConsoleTree {
                 /*
                  * Update the text and/or redraw the tree cell, as appropriate.
                  */
-                if ((entry.getValue() == CountdownTimersDisplayManager.UpdateType.TEXT)
-                        || (entry.getValue() == CountdownTimersDisplayManager.UpdateType.TEXT_AND_COLOR)) {
+                if ((entry
+                        .getValue() == CountdownTimersDisplayManager.UpdateType.TEXT)
+                        || (entry
+                                .getValue() == CountdownTimersDisplayManager.UpdateType.TEXT_AND_COLOR)) {
                     updateCell(columnIndex, columnDefinition, item, entity);
                 }
-                if ((entry.getValue() == CountdownTimersDisplayManager.UpdateType.COLOR)
-                        || (entry.getValue() == CountdownTimersDisplayManager.UpdateType.TEXT_AND_COLOR)) {
+                if ((entry
+                        .getValue() == CountdownTimersDisplayManager.UpdateType.COLOR)
+                        || (entry
+                                .getValue() == CountdownTimersDisplayManager.UpdateType.TEXT_AND_COLOR)) {
                     Rectangle bounds = item.getBounds(columnIndex);
                     tree.redraw(bounds.x - 1, bounds.y - 1, bounds.width + 1,
                             bounds.height + 1, false);
@@ -5892,7 +5960,8 @@ class ConsoleTree implements IConsoleTree {
                 if (filterColumnName != null) {
                     try {
                         headerMegawidgetManagersForColumnNames.put(
-                                filterColumnName, new MegawidgetManager(menu,
+                                filterColumnName,
+                                new MegawidgetManager(menu,
                                         Lists.newArrayList(filter),
                                         headerFilterStatesForColumnIdentifiers,
                                         new MegawidgetManagerAdapter() {
@@ -5912,10 +5981,9 @@ class ConsoleTree implements IConsoleTree {
                                         }));
 
                     } catch (MegawidgetException e) {
-                        statusHandler
-                                .error("Unable to create megawidget "
-                                        + "manager due to megawidget construction problem: "
-                                        + e, e);
+                        statusHandler.error("Unable to create megawidget "
+                                + "manager due to megawidget construction problem: "
+                                + e, e);
                     }
 
                     /*
@@ -6010,24 +6078,23 @@ class ConsoleTree implements IConsoleTree {
             ScrollBar scrollBar = tree.getHorizontalBar();
             if ((scrollBar != null)
                     && (scrollBar.getMaximum() > clientAreaWidth)) {
-                cellWidthScrolledOutOfView = (scrollBar.getMaximum() - clientAreaWidth)
-                        - scrollBar.getSelection();
+                cellWidthScrolledOutOfView = (scrollBar.getMaximum()
+                        - clientAreaWidth) - scrollBar.getSelection();
             }
 
             /*
              * Determine the horizontal boundaries of the ruler.
              */
-            int cellBeginXPixels = treeBounds.width
-                    + cellWidthScrolledOutOfView - columnWidth
-                    - cellTreeEndXDiff;
+            int cellBeginXPixels = treeBounds.width + cellWidthScrolledOutOfView
+                    - columnWidth - cellTreeEndXDiff;
             int cellEndXPixels = cellTreeEndXDiff;
 
             /*
              * Set up the layout data for the ruler.
              */
             FormData rulerFormData = new FormData();
-            rulerFormData.left = new FormAttachment(0, cellBeginXPixels
-                    + timeRulerMarginWidth);
+            rulerFormData.left = new FormAttachment(0,
+                    cellBeginXPixels + timeRulerMarginWidth);
             rulerFormData.top = new FormAttachment(0, rulerTopOffset);
             rulerFormData.right = new FormAttachment(100,
                     (timeRulerMarginWidth + cellEndXPixels) * -1);
@@ -6053,8 +6120,8 @@ class ConsoleTree implements IConsoleTree {
              * the fact that it gets the right dimensions from the calculations
              * above for its form layout.
              */
-            if ((verticalScrollbarShowing != ((tree.getVerticalBar() != null) && (tree
-                    .getVerticalBar().isVisible())))
+            if ((verticalScrollbarShowing != ((tree.getVerticalBar() != null)
+                    && (tree.getVerticalBar().isVisible())))
                     || visibleColumnCountJustChanged) {
                 verticalScrollbarShowing = !verticalScrollbarShowing;
                 visibleColumnCountJustChanged = false;
@@ -6077,15 +6144,16 @@ class ConsoleTree implements IConsoleTree {
     private void repackRuler() {
         Rectangle treeRectangle = tree.getBounds();
         int treeYPixels = treeRectangle.y;
-        int columnWidth = tree.getColumn(
-                getIndexOfColumnInTree(TIME_SCALE_COLUMN_NAME)).getWidth();
+        int columnWidth = tree
+                .getColumn(getIndexOfColumnInTree(TIME_SCALE_COLUMN_NAME))
+                .getWidth();
         int xPixels = treeRectangle.width - columnWidth;
         int headerHeight = tree.getHeaderHeight();
         Rectangle rectangle = ruler.getBounds();
         int rulerHeight = rectangle.height;
         FormData rulerFormData = new FormData();
-        rulerFormData.left = new FormAttachment(0, xPixels
-                + timeRulerMarginWidth);
+        rulerFormData.left = new FormAttachment(0,
+                xPixels + timeRulerMarginWidth);
         rulerTopOffset = treeYPixels + ((headerHeight - rulerHeight) / 2)
                 - timeRulerMarginHeight;
         rulerFormData.top = new FormAttachment(0, rulerTopOffset);

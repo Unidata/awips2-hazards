@@ -2844,7 +2844,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
     def getStormCharacteristicsComposite(self, enable):
         windType =  self.buildStormChars('Wind', [str(x) + " mph" for x in ["<40", 40, 50, 60, 70, 80, 90]], enable)
 
-        hailType =  self.buildStormChars("Hail", ["0.5\"", "1\"", "1.5\"", "2\"", "2.5\"", "3\"", "3.5\"", ">=4\"", "copious small hail"], enable)
+        hailType =  self.buildStormChars("Hail", ["Penny (0.75\")", "Nickel (7/8\")","Quarter (1\")", "Half dollar (1.25\")","Ping Pong (1.5\")", "Golfball (1.75\")","Hen Egg (2\")", "Tennis Ball (2.5\")", "Baseball (2.75\")","Softball(>=4\")", "copious small hail"], enable)
         
         tornType =  self.buildStormChars('Torn', ['radar indicated', 'radar observed', 'spotter observed'], enable)
         
