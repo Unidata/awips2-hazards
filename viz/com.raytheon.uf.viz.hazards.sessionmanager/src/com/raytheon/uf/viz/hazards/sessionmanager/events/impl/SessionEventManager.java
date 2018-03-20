@@ -650,6 +650,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      changeEventProperty() to not lock a hazard event if the
  *                                      changed property is session-specific. Also simplified
  *                                      mergeHazardEvents().
+ * Mar 19, 2018   48027    Chris.Golden Changed to allow recommenders, etc. to change status of
+ *                                      hazard events from ENDED to ELAPSED.
  * </pre>
  * 
  * @author bsteffen
@@ -3160,7 +3162,7 @@ public class SessionEventManager implements ISessionEventManager {
      */
     private IHazardEventView addEvent(IReadableHazardEvent event,
             boolean select, IOriginator originator)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
 
         /*
          * Create the new event and ensure that its modify flag does not change
@@ -3471,13 +3473,16 @@ public class SessionEventManager implements ISessionEventManager {
         sessionEvent.setHazardAttributes(newAttr, originator);
 
         /*
-         * Change the status only if the event is not already ended (this could
-         * be relevant if the CAVE clock is set back) and if it is not the same
-         * as the previous status. If the status of the old event is changed,
-         * update its saved end time/duration if it is issued.
+         * Change the status only if either the event is already ended but the
+         * new status is elapsed, or if the event is not already ended (this
+         * could be relevant if the CAVE clock is set back) and it is not the
+         * same as the previous status. If the status of the old event is
+         * changed, update its saved end time/duration if it is issued.
          */
-        if ((isEnded(sessionEvent) == false) && (sessionEvent.getStatus()
-                .equals(newEvent.getStatus()) == false)) {
+        if ((isEnded(sessionEvent)
+                && newEvent.getStatus() == HazardStatus.ELAPSED)
+                || ((isEnded(sessionEvent) == false) && (sessionEvent
+                        .getStatus().equals(newEvent.getStatus()) == false))) {
             sessionEvent.setStatus(newEvent.getStatus(), true,
                     persistOnStatusChange, originator);
             updateSavedTimesForEventIfIssued(oldEvent, false);
@@ -5040,7 +5045,7 @@ public class SessionEventManager implements ISessionEventManager {
     public Map<IReadableHazardEvent, Collection<String>> getConflictingEvents(
             final IReadableHazardEvent event, final Date startTime,
             final Date endTime, final Geometry geometry, String phenSigSubtype)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
 
         Map<IReadableHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
@@ -5183,7 +5188,7 @@ public class SessionEventManager implements ISessionEventManager {
     private List<IReadableHazardEvent> getEventsToCheckForConflicts(
             final HazardEventQueryRequest queryRequest,
             Set<HazardStatus> allowableStatuses)
-                    throws HazardEventServiceException {
+            throws HazardEventServiceException {
 
         /*
          * Iterate through all the events being managed in this session,
@@ -6463,16 +6468,14 @@ public class SessionEventManager implements ISessionEventManager {
             if (atLeastOneNeedsUnlocking && (sessionManager.getLockManager()
                     .unlockHazardEvents(eventIdentifiers) == false)) {
                 if (originator.isDirectResultOfUserInput()) {
-                    messenger.getWarner()
-                            .warnUser("Cannot Unlock",
-                                    (eventIdentifiers.size() == 1
-                                            ? "Event "
-                                                    + eventIdentifiers
-                                                            .iterator().next()
-                                                    + " could not be unlocked."
-                                            : "The following events could not be unlocked:\n"
-                                                    + Joiner.on("\n").join(
-                                                            eventIdentifiers)));
+                    messenger.getWarner().warnUser("Cannot Unlock",
+                            (eventIdentifiers.size() == 1
+                                    ? "Event "
+                                            + eventIdentifiers.iterator().next()
+                                            + " could not be unlocked."
+                                    : "The following events could not be unlocked:\n"
+                                            + Joiner.on("\n")
+                                                    .join(eventIdentifiers)));
                 }
             }
         } else {
@@ -6490,9 +6493,8 @@ public class SessionEventManager implements ISessionEventManager {
                     if (originator.isDirectResultOfUserInput()) {
                         messenger.getWarner().warnUser("Cannot Lock",
                                 (eventIdentifiersToBeLocked.size() == 1
-                                        ? "Event "
-                                                + eventIdentifiersToBeLocked
-                                                        .iterator().next()
+                                        ? "Event " + eventIdentifiersToBeLocked
+                                                .iterator().next()
                                                 + " could not be re-locked."
                                         : "The following events could not be re-locked:\n"
                                                 + Joiner.on("\n").join(

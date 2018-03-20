@@ -82,6 +82,9 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
  *                                      field typing in a spinner. The bugs
  *                                      actually stem from SWT issues, not
  *                                      the megawidget framework.
+ * Mar 20, 2018   48027    Chris.Golden Fixed bug in configuration of spinner
+ *                                      to be large enough onscreen to show
+ *                                      all its digits in its entry field.
  * </pre>
  * 
  * @author Chris.Golden
@@ -540,6 +543,7 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
         int oneDigitSpinnerWidthPixels = spinner.computeSize(SWT.DEFAULT,
                 SWT.DEFAULT).x;
         spinner.setMaximum(99);
+        spinner.setSelection(99);
         if (digitWidthPixels == 0) {
             digitWidthPixels = spinner.computeSize(SWT.DEFAULT, SWT.DEFAULT).x
                     - oneDigitSpinnerWidthPixels;

@@ -252,6 +252,12 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      allowing the "keep locked" result event set
  *                                      attribute to specify event identifiers, instead
  *                                      of only being a boolean.
+ * Mar 20, 2018   48027    Chris.Golden Changed to ensure that if an event returned by
+ *                                      a recommender is to be persisted to the history
+ *                                      list as per the recommender's instructions,
+ *                                      the event is not auto-persisted due to a status
+ *                                      change when it is merged into the session copy
+ *                                      of the event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1387,62 +1393,66 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         sessionManager.getRunnableAsynchronousScheduler()
                                 .schedule(new Runnable() {
 
-                            @Override
-                            public void run() {
+                                    @Override
+                                    public void run() {
 
-                                /*
-                                 * If a results message was supplied, display
-                                 * the message for the user. Otherwise, if a
-                                 * results dialog description was provided, show
-                                 * the dialog. In the latter case, note that
-                                 * this is occurring, so that the next
-                                 * recommender to be run in the sequence (if
-                                 * any) will not be run a few lines down -- the
-                                 * results dialog must be closed by the user
-                                 * before the next one is run.
-                                 */
-                                boolean showingResultsDialog = false;
-                                String resultMessage = (String) result
-                                        .getAttribute(
-                                                HazardConstants.RECOMMENDER_RESULT_MESSAGE);
-                                Map<String, Serializable> resultDialogDescription = (Map<String, Serializable>) result
-                                        .getAttribute(
-                                                HazardConstants.RECOMMENDER_RESULT_DIALOG);
-                                if (resultMessage != null) {
-                                    messenger.getWarner().warnUser(toolName,
-                                            resultMessage);
-                                } else if (resultDialogDescription != null) {
-                                    showingResultsDialog = true;
-                                    resultDialogDescription.put(
-                                            HazardConstants.FILE_PATH_KEY,
-                                            recommenderEngine
-                                                    .getInventory(
-                                                            runningRecommenderIdentifier)
-                                                    .getFile().getFile()
-                                                    .getPath());
-                                    messenger.getToolParameterGatherer()
-                                            .showToolResults(
-                                                    ToolType.RECOMMENDER,
-                                                    resultDialogDescription,
-                                                    new ResultsDisplayCompleteNotifier());
-                                }
+                                        /*
+                                         * If a results message was supplied,
+                                         * display the message for the user.
+                                         * Otherwise, if a results dialog
+                                         * description was provided, show the
+                                         * dialog. In the latter case, note that
+                                         * this is occurring, so that the next
+                                         * recommender to be run in the sequence
+                                         * (if any) will not be run a few lines
+                                         * down -- the results dialog must be
+                                         * closed by the user before the next
+                                         * one is run.
+                                         */
+                                        boolean showingResultsDialog = false;
+                                        String resultMessage = (String) result
+                                                .getAttribute(
+                                                        HazardConstants.RECOMMENDER_RESULT_MESSAGE);
+                                        Map<String, Serializable> resultDialogDescription = (Map<String, Serializable>) result
+                                                .getAttribute(
+                                                        HazardConstants.RECOMMENDER_RESULT_DIALOG);
+                                        if (resultMessage != null) {
+                                            messenger.getWarner().warnUser(
+                                                    toolName, resultMessage);
+                                        } else if (resultDialogDescription != null) {
+                                            showingResultsDialog = true;
+                                            resultDialogDescription.put(
+                                                    HazardConstants.FILE_PATH_KEY,
+                                                    recommenderEngine
+                                                            .getInventory(
+                                                                    runningRecommenderIdentifier)
+                                                            .getFile().getFile()
+                                                            .getPath());
+                                            messenger.getToolParameterGatherer()
+                                                    .showToolResults(
+                                                            ToolType.RECOMMENDER,
+                                                            resultDialogDescription,
+                                                            new ResultsDisplayCompleteNotifier());
+                                        }
 
-                                /*
-                                 * Handle the resulting changes to the session.
-                                 */
-                                handleRecommenderResult(
-                                        runningRecommenderIdentifier, result);
+                                        /*
+                                         * Handle the resulting changes to the
+                                         * session.
+                                         */
+                                        handleRecommenderResult(
+                                                runningRecommenderIdentifier,
+                                                result);
 
-                                /*
-                                 * If no results are being displayed, run the
-                                 * next recommender in the sequence of
-                                 * recommenders, if any.
-                                 */
-                                if (showingResultsDialog == false) {
-                                    finishRunningRecommender();
-                                }
-                            }
-                        });
+                                        /*
+                                         * If no results are being displayed,
+                                         * run the next recommender in the
+                                         * sequence of recommenders, if any.
+                                         */
+                                        if (showingResultsDialog == false) {
+                                            finishRunningRecommender();
+                                        }
+                                    }
+                                });
                     }
 
                     @Override
@@ -2165,9 +2175,27 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                             addedEvent = eventManager
                                     .getEventById(hazardEvent.getEventID());
                             if (addedEvent != null) {
+
+                                /*
+                                 * Merge the changes into the session copy of
+                                 * the event. Only signal that the event should
+                                 * be persisted if its status is changing if it
+                                 * is not listed as one that is to be saved to
+                                 * the history list; if true was supplied in all
+                                 * cases for this parameter, the event would be
+                                 * saved to the history list once for the status
+                                 * change here and once for the
+                                 * "save to history list" reason, if the latter
+                                 * was specified by the recommender.
+                                 */
                                 EventPropertyChangeResult result = eventManager
                                         .mergeHazardEvents(hazardEvent,
-                                                addedEvent, false, true,
+                                                addedEvent, false,
+                                                ((addToHistory == false)
+                                                        && (addToHistoryEventIdentifiers
+                                                                .contains(
+                                                                        addedEvent
+                                                                                .getEventID()) == false)),
                                                 doNotCountAsModification,
                                                 originator);
                                 if (result != EventPropertyChangeResult.SUCCESS) {

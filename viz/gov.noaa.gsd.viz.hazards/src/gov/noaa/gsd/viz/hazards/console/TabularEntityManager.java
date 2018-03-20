@@ -95,6 +95,11 @@ import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
  *                                      user name.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
  *                                      toolbar contribution code.
+ * Mar 20, 2018   48027    Chris.Golden Fixed problem with historical events
+ *                                      being sometimes shown as locked, and with
+ *                                      workstations and users listed who have
+ *                                      them locked, when they are not actually
+ *                                      locked.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1446,9 +1451,12 @@ class TabularEntityManager {
                 event.getHazardAttributes());
         attributes.put(HazardConstants.HAZARD_EVENT_DISPLAY_IDENTIFIER,
                 event.getDisplayEventID());
-        attributes.put(HazardConstants.LOCK_STATUS,
-                TabularEntityManager.getLockStatusDescription(event,
-                        sessionManager.getLockManager()));
+        attributes
+                .put(HazardConstants.LOCK_STATUS,
+                        (historyIndex == null
+                                ? TabularEntityManager.getLockStatusDescription(
+                                        event, sessionManager.getLockManager())
+                                : null));
         attributes.put(HazardConstants.HAZARD_EVENT_PHEN,
                 event.getPhenomenon());
         attributes.put(HazardConstants.HAZARD_EVENT_SIG,
@@ -1468,11 +1476,15 @@ class TabularEntityManager {
         attributes.put(HazardConstants.CREATION_TIME,
                 event.getCreationTime().getTime());
         attributes.put(HazardConstants.WORKSTATION,
-                getWorkstationInfoForEvent(event,
-                        sessionManager.getLockManager()).getHostName());
+                (historyIndex == null
+                        ? getWorkstationInfoForEvent(event,
+                                sessionManager.getLockManager()).getHostName()
+                        : null));
         attributes.put(HazardConstants.USER_NAME,
-                getWorkstationInfoForEvent(event,
-                        sessionManager.getLockManager()).getUserName());
+                (historyIndex == null
+                        ? getWorkstationInfoForEvent(event,
+                                sessionManager.getLockManager()).getUserName()
+                        : null));
         attributes.put(HazardConstants.SITE_ID, event.getSiteID());
 
         /*

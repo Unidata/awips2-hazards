@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.widgets.MultiValueScale;
-
 import java.util.List;
 
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Spinner;
+
+import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
 /**
  * Description: Helper class for handling some of the grunt work of creating and
@@ -28,13 +28,15 @@ import org.eclipse.swt.widgets.Spinner;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 06, 2015    4123    Chris.Golden Initial creation.
+ * Mar 20, 2018   48027    Chris.Golden Fixed bug in calculation of number
+ *                                      of digits for a specified value.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class DoubleSpinnerAndScaleComponentHelper extends
-        SpinnerAndScaleComponentHelper<Double> {
+public class DoubleSpinnerAndScaleComponentHelper
+        extends SpinnerAndScaleComponentHelper<Double> {
 
     /**
      * Construct a standard instance.
@@ -56,8 +58,11 @@ public class DoubleSpinnerAndScaleComponentHelper extends
 
     @Override
     protected int getDigitsForValue(Double value) {
-        return ((int) Math.floor(Math.log10(Math.round(Math.abs(value)))))
-                + (value < 0 ? 1 : 0) + getHolder().getPrecision() + 2;
+        long roundedAbsoluteValue = Math.round(Math.abs(value));
+        return (roundedAbsoluteValue == 0L
+                ? ((int) Math.floor(Math.log10(roundedAbsoluteValue)))
+                        + (value < 0 ? 1 : 0)
+                : 0) + getHolder().getPrecision() + 2;
     }
 
     @Override
