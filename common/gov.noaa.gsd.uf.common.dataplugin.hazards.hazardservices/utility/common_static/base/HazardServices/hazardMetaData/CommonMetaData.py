@@ -2182,14 +2182,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "modifyRecommender": 'OwnershipTool',
             "doesNotAffectModifyFlag": True,
             "values": self.hazardEvent.get("ownerChangeRequest", None)
-            },  
-            {
-             "fieldType": "HiddenField",
-             "fieldName": "potentiallyEditableVisualFeatureIdentifiers",
-             "values": [],
-             "doesNotAffectModifyFlag": True,
-             "modifyRecommender": self.RECOMMENDER,
-             },
+            },
         ]        
         return mwList
 

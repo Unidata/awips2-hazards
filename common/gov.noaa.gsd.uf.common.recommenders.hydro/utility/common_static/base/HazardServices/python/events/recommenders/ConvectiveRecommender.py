@@ -192,12 +192,16 @@ class Recommender(RecommenderTemplate.Recommender):
         
         
         if len(mergedEventSet.events) > 0:
+            
             st = time.time()
             swathRec = SwathRecommender()
-            swathRec.execute(mergedEventSet, None, None)
+            returnMergedEventSet = EventSetFactory.createEventSet(None)
+            returnMergedEventSet.setAttributes(mergedEventSet.getAttributes())
+            resultEventSet = swathRec.execute(mergedEventSet, None, None)
+            returnMergedEventSet.addAll(resultEventSet.getEvents())
             LogUtils.logMessage('Finnished ', 'swathRec.execute',' Took Seconds', time.time()-st)
-        
-        for e in mergedEventSet:
+                    
+        for e in returnMergedEventSet:
             e.setIssuanceCount(e.getIssuanceCount() + 1)
             print '[CR-1] )))) ', e.get('objectID'), e.getStatus()
 
@@ -206,15 +210,14 @@ class Recommender(RecommenderTemplate.Recommender):
         ### no identifiers, set them to nothing in case the Swath Recommender set that
         ### attribute, as this recommender knows which ones should be saved in which category.
         if (identifiersOfEventsToSaveToHistory):
-            mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, identifiersOfEventsToSaveToHistory)
+            returnMergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, identifiersOfEventsToSaveToHistory)
         else:
-            mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, None)
+            returnMergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, None)
 
-        mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
-        mergedEventSet.addAttribute(TREAT_AS_ISSUANCE_KEY, True)
-        mergedEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, False)
-        return mergedEventSet
-    
+        returnMergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
+        returnMergedEventSet.addAttribute(TREAT_AS_ISSUANCE_KEY, True)
+        returnMergedEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, False)
+        return returnMergedEventSet
 
     def getRecommendedEventsDict(self, currentTime, latestDatetime):
         hdfFilesList = self.getLatestProbSevereDataHDFFileList(latestDatetime=None)

@@ -170,6 +170,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Feb 13, 2018 20595     Chris.Golden  Added "type" as a recommender trigger.
  * Feb 13, 2018 44514     Chris.Golden  Removed event-modifying script code, as such scripts are
  *                                      not to be used.
+ * Mar 29, 2018 48027     Chris.Golden  Removed "hazard event visual feature changed" recommender
+ *                                      trigger, as it has been folded into "hazard event
+ *                                      modified".
  * </pre>
  * 
  * @author mnash
@@ -237,6 +240,8 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS = "attributeIdentifiers";
 
+    public static final String RECOMMENDER_TRIGGER_VISUAL_FEATURE_IDENTIFIERS = "visualFeatureIdentifiers";
+
     public static final String RECOMMENDER_TRIGGER_ORIGIN = "origin";
 
     // Recommender metadata keys.
@@ -287,12 +292,11 @@ public final class HazardConstants {
     public enum Trigger {
         NONE("none"), HAZARD_TYPE_FIRST(
                 "hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
-                        "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
-                                "hazardEventVisualFeatureChange"), TIME_INTERVAL(
-                                        "timeInterval"), FRAME_CHANGE(
-                                                "frameChange"), DATA_LAYER_UPDATE(
-                                                        "dataLayerUpdate"), HAZARD_EVENT_SELECTION(
-                                                                "hazardEventSelection");
+                        "hazardEventModification"), TIME_INTERVAL(
+                                "timeInterval"), FRAME_CHANGE(
+                                        "frameChange"), DATA_LAYER_UPDATE(
+                                                "dataLayerUpdate"), HAZARD_EVENT_SELECTION(
+                                                        "hazardEventSelection");
 
         // Private Variables
 
@@ -424,8 +428,8 @@ public final class HazardConstants {
     // part of the hazard lifecycle that the user will see
     public enum HazardStatus {
         PENDING("pending"), POTENTIAL("potential"), PROPOSED(
-                "proposed"), ISSUED("issued"), ELAPSED("elapsed"), ENDING(
-                        "ending"), ENDED("ended");
+                "proposed"), ISSUED("issued"), ELAPSED(
+                        "elapsed"), ENDING("ending"), ENDED("ended");
         private final String value;
 
         private HazardStatus(String value) {

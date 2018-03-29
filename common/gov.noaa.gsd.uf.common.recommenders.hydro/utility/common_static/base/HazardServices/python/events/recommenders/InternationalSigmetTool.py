@@ -99,7 +99,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return True
         
     def _makeUpdates(self, event, trigger, eventSetAttrs):
-        if (trigger == 'hazardEventVisualFeatureChange'):                   
+        if (trigger == 'hazardEventModification') and eventSetAttrs.get('visualFeatureIdentifiers', []):                   
             self._adjustForVisualFeatureChange(event, eventSetAttrs)
       
         return True            

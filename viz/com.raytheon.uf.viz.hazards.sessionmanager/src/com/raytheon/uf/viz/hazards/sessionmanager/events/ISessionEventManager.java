@@ -154,6 +154,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such scripts are
  *                                      not to be used.
  * Feb 21, 2018 46736      Chris.Golden Simplified the mergeHazardEvents() method.
+ * Apr 10, 2018 48027      Chris.Golden Added originator parameter for checking geometry validity.
  * </pre>
  * 
  * @author bsteffen
@@ -956,7 +957,7 @@ public interface ISessionEventManager {
     public Map<IReadableHazardEvent, Collection<String>> getConflictingEvents(
             IReadableHazardEvent event, Date startTime, Date endTime,
             Geometry geometry, String phenSigSubtype)
-                    throws HazardEventServiceException;
+            throws HazardEventServiceException;
 
     /**
      * Get a map of selected event identifiers to any events with which they
@@ -1195,11 +1196,14 @@ public interface ISessionEventManager {
      * @param checkGeometryValidity
      *            Flag indicating whether or not to check the geometry's
      *            validity itself.
+     * @param originator
+     *            Originator of the proposed geometry change.
      * @return True if the geometry of the given hazard event can be modified to
      *         the given geometry, false otherwise,.
      */
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
-            IReadableHazardEvent event, boolean checkGeometryValidity);
+            IReadableHazardEvent event, boolean checkGeometryValidity,
+            IOriginator originator);
 
     /**
      * Set the flag indicating whether or not newly user-created events should

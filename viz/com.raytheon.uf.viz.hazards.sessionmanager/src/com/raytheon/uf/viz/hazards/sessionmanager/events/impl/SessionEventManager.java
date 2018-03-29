@@ -651,7 +651,9 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      changed property is session-specific. Also simplified
  *                                      mergeHazardEvents().
  * Mar 19, 2018   48027    Chris.Golden Changed to allow recommenders, etc. to change status of
- *                                      hazard events from ENDED to ELAPSED.
+ *                                      hazard events from ENDED to ELAPSED. Also changed to
+ *                                      check for geometry validity when merging hazard events
+ *                                      from a recommender run's result event set.
  * </pre>
  * 
  * @author bsteffen
@@ -1751,7 +1753,7 @@ public class SessionEventManager implements ISessionEventManager {
          * change the geometry and update the hazard areas. Otherwise, reject
          * the change.
          */
-        if (isValidGeometryChange(geometry, event, false)
+        if (isValidGeometryChange(geometry, event, true, originator)
                 && ((originator.isDirectResultOfUserInput() == false)
                         || (originator instanceof RevertOriginator)
                         || userConfirmationAsNecessary(event))) {
@@ -1762,6 +1764,7 @@ public class SessionEventManager implements ISessionEventManager {
             sessionManager.finishBatchedChanges();
             return true;
         }
+
         return false;
     }
 
@@ -5874,14 +5877,16 @@ public class SessionEventManager implements ISessionEventManager {
 
     @Override
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
-            IReadableHazardEvent event, boolean checkGeometryValidity) {
+            IReadableHazardEvent event, boolean checkGeometryValidity,
+            IOriginator originator) {
         if (checkGeometryValidity && (geometry.isValid() == false)) {
-            statusHandler.warn("Invalid geometry: "
-                    + geometry.getValidityProblemDescription()
-                    + "; geometry modification undone.");
+            statusHandler.warn("Ignoring geometry provided by " + originator
+                    + ": Invalid geometry for event " + event.getEventID()
+                    + ": " + geometry.getValidityProblemDescription());
             return false;
         } else if (isEventForThisSite(event) == false) {
-            statusHandler.warn("Event " + event.getEventID()
+            statusHandler.warn("Ignoring geometry provided by " + originator
+                    + ": Event " + event.getEventID()
                     + " is not for the active site and cannot be modified.");
             return false;
         }
@@ -5900,7 +5905,8 @@ public class SessionEventManager implements ISessionEventManager {
             for (Geometry jtsGeometry : jtsGeometries) {
                 if (jtsGeometry instanceof Point) {
                     if (point != null) {
-                        statusHandler.warn("Event " + event.getEventID()
+                        statusHandler.warn("Ignoring geometry provided by "
+                                + originator + ": Event " + event.getEventID()
                                 + " has more than one point geometry; geometry modification undone.");
                         return false;
                     }
@@ -5910,7 +5916,8 @@ public class SessionEventManager implements ISessionEventManager {
                 }
             }
             if (point == null) {
-                statusHandler.warn("Event " + event.getEventID()
+                statusHandler.warn("Ignoring geometry provided by " + originator
+                        + ": Event " + event.getEventID()
                         + " has no point geometry; geometry modification undone.");
                 return false;
             }
@@ -5921,7 +5928,8 @@ public class SessionEventManager implements ISessionEventManager {
                 }
             }
             if (pointContained == false) {
-                statusHandler.warn("Event " + event.getEventID()
+                statusHandler.warn("Ignoring geometry provided by " + originator
+                        + ": Event " + event.getEventID()
                         + " must have at least "
                         + "one areal geometry containing its point; geometry modification undone.");
                 return false;
@@ -5948,9 +5956,10 @@ public class SessionEventManager implements ISessionEventManager {
                                         .getJtsGeometry(geometry),
                                 AdvancedGeometryUtilities.GeometryTypesForUnion.POLYGONAL);
                 if (issuedGeometry.covers(currentGeometry) == false) {
-                    statusHandler
-                            .warn("This hazard event cannot be expanded in area.  "
-                                    + "Please create a new hazard event for the new areas.");
+                    statusHandler.warn("Ignoring geometry provided by "
+                            + originator
+                            + ": This hazard event cannot be expanded in area.  "
+                            + "Please create a new hazard event for the new areas.");
                     return false;
                 }
             }
@@ -6059,7 +6068,7 @@ public class SessionEventManager implements ISessionEventManager {
             if (isValidGeometryChange(
                     AdvancedGeometryUtilities
                             .createGeometryWrapper(modifiedGeometry, 0),
-                    hazardEventView, true) == false) {
+                    hazardEventView, true, originator) == false) {
                 return;
             }
             event.setGeometry(AdvancedGeometryUtilities

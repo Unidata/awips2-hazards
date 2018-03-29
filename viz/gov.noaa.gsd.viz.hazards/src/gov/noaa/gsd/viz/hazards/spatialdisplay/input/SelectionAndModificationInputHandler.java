@@ -85,6 +85,12 @@ import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
  *                                      and ensure consistency, all in the
  *                                      service of handling mouse events that
  *                                      select or modify said drawables.
+ * Apr 04, 2018   48027    Chris.Golden Fixed null pointer exception bug when
+ *                                      attempting to drag a modification
+ *                                      point when there is no drawable being
+ *                                      edited (could happen as a result of
+ *                                      a drawable disappearing between the
+ *                                      mouse down and mouse drag for example.)
  * </pre>
  * 
  * @author Chris.Golden
@@ -376,6 +382,9 @@ public class SelectionAndModificationInputHandler
         if ((button == 1) && active) {
             AbstractDrawableComponent drawableBeingEdited = getSpatialDisplay()
                     .getDrawableBeingEdited();
+            if (drawableBeingEdited == null) {
+                return false;
+            }
             if (getManipulationPointUnderMouse() instanceof VertexManipulationPoint) {
                 VertexMoveInputHandler handler = inputHandlerFactory
                         .getNonDrawingInputHandler(

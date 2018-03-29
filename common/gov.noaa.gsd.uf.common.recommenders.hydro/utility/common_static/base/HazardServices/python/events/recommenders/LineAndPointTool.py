@@ -70,7 +70,8 @@ class Recommender(RecommenderTemplate.Recommender):
         sys.stderr.flush()
         eventSetAttrs = eventSet.getAttributes()
         self._trigger = eventSetAttrs.get('trigger')
-        self._attribute = eventSetAttrs.get('attributeIdentifiers')
+        self._attributes = eventSetAttrs.get('attributeIdentifiers')
+        self._visualFeatures = eventSetAttrs.get('visualFeatureIdentifiers')
         eventIdentifiers = eventSetAttrs.get('eventIdentifiers')
         self._eventIdentifier = next(iter(eventIdentifiers)) if eventIdentifiers else None
         
@@ -99,38 +100,40 @@ class Recommender(RecommenderTemplate.Recommender):
             
             if self._originalGeomType == 'Polygon':
                 if self._trigger == 'hazardEventModification':
-                    self.addPolygonVisualFeatures(event)
-                if self._trigger == 'hazardEventVisualFeatureChange':
-                    if baseAttribute == False:
+                    if self._attributes:
                         self.addPolygonVisualFeatures(event)
-                    else:
-                        if hazardAttribute:
+                    elif self._visualFeatures:
+                        if baseAttribute == False:
                             self.addPolygonVisualFeatures(event)
-                        else: 
-                            changed = self._processEventModification(event, self._trigger, eventSetAttrs)    
+                        else:
+                            if hazardAttribute:
+                                self.addPolygonVisualFeatures(event)
+                            else: 
+                                changed = self._processEventModification(event, self._trigger, eventSetAttrs)    
             if self._originalGeomType != 'Polygon':
-                if self._trigger == 'hazardEventVisualFeatureChange':
-                    if baseAttribute ==  False:
-                        poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
-                        event.set('polygon', poly) 
-                        changed = (self.addVisualFeatures(event,poly) or changed)
-                        event.set('generated',True)
-                    else:
-                        if hazardAttribute:
+                if self._trigger == 'hazardEventModification':
+                    if self._visualFeatures:
+                        if baseAttribute ==  False:
                             poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
                             event.set('polygon', poly) 
                             changed = (self.addVisualFeatures(event,poly) or changed)
-                            event.set('generated',True)                            
+                            event.set('generated',True)
                         else:
-                            changed = self._processEventModification(event, self._trigger, eventSetAttrs)                    
-                if self._trigger == 'hazardEventModification':
-                    if event.get('generated'):
-                        self._adjustForVisualFeatureChange(event, eventSetAttrs)                       
-                    else:
-                        poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
-                        event.set('polygon', poly) 
-                        changed = (self.addVisualFeatures(event,poly) or changed)
-                    event.set('generated',True)                     
+                            if hazardAttribute:
+                                poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
+                                event.set('polygon', poly) 
+                                changed = (self.addVisualFeatures(event,poly) or changed)
+                                event.set('generated',True)                            
+                            else:
+                                changed = self._processEventModification(event, self._trigger, eventSetAttrs)                    
+                    elif self._attributes:
+                        if event.get('generated'):
+                            self._adjustForVisualFeatureChange(event, eventSetAttrs)                       
+                        else:
+                            poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
+                            event.set('polygon', poly) 
+                            changed = (self.addVisualFeatures(event,poly) or changed)
+                        event.set('generated',True)                     
                 
             # Event Modification
             changed = self._processEventModification(event, self._trigger, eventSetAttrs)
@@ -228,7 +231,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return True
         
     def _makeUpdates(self, event, trigger, eventSetAttrs):
-        if (trigger == 'hazardEventVisualFeatureChange') or (trigger == 'hazardEventModification' and self._originalGeomType == 'Polygon'):                    
+        if trigger == 'hazardEventModification' and (self._visualFeatures or (self._originalGeomType == 'Polygon')):                    
             self._adjustForVisualFeatureChange(event, eventSetAttrs)
       
         return True            

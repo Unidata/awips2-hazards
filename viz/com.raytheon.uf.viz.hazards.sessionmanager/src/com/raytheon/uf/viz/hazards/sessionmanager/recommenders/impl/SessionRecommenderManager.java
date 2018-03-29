@@ -43,6 +43,7 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
@@ -258,6 +259,9 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      the event is not auto-persisted due to a status
  *                                      change when it is merged into the session copy
  *                                      of the event.
+ * Mar 29, 2018   48027    Chris.Golden Removed "hazard event visual feature changed"
+ *                                      recommender trigger, as it has been folded into
+ *                                      "hazard event modified".
  * </pre>
  * 
  * @author Chris.Golden
@@ -776,6 +780,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     RecommenderExecutionContext
                             .getHazardEventModificationContext(eventIdentifier,
                                     Sets.newHashSet(commandIdentifier),
+                                    Collections.<String> emptySet(),
                                     RecommenderTriggerOrigin.USER));
         }
     }
@@ -843,22 +848,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             SessionEventModified notification) {
 
         /*
-         * Iterate through the modifications, compiling two things: a map (with
-         * iteration order being the order in which elements are added, to
-         * ensure that entries put in first are iterated through first) pairing
-         * triggered recommender identifiers with the hazard attributes (generic
-         * and first-class) that triggered them, and a record of what
-         * recommender is to be triggered by any visual feature changes (if any
-         * occurred), together with the identifiers of the visual feature(s)
-         * that changed, and the ordinal indicating when (if any visual feature
-         * recommender triggering is happening) the visual feature triggered
-         * recommender should be run with respect to the hazard attribute
-         * triggered recommenders.
+         * Iterate through the modifications, compiling a map (with iteration
+         * order being the order in which elements are added, to ensure that
+         * entries put in first are iterated through first) pairing triggered
+         * recommender identifiers with both the hazard attributes (generic and
+         * first-class) and/or the visual features that triggered them.
          */
-        Map<String, Set<String>> modifiedAttributesForTriggeredRecommenders = new LinkedHashMap<>();
-        int visualFeatureTriggeredRecommenderOrdinal = -1;
-        String visualFeatureTriggeredRecommender = null;
-        Set<String> modifiedVisualFeatureIdentifiers = null;
+        Map<String, Pair<Set<String>, Set<String>>> modifiedAttributesForTriggeredRecommenders = new LinkedHashMap<>();
         for (IEventModification modification : notification
                 .getModifications()) {
             if (modification instanceof EventTimeRangeModification) {
@@ -888,36 +884,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         modifiedAttributesForTriggeredRecommenders,
                         notification, HazardEventFirstClassAttribute.TYPE);
             } else if (modification instanceof EventVisualFeaturesModification) {
-
-                /*
-                 * If no visual feature triggered recommender has been found
-                 * until now, get the recommender identifier, and if one is
-                 * found, compile the identifiers of the visual feature(s) that
-                 * changed to trigger this recommender, as well as the size of
-                 * the attribute triggered recommenders map, so that the point
-                 * at which the visual feature triggered recommender should be
-                 * run with respect to the recommenders in the map. If this is
-                 * not the first visual feature modification found that is to
-                 * trigger a recommender, just add the changed visual features'
-                 * identifiers to the set of changed identifiers.
-                 */
-                if (visualFeatureTriggeredRecommender == null) {
-                    visualFeatureTriggeredRecommender = getTriggeredRecommenderForFirstClassAttributeChange(
-                            notification.getEvent(),
-                            HazardEventFirstClassAttribute.VISUAL_FEATURE,
-                            notification.getOriginator());
-                    if (visualFeatureTriggeredRecommender != null) {
-                        modifiedVisualFeatureIdentifiers = new HashSet<>(
-                                ((EventVisualFeaturesModification) modification)
-                                        .getVisualFeatureIdentifiers());
-                        visualFeatureTriggeredRecommenderOrdinal = modifiedAttributesForTriggeredRecommenders
-                                .size();
-                    }
-                } else {
-                    modifiedVisualFeatureIdentifiers
-                            .addAll(((EventVisualFeaturesModification) modification)
-                                    .getVisualFeatureIdentifiers());
-                }
+                addTriggeredRecommenderEntryForModifiedVisualFeatures(
+                        modifiedAttributesForTriggeredRecommenders,
+                        notification,
+                        ((EventVisualFeaturesModification) modification)
+                                .getVisualFeatureIdentifiers());
             } else if (modification instanceof EventAttributesModification) {
                 addTriggeredRecommenderEntryForModifiedAttributes(
                         modifiedAttributesForTriggeredRecommenders,
@@ -929,27 +900,51 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
 
         /*
          * Iterate through the recommenders to be run, executing each in turn.
-         * If visual feature changes are to trigger a recommender as well, run
-         * that recommender at the appropriate point within the triggered
-         * recommenders.
          */
-        int count = 0;
-        for (Map.Entry<String, Set<String>> entry : modifiedAttributesForTriggeredRecommenders
+        for (Map.Entry<String, Pair<Set<String>, Set<String>>> entry : modifiedAttributesForTriggeredRecommenders
                 .entrySet()) {
-
-            runVisualFeaturesTriggeredRecommenderIfAppropriate(
-                    visualFeatureTriggeredRecommender,
-                    modifiedVisualFeatureIdentifiers, notification,
-                    visualFeatureTriggeredRecommenderOrdinal, count++);
-
-            runAttributeTriggeredRecommender(entry.getKey(), entry.getValue(),
+            runAttributeTriggeredRecommender(entry.getKey(),
+                    entry.getValue().getFirst(), entry.getValue().getSecond(),
                     notification);
         }
+    }
 
-        runVisualFeaturesTriggeredRecommenderIfAppropriate(
-                visualFeatureTriggeredRecommender,
-                modifiedVisualFeatureIdentifiers, notification,
-                visualFeatureTriggeredRecommenderOrdinal, count);
+    /**
+     * If visual feature changes are associated with a recommender to be
+     * triggered, update the specified map to include an entry pairing said
+     * recommender's identifier with these visual features (or with these visual
+     * features and any others that are already found as the value within the
+     * map for said recommender).
+     * 
+     * @param modifiedAttributesForTriggeredRecommenders
+     *            Map pairing recommender identifiers with two things: the
+     *            attributes that trigger them, and the visual features that
+     *            trigger them (one of the two may be empty).
+     * @param notification
+     *            Notification of the event modification that is being
+     *            considered.
+     * @param visualFeatures
+     *            Identifiers of the visual features that have changed.
+     */
+    private void addTriggeredRecommenderEntryForModifiedVisualFeatures(
+            Map<String, Pair<Set<String>, Set<String>>> modifiedAttributesForTriggeredRecommenders,
+            SessionEventModified notification, Set<String> visualFeatures) {
+        String recommender = getTriggeredRecommenderForFirstClassAttributeChange(
+                notification.getEvent(),
+                HazardEventFirstClassAttribute.VISUAL_FEATURE,
+                notification.getOriginator());
+        if (recommender != null) {
+            Pair<Set<String>, Set<String>> modifiedAttributes = modifiedAttributesForTriggeredRecommenders
+                    .get(recommender);
+            if (modifiedAttributes == null) {
+                modifiedAttributesForTriggeredRecommenders.put(recommender,
+                        new Pair<Set<String>, Set<String>>(
+                                new HashSet<String>(),
+                                new HashSet<>(visualFeatures)));
+            } else {
+                modifiedAttributes.getSecond().addAll(visualFeatures);
+            }
+        }
     }
 
     /**
@@ -961,30 +956,37 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * the map for said recommender).
      * 
      * @param modifiedAttributesForTriggeredRecommenders
-     *            Map pairing recommender identifiers with the attributes that
-     *            trigger them.
+     *            Map pairing recommender identifiers with two things: the
+     *            attributes that trigger them, and the visual features that
+     *            trigger them (one of the two may be empty).
      * @param notification
      *            Notification of the event modification that is being
      *            considered.
      * @param attribute
-     *            First-class hazard event attribute that was modified.
+     *            First-class hazard event attribute that was modified; must be
+     *            anything but
+     *            {@link HazardEventFirstClassAttribute#VISUAL_FEATURE}, since
+     *            the latter should be handled via
+     *            {@link #addTriggeredRecommenderEntryForModifiedVisualFeatures(Map, SessionEventModified, Set)}
+     *            .
      */
     private void addTriggeredRecommenderEntryForModifiedAttribute(
-            Map<String, Set<String>> modifiedAttributesForTriggeredRecommenders,
+            Map<String, Pair<Set<String>, Set<String>>> modifiedAttributesForTriggeredRecommenders,
             SessionEventModified notification,
             HazardEventFirstClassAttribute attribute) {
         String recommender = getTriggeredRecommenderForFirstClassAttributeChange(
                 notification.getEvent(), attribute,
                 notification.getOriginator());
         if (recommender != null) {
-            Set<String> modifiedAttributes = modifiedAttributesForTriggeredRecommenders
+            Pair<Set<String>, Set<String>> modifiedAttributes = modifiedAttributesForTriggeredRecommenders
                     .get(recommender);
             if (modifiedAttributes == null) {
-                modifiedAttributes = Sets.newHashSet(attribute.toString());
                 modifiedAttributesForTriggeredRecommenders.put(recommender,
-                        modifiedAttributes);
+                        new Pair<Set<String>, Set<String>>(
+                                Sets.newHashSet(attribute.toString()),
+                                new HashSet<String>()));
             } else {
-                modifiedAttributes.add(attribute.toString());
+                modifiedAttributes.getFirst().add(attribute.toString());
             }
         }
     }
@@ -998,8 +1000,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * value within the map for a given recommender).
      * 
      * @param modifiedAttributesForTriggeredRecommenders
-     *            Map pairing recommender identifiers with the attributes that
-     *            trigger them.
+     *            Map pairing recommender identifiers with two things: the
+     *            attributes that trigger them, and the visual features that
+     *            trigger them (one of the two may be empty).
      * @param notification
      *            Notification of the event modification that is being
      *            considered.
@@ -1007,7 +1010,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      *            Generic attributes that were modified.
      */
     private void addTriggeredRecommenderEntryForModifiedAttributes(
-            Map<String, Set<String>> modifiedAttributesForTriggeredRecommenders,
+            Map<String, Pair<Set<String>, Set<String>>> modifiedAttributesForTriggeredRecommenders,
             SessionEventModified notification, Set<String> attributes) {
 
         /*
@@ -1051,11 +1054,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             if (modifiedAttributesForTriggeredRecommenders
                     .containsKey(recommender)) {
                 modifiedAttributesForTriggeredRecommenders.get(recommender)
-                        .add(trigger);
+                        .getFirst().add(trigger);
             } else {
-                Set<String> modifiedAttributes = Sets.newHashSet(trigger);
                 modifiedAttributesForTriggeredRecommenders.put(recommender,
-                        modifiedAttributes);
+                        new Pair<Set<String>, Set<String>>(
+                                Sets.newHashSet(trigger),
+                                new HashSet<String>()));
             }
         }
     }
@@ -1096,37 +1100,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     }
 
     /**
-     * Run the specified visual feature triggered recommender with the specified
-     * visual feature identifiers as triggers if the specified ordinal value
-     * equals the specified count.
-     * 
-     * @param recommenderIdentifier
-     *            Identifier of the recommender to run if appropriate.
-     * @param visualFeatureIdentifiers
-     *            Visual feature identifiers to pass to the recommender as the
-     *            triggering elements.
-     * @param notification
-     *            Notification containing the visual feature modification.
-     * @param ordinal
-     *            Ordinal value, to be compared with <code>count</code>.
-     * @param count
-     *            Count, to be compared with <code>ordinal</code>
-     */
-    private void runVisualFeaturesTriggeredRecommenderIfAppropriate(
-            String recommenderIdentifier, Set<String> visualFeatureIdentifiers,
-            SessionEventModified notification, int ordinal, int count) {
-        if (ordinal == count) {
-            runRecommender(recommenderIdentifier,
-                    RecommenderExecutionContext
-                            .getHazardEventVisualFeatureChangeContext(
-                                    notification.getEvent().getEventID(),
-                                    visualFeatureIdentifiers,
-                                    getRecommenderTriggerOriginatorFromOriginator(
-                                            notification.getOriginator())));
-        }
-    }
-
-    /**
      * Run the specified attribute triggered recommender with the specified
      * attribute identifiers as triggers.
      * 
@@ -1135,16 +1108,20 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * @param attributeIdentifiers
      *            Attribute identifiers to pass to the recommender as the
      *            triggering elements.
+     * @param visualFeatureIdentifiers
+     *            Visual feature identifiers to pass to the recommender as the
+     *            triggering elements.
      * @param notification
      *            Notification containing the attribute modifications.
      */
     private void runAttributeTriggeredRecommender(String recommenderIdentifier,
             Set<String> attributeIdentifiers,
+            Set<String> visualFeatureIdentifiers,
             SessionEventModified notification) {
         runRecommender(recommenderIdentifier,
                 RecommenderExecutionContext.getHazardEventModificationContext(
                         notification.getEvent().getEventID(),
-                        attributeIdentifiers,
+                        attributeIdentifiers, visualFeatureIdentifiers,
                         getRecommenderTriggerOriginatorFromOriginator(
                                 notification.getOriginator())));
     }
@@ -1709,9 +1686,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         EventSet<IEvent> eventSet = new EventSet<>();
         if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((runningContext
-                .getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
-                || (runningContext
-                        .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
+                .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
                 || (runningContext
                         .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
 
@@ -1837,6 +1812,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         eventSet.addAttribute(
                 HazardConstants.RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS,
                 context.getAttributeIdentifiers());
+        eventSet.addAttribute(
+                HazardConstants.RECOMMENDER_TRIGGER_VISUAL_FEATURE_IDENTIFIERS,
+                context.getVisualFeatureIdentifiers());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_TRIGGER_ORIGIN,
                 context.getOrigin().toString());
         if (context.getExtraEventSetAttributes() != null) {
@@ -2075,10 +2053,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             }
 
             /*
-             * Iterate through the hazard events provided as the result, adding
-             * hazard warning areas for each, setting their user name and
-             * workstation if appropriate, and then telling the event manager to
-             * add them.
+             * Iterate through the hazard events provided as the result, telling
+             * the event manager to add them to the session or modifying the
+             * existing copies in the session.
              */
             List<IHazardEventView> addedOrModifiedEvents = new ArrayList<>(
                     events.size());
