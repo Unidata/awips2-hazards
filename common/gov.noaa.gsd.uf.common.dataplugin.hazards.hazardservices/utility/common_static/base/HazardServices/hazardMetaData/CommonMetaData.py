@@ -2222,7 +2222,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         grp = {
             "fieldType": "Group",
             "fieldName": "convectiveShapeGroup",
-            "label": "Shape",
+            "label": "Shape/Position",
             "leftMargin": 5,
             "rightMargin": 5,
             "topMargin": 5,
@@ -3033,6 +3033,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
 
     print "\n*****************\nCM applyConvective called"
     print 'CM applyConvective triggerIdentifiers ', triggerIdentifiers
+    sys.stdout.flush()
 
     returnDict = {}
 
@@ -3059,18 +3060,18 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     # If one of the properties related to motion automation changed value,
     # uncheck motion automated; and if one of the properties related to
     # prob trend automation changed value, uncheck prob trend automated.
-    if triggerIdentifiers:
-        triggerSet = set(triggerIdentifiers)
-        if automateAllButtonChosen:
-            returnDict['motionAutomated'] = {'values' : True}
-            returnDict['probTrendAutomated'] = {'values' : True}
-            returnDict['geometryAutomated'] = {'values' : True}
-            returnDict['durationAutomated'] = {'values' : True}
-        elif automateNoneButtonChosen:
-            returnDict['motionAutomated'] = {'values' : False}
-            returnDict['probTrendAutomated'] = {'values' : False}
-            returnDict['geometryAutomated'] = {'values' : False}
-            returnDict['durationAutomated'] = {'values' : False}
+#     if triggerIdentifiers:
+#         triggerSet = set(triggerIdentifiers)
+#         if automateAllButtonChosen:
+#             returnDict['motionAutomated'] = {'values' : True}
+#             returnDict['probTrendAutomated'] = {'values' : True}
+#             returnDict['geometryAutomated'] = {'values' : True}
+#             returnDict['durationAutomated'] = {'values' : True}
+#         elif automateNoneButtonChosen:
+#             returnDict['motionAutomated'] = {'values' : False}
+#             returnDict['probTrendAutomated'] = {'values' : False}
+#             returnDict['geometryAutomated'] = {'values' : False}
+#             returnDict['durationAutomated'] = {'values' : False}        
 
     # Determine whether the editable flag is true or not (controlling
     # the editability of all the megawidgets listed above), and whether
@@ -3078,7 +3079,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     # was clicked, these should be set to true and false, respectively.
     editable = False
     isOwner = isEqualOwner(mutableProperties['owner'].get("values", None), getCaveUser())
-    print "CM-- isOwner--", isOwner   
+#     print "CM-- isOwner--", isOwner   
     if "activate" in mutableProperties:
         editable = mutableProperties["activate"].get("values", False) if isOwner else False
     editableModifyButton = True
@@ -3088,6 +3089,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         editable = True
         editableModifyButton = False
     print 'CM applyConvective: editable, editableModifyButton =', editable, editableModifyButton
+    sys.stdout.flush()
 
     # Ensure that no matter what else, the time range megawidget is made
     # editable or read-only as appropriate. This has to be done regardless
@@ -3103,30 +3105,67 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     returnDict['modifyButton'] = { 'editable' : editableModifyButton }
     
     # Ensure "end object" button is enabled for the owner
-    returnDict['cancelButton'] = {'editable' : True if isOwner else False}
+#     returnDict['cancelButton'] = {'editable' : True if isOwner else False} 
     
     # Handle Modify, Automate All, and Automate None button presses. It's OK to
     # short-circuit returning here and return immediately instead of further
     # building the returnDict because these buttons can only be alone in the
     # trigger identifiers.
-    if modifyButtonChosen: 
+#     if modifyButtonChosen: 
+#         manuallyCreatedStatus = mutableProperties.get('manuallyCreatedStatus', {})
+#         manuallyCreated = manuallyCreatedStatus.get('values') # Should always be present
+#         print "CM-MANUALLY_CREATED:",manuallyCreatedStatus, manuallyCreated , '<<<'
+#         if manuallyCreated == 0 or manuallyCreated == False:
+#             for key in ['geometryAutomated', "motionAutomated", 'probTrendAutomated','automateAllButton', 'automateNoneButton', 'durationAutomated']:
+#                 returnDict[key] = { 'editable' : editable }
+#         return returnDict
+    if automateAllButtonChosen:
+        returnDict['motionAutomated'] = {'values' : True}
+        returnDict['probTrendAutomated'] = {'values' : True}
+        returnDict['geometryAutomated'] = {'values' : True}
+        returnDict['durationAutomated'] = {'values' : True}
+        # disable the "End Object" button
+        returnDict['cancelButton'] = {'editable' : False}
+        print "Setting to AUTOMATE"
+        print returnDict
+        sys.stdout.flush()
+        return returnDict
+    elif automateNoneButtonChosen:
+        returnDict['motionAutomated'] = {'values' : False}
+        returnDict['probTrendAutomated'] = {'values' : False}
+        returnDict['geometryAutomated'] = {'values' : False}
+        returnDict['durationAutomated'] = {'values' : False}  
+        # enable the "End Object" button
+        returnDict['cancelButton'] = {'editable' : True}
+        print "Setting to MANUAL"
+        print returnDict
+        sys.stdout.flush()
+        return returnDict
+    else:
+        # diable the "end object" button for fully auto events
+        # enable it for full manual or patial manual events
+        isFullyAuto = (mutableProperties['geometryAutomated'].get('values', False) and 
+                       mutableProperties['motionAutomated'].get('values', False) and
+                       mutableProperties['probTrendAutomated'].get('values', False) and 
+                       mutableProperties['durationAutomated'].get('values', False) )
+        returnDict['cancelButton'] = {'editable' : True if (isOwner and not isFullyAuto) else False}
+        print "CM-- isOwner, isFullyAuto---", isOwner, isFullyAuto 
+        sys.stdout.flush()         
+        
         manuallyCreatedStatus = mutableProperties.get('manuallyCreatedStatus', {})
         manuallyCreated = manuallyCreatedStatus.get('values') # Should always be present
         print "CM-MANUALLY_CREATED:",manuallyCreatedStatus, manuallyCreated , '<<<'
         if manuallyCreated == 0 or manuallyCreated == False:
             for key in ['geometryAutomated', "motionAutomated", 'probTrendAutomated','automateAllButton', 'automateNoneButton', 'durationAutomated']:
                 returnDict[key] = { 'editable' : editable }
-        return returnDict
-    elif automateAllButtonChosen:
-        print "Setting to AUTOMATE"
+            
+        print "Other cases"
         print returnDict
-        sys.stdout.flush()
-        return returnDict
-    elif automateNoneButtonChosen:
-        print "Setting to MANUAL"
-        print returnDict
-        sys.stdout.flush()
-        return returnDict
+        sys.stdout.flush()        
+        # return immediately if modify button is clicked
+        # or else fall through to block following
+        if modifyButtonChosen:
+            return returnDict
 
     ### The next 3 if statements are to immediately update respective fields
     ### if reautomated, per Greg.

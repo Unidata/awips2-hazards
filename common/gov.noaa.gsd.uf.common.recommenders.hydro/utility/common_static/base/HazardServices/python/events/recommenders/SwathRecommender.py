@@ -308,7 +308,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.handleAdditionalEventModifications(event, resultEventSet)
                     #continue
                 if 'modifyButton' in self.attributeIdentifiers or (self.editableHazard and self.movedStartTime): 
-                    if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
+                    if self.probUtils.isFullyAuto(event):
                         resultEventSet.addAttribute(SELECTED_TIME_KEY, self.latestDataLayerTime)
                         self.lastSelectedTime = self.latestDataLayerTime
                     else:
@@ -397,28 +397,50 @@ class Recommender(RecommenderTemplate.Recommender):
     #     self.probUtils.updateApplicationDict(updateDict)
     #===========================================================================
     
-    def printOrphanVisualFeaturesError(self, event, features):
+    def handleOrphanedVisualFeaturesError(self, event, features):
             baseIds = set()
-            derivedIds = set()
+            usedBaseIds = set()
+            derivedIdsForBaseIds = {}
             for feature in features:
                 templates = feature.get("templates", None)
                 if templates:
-                    derivedIds.add(templates[0])
+                    usedBaseIds.add(templates[0])
+                    derivedIdsForBaseIds[templates[0]] = feature["identifier"]
                 else:
                     baseIds.add(feature["identifier"])
-            problemIds = derivedIds - baseIds
+            problemIds = usedBaseIds - baseIds
             if problemIds:
                 import sys
                 sys.stderr.write("Error while setting visual features for hazard event " + str(11) + ".\n")
-                sys.stderr.write("Derived visual features found with missing base identifiers:" + "".join(str(problemIds)) + ".\n")
-                sys.stderr.write("Potentially editable visual feature identifiers attribute:" + "".join(str(event.get('potentiallyEditableVisualFeatureIdentifiers', [])), ",") + ".\n")
-                sys.stderr.write("Total number of base vs. derived visual features:" + str(len(baseIds)) + "/" + str(len(derivedIds)) + ".\n")
+                sys.stderr.write("Derived visual features found with missing base identifiers:" + ",".join(problemIds) + ".\n")
+                sys.stderr.write("Potentially editable visual feature identifiers attribute:" + ",".join(event.get('potentiallyEditableVisualFeatureIdentifiers', [])) + ".\n")
+                sys.stderr.write("Total number of base vs. derived visual features:" + str(len(baseIds)) + "/" + str(len(usedBaseIds)) + ".\n")
+                sys.stderr.write("Orphaned derived visual feature(s) will be removed, leading to potentially missing visual features for now.")
                 sys.stderr.write("Called from:\n")
                 import traceback
                 for line in traceback.format_stack():
                     sys.stderr.write("    " + str(line))
                 sys.stderr.flush()
+                
+#                print '\n### PRE problemIds REMOVAL ###'
+#                print '\t problemIds', problemIds
+#                print '\t features', features
+                
+                
+                problemIds = [derivedIdsForBaseIds[identifier] for identifier in problemIds]
+                toBeRemoved = []
+                for feature in features:
+                    if feature["identifier"] in problemIds:
+                        toBeRemoved.append(feature)
+                for feature in toBeRemoved:
+                    features.remove(feature)
 
+                
+#                print '\n--- POST problemIds REMOVAL ---'
+#                print '\t problemIds', problemIds
+#                print '\t features', features
+                
+                
     
     def setDataLayerTimes(self, eventSetAttrs):
         # Data Layer Times are in ms past the epoch
@@ -527,7 +549,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def updatePotentiallyEditableFeatures(self, event):
         features = self.getPersistentAndPreviewGridFeatures(event)
         features += self.potentiallyEditableVisualFeatures(event)
-        self.printOrphanVisualFeaturesError(event, features)
+        self.handleOrphanedVisualFeaturesError(event, features)
         event.setVisualFeatures(VisualFeatures(features))
 
     # Update the potentially editable visual features only for the specified event,
@@ -544,7 +566,7 @@ class Recommender(RecommenderTemplate.Recommender):
         features = self.getNonPreviewGridFeatures(event)
         if self.featuresDisplay().get('previewGrid'):
             features += self.getPreviewGridFeatures(event, self.dataLayerTimes[0])
-        self.printOrphanVisualFeaturesError(event, features)
+        self.handleOrphanedVisualFeaturesError(event, features)
         event.setVisualFeatures(VisualFeatures(features))
 
     # Update the preview grid visual features only for the specified event,
@@ -775,7 +797,7 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('probTrendAutomated', False)
             changed = True
         
-        if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
+        if self.probUtils.isFullyAuto(event):
             # automate event, no owner
             if event.get("owner", None):
                 event.set("owner", None)
@@ -802,6 +824,7 @@ class Recommender(RecommenderTemplate.Recommender):
              motionVectorTimes = [(st, et)]          
              event.set('motionVectorCentroids', motionVectorCentroids) 
              event.set('motionVectorTimes', motionVectorTimes) 
+             event.set('motionAutomated', False) 
 #              if event.get('automationLevel') == 'automated': 
 #                  self.setAttributesAndGeometry(event)
              return True        
@@ -1085,7 +1108,7 @@ class Recommender(RecommenderTemplate.Recommender):
             while i <= durationSecs:
                 timeIntervals.append(i)
                 # If object start time is Prob Severe time, put first forecast polygon on the dataLayerTime
-                if i == 0 and event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated') and self.latestDataLayerTime > self.eventSt_ms:
+                if i == 0 and self.probUtils.isFullyAuto(event) and self.latestDataLayerTime > self.eventSt_ms:
                      # old: event.get('automationLevel') not in ['userOwned', 'attributesOnly', 'attributesAndGeometry'] \
                      # NOTE:  We're assuming this meant:  event.get('automationLevel') == 'automated'
                    #and self.latestDataLayerTime > self.eventSt_ms:
@@ -1278,7 +1301,7 @@ class Recommender(RecommenderTemplate.Recommender):
         features += self.potentiallyEditableVisualFeatures(event)
                            
         if features:
-            self.printOrphanVisualFeaturesError(event, features)
+            self.handleOrphanedVisualFeaturesError(event, features)
             event.setVisualFeatures(VisualFeatures(features))
             
         if self.printVisualFeatures:
@@ -1885,7 +1908,20 @@ class Recommender(RecommenderTemplate.Recommender):
                 #print "automationLevel", event.get('automationLevel')
                 print 'automation -- geometry, motion, probTrend:', event.get('geometryAutomated'), event.get('motionAutomated'), event.get('probTrendAutomated'), 
                 print 'settingMotionVector', event.get('settingMotionVector')
-                print 'dataLayerStatus', event.get('dataLayerStatus')                
+                print 'dataLayerStatus', event.get('dataLayerStatus')
+                potentiallyEditable = event.get('potentiallyEditableVisualFeatureIdentifiers', [])
+                if potentiallyEditable:
+                    potentiallyEditable = set([identifier + "_base" for identifier in potentiallyEditable])
+                    features = event.getVisualFeatures()
+                    if features is None:
+                        features = []
+                    visualFeatureIdentifiers = set([feature["identifier"] for feature in features])
+                    problemIdentifiers = potentiallyEditable - visualFeatureIdentifiers
+                    if problemIdentifiers:
+                        import socket
+                        hostName = socket.gethostname()
+                        print hostName, '  WARNING: event has visual feature dependency problem: visual feature(s)', ",".join(problemIdentifiers), 'not found in provided visual features!!!'
+                        
                 # print "visual Features"                            
                 # for visualFeature in event.getVisualFeatures():
                 #    print "     ", str(visualFeature.get('identifier'))

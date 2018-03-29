@@ -1326,21 +1326,8 @@ class ProbUtils(object):
         print "PU setActivation", event.get('geometryAutomated'), event.get('motionAutomated'), event.get('probTrendAutomated'), status
         self.flush()
         if status == 'PENDING':
-            if not event.get('geometryAutomated') and not event.get('motionAutomated') and not event.get('probTrendAutomated'):
-                activate = True
-                activateModify = False 
-            elif event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated'):
-                activate = False
-                activateModify = False
-#             if automationLevel == 'userOwned':
-#                 activate = True
-#                 activateModify = False
-#             elif automationLevel == 'automated':
-#                 activate = False
-#                 activateModify = False
-            else:
-                activate = False
-                activateModify = True
+            activate = True
+            activateModify = False
         elif status == 'ISSUED':
             activate = False
             activateModify = True

@@ -186,7 +186,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         
         st = time.time()
-#        identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEventSet = self.mergeHazardEventsNew2(currentEvents, recommendedEventsDict)
         identifiersOfEventsToSaveToHistory, mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict)
 
         LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
@@ -199,6 +198,7 @@ class Recommender(RecommenderTemplate.Recommender):
             LogUtils.logMessage('Finnished ', 'swathRec.execute',' Took Seconds', time.time()-st)
         
         for e in mergedEventSet:
+            e.setIssuanceCount(e.getIssuanceCount() + 1)
             print '[CR-1] )))) ', e.get('objectID'), e.getStatus()
 
         ### Ensure that any resulting events are saved to the history list or the database
@@ -402,9 +402,9 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def makeHazardEvent(self, ID, values):
         
-        print '\tMaking New Event?', ID
+        #print '\tMaking New Event?', ID
         if values.get('belowThreshold'):
-            print '\t\tBelow Threshold', self.lowThreshold, 'returning None'
+            #print '\t\tBelow Threshold', self.lowThreshold, 'returning None'
             return None
 
         try:        
@@ -541,27 +541,30 @@ class Recommender(RecommenderTemplate.Recommender):
                 sys.stdout.flush()
         ### We want to get the nearest location of forecast (relocated inner) poly nearest the given time and use that
         else:
-            polyGeom = None
-            timeMin = sys.maxint
             recommendedStartTimeDT = recommendedDict.get('startTime')
             recommendedEpochMillis = TimeUtils.datetimeToEpochTimeMillis(recommendedStartTimeDT)
             latestDLTMillis = TimeUtils.datetimeToEpochTimeMillis(self.latestDLTDT)
-            features = event.getVisualFeatures()
-            for feature in features:
-                featureIdentifier = feature.get('identifier')
-                if featureIdentifier.startswith("swathRec_relocated_"):
-                    geomDict = feature.get('geometry')
-                    if geomDict is None:
-                        continue
-                    #"geometry": {(polySt_ms, polyEt_ms): relocatedShape}
-                    polySt_ms = int(geomDict.keys()[0][0])
-                    polyShape = geomDict.values()[0]
-                        
-                    timeDiff = np.abs(recommendedEpochMillis-polySt_ms)
-                    
-                    if timeDiff < timeMin:
-                        timeMin = timeDiff
-                        polyGeom = polyShape
+            polyGeom = self.getNearestPolygon(event, currentTimeMS=latestDLTMillis, featureType="swathRec_relocated_")
+            #===================================================================
+            # polyGeom = None
+            # timeMin = sys.maxint
+            # features = event.getVisualFeatures()
+            # for feature in features:
+            #     featureIdentifier = feature.get('identifier')
+            #     if featureIdentifier.startswith("swathRec_relocated_"):
+            #         geomDict = feature.get('geometry')
+            #         if geomDict is None:
+            #             continue
+            #         #"geometry": {(polySt_ms, polyEt_ms): relocatedShape}
+            #         polySt_ms = int(geomDict.keys()[0][0])
+            #         polyShape = geomDict.values()[0]
+            #             
+            #         timeDiff = np.abs(recommendedEpochMillis-polySt_ms)
+            #         
+            #         if timeDiff < timeMin:
+            #             timeMin = timeDiff
+            #             polyGeom = polyShape
+            #===================================================================
 
             if polyGeom is not None:
                 event.setGeometry(polyGeom)
@@ -578,10 +581,41 @@ class Recommender(RecommenderTemplate.Recommender):
         return recoverAutomatedList
 
 
+    def getNearestPolygon(self, event, currentTimeMS=None, featureType="swathRec_forecast_"):
+
+        if currentTimeMS is None:
+            currentTimeMS=self.currentTime
+        polyGeom = None
+        timeMin = sys.maxint
+        features = event.getVisualFeatures()
+        for feature in features:
+            featureIdentifier = feature.get('identifier')
+            if featureIdentifier.startswith(featureType):
+                geomDict = feature.get('geometry')
+                if geomDict is None:
+                    continue
+                    #"geometry": {(polySt_ms, polyEt_ms): relocatedShape}
+                polySt_ms = int(geomDict.keys()[0][0])
+                polyShape = geomDict.values()[0]
+                        
+                timeDiff = np.abs(currentTimeMS-polySt_ms)
+                    
+                if timeDiff < timeMin:
+                    timeMin = timeDiff
+                    polyGeom = polyShape
+
+        return polyGeom
+
+        
+        
     def overlaps(self, existingEvent, recommendedDict):
-        existingGeom = existingEvent.getGeometry().asShapely()
+        #existingGeom = existingEvent.getGeometry().asShapely()
+        existingGeom = self.getNearestPolygon(existingEvent)
+        if existingGeom is None:
+            sys.stderr.write('\nCR (overlaps): existingEvent returns NONE geometry.\nFailing intersection test. Might result in overlapping Hazard Events\n\n')
+            return False
         recommendedGeom = loads(recommendedDict.get('polygons'))
-        return existingGeom.intersects(recommendedGeom)
+        return existingGeom.asShapely().intersects(recommendedGeom)
 
 
 
