@@ -1,8 +1,8 @@
-    # Settings 
+    # Settings
     #
     # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
     #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
-    # Examples:  
+    # Examples:
     #"mapCenter": {
     #    "lat": 41.06,
     #    "lon":-95.91,
@@ -11,26 +11,23 @@
     #"possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
     #"visibleSites":  ["BOU", "OAX"]
     #
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"
     #"eventIdDisplayType" : "PROG_ON_DIFF",
+
 
 Prob_WFO = {
     "settingsID" : "Prob_WFO",
-#     "perspectiveIDs" : [],
-    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
-                        "com.raytheon.viz.mpe.ui.MPEPerspective",
-                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
-                        "com.raytheon.viz.ui.GFEPerspective"],
+    "perspectiveIDs" : [],
     "displayName": "Probabilistic Convective",
     "possibleSites": ["National"],
     "visibleSites": ["National"],
 
     "eventIdDisplayType": "ONLY_SERIAL",
-    
+
     "deselectAfterIssuing": True,
 
     "priorityForDragAndDropGeometryEdits": "vertex",
-    
+
     "visibleTypes": [
         "Prob_Tornado",
         "Prob_Severe",
@@ -87,7 +84,7 @@ Prob_WFO = {
             "sortDir": "ascending",
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
-            
+
         },
         "Status": {
             # "sortPriority": 2,
@@ -181,7 +178,7 @@ Prob_WFO = {
         },
         "Owner": {
             "sortDir": "none",
-            "fieldName": "owner", 
+            "fieldName": "owner",
             "type": "string"
         },
     },
@@ -209,6 +206,6 @@ Prob_WFO = {
             "displayName": "Ownership Tool",
             "toolType": "RECOMMENDER",
             "visible":True,
-        },                     
+        },
     ],
 }

@@ -17,17 +17,16 @@ import AviationUtils
 import json
 import AdvancedGeometry
 
-######
 TABLEFILE = AviationUtils.AviationUtils().snapTblFilePath()
 
 class Recommender(RecommenderTemplate.Recommender):
-    
+
     def __init__(self):
         self.logger = logging.getLogger('CreateSwathPolygonsTool')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'CreateSwathPolygonsTool', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-        
+
 
     def defineScriptMetadata(self):
         '''
@@ -42,22 +41,22 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         metadata['eventState'] = 'Pending'
         metadata['onlyIncludeTriggerEvents'] = True
-        
+
         metadata["getDialogInfoNeeded"] = False
         metadata["getSpatialInfoNeeded"] = False
-        
+
         return metadata
 
     def defineDialog(self, eventSet):
         '''
         @return: A dialog definition to solicit user input before running tool
-        '''   
+        '''
         return None
-        
+
     def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
         Runs the Create Swath Polygons Tool
-        
+
         @param eventSet: A set of events which include session
                          attributes
         @param dialogInputMap: A map of information retrieved from
@@ -65,25 +64,25 @@ class Recommender(RecommenderTemplate.Recommender):
         @param spatialInputMap:   A map of information retrieved
                                   from the user's interaction with the
                                   spatial display.
-        
-        @return: A list of potential probabilistic hazard events. 
+
+        @return: A list of potential probabilistic hazard events.
         '''
         import sys
         sys.stderr.write("Running Create Swath Polygons Tool.\n")
 
-        sys.stderr.flush() 
-        
+        sys.stderr.flush()
+
         for event in eventSet:
             self.createSwathPolygons(event)
 
         return eventSet
-    
+
     def createSwathPolygons(self, hazardEvent):
         visualFeatureGeomDict = {}
         features = hazardEvent.getVisualFeatures()
         if not features:
             feature = []
-            
+
         for feature in features:
             featureIdentifier = feature.get('identifier')
             polyDict = feature['geometry']
@@ -91,10 +90,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 featurePoly = geometry.asShapely()
                 vertices = shapely.geometry.base.dump_coords(featurePoly)
                 visualFeatureGeomDict[featureIdentifier] = vertices[0]
-        
+
         currentSwathList = []
         fcstSwathList = []
-        
+
         for key, vertices in visualFeatureGeomDict.iteritems():
             if ('current' in key) or ('fcst' in key):
                 pass
@@ -105,26 +104,26 @@ class Recommender(RecommenderTemplate.Recommender):
                 fcstSwathList.append(vertices)
             else:
                 fcstSwathList.append(vertices)
-        
+
         currentSwathPoly = self.createCascadedUnion(currentSwathList)
         fcstSwathPoly = self.createCascadedUnion(fcstSwathList)
-        
+
         hazardEvent.set('currentSwathPoly', currentSwathPoly)
         hazardEvent.set('fcstSwathPoly', fcstSwathPoly)
-        
-        currentBoundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,'Polygon',TABLEFILE,currentSwathPoly,'swathGeneration')
+
+        currentBoundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,'Polygon',currentSwathPoly,'swathGeneration')
         hazardEvent.set('currentBoundingStatement', currentBoundingStatement)
-        outlookBoundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,'Polygon',TABLEFILE,fcstSwathPoly,'swathGeneration')
+        outlookBoundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,'Polygon',fcstSwathPoly,'swathGeneration')
         hazardEvent.set('outlookBoundingStatement', outlookBoundingStatement)
-        
+
         hazardEvent.setGeometry(currentSwathPoly)
         self.createSwathVisualFeatures(hazardEvent, currentSwathPoly, fcstSwathPoly, visualFeatureGeomDict)
-        
-        return 
-    
+
+        return
+
     def getStatesList(self, hazardEvent):
         self._hazardZonesDict = hazardEvent.getHazardAttributes().get('hazardArea')
-                   
+
         statesList = []
         for key in self._hazardZonesDict:
             states = key[:2]
@@ -135,30 +134,30 @@ class Recommender(RecommenderTemplate.Recommender):
         statesListStr = ''
         for states in statesList:
             statesListStr += states + ' '
-            
+
         hazardEvent.set('statesList', statesListStr)
-            
-        return          
-        
+
+        return
+
     def createCascadedUnion(self, verticesList):
         cascadedUnionPoly = cascaded_union([Polygon(verticesList[0]),
                                             Polygon(verticesList[1]),
                                             Polygon(verticesList[2])])
-        
+
         return cascadedUnionPoly
-    
+
     def createSwathVisualFeatures(self, hazardEvent, currentSwathPoly, fcstSwathPoly, visualFeatureGeomDict):
         startTime = hazardEvent.getStartTime().replace(second=0, microsecond=0)
         startTime = startTime - datetime.timedelta(hours=2)
-        endTime = TimeUtils.roundDatetime(hazardEvent.getEndTime())        
-        
+        endTime = TimeUtils.roundDatetime(hazardEvent.getEndTime())
+
         eventID = hazardEvent.getEventID()
-        
+
         selectedFeatures = self.addPreviousVisualFeatures(hazardEvent, visualFeatureGeomDict)
-        
+
         currentSwathPoly = AdvancedGeometry.createShapelyWrapper(currentSwathPoly, 0)
         fcstSwathPoly = AdvancedGeometry.createShapelyWrapper(fcstSwathPoly, 0)
-        
+
         currentSwathPoly = {
             "identifier": "currentSwathPoly_" + eventID,
             "visibilityConstraints": "selected",
@@ -169,8 +168,8 @@ class Recommender(RecommenderTemplate.Recommender):
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): currentSwathPoly
             }
-        }        
-        
+        }
+
         fcstSwathPoly = {
             "identifier": "fcstSwathPoly_" + eventID,
             "visibilityConstraints": "selected",
@@ -181,34 +180,34 @@ class Recommender(RecommenderTemplate.Recommender):
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): fcstSwathPoly
             }
-        }        
-        
+        }
+
         selectedFeatures.append(currentSwathPoly)
         selectedFeatures.append(fcstSwathPoly)
         hazardEvent.setVisualFeatures(VisualFeatures(selectedFeatures))
-        
-        return True   
-        
+
+        return True
+
     def addPreviousVisualFeatures(self, hazardEvent, visualFeatureGeomDict):
         selectedFeatures = []
-                 
+
         features = hazardEvent.getVisualFeatures()
         if not features:
             feature = []
-             
+
         for feature in features:
             featureIdentifier = feature.get('identifier')
             if "current" in featureIdentifier or "fcst" in featureIdentifier:
                 pass
             else:
-                selectedFeatures.append(feature)  
-        
-        return selectedFeatures                  
-    
+                selectedFeatures.append(feature)
+
+        return selectedFeatures
+
     def flush(self):
         import os
         os.sys.__stdout__.flush()
-    
-                      
+
+
 def __str__(self):
     return 'CreateSwathPolygonsTool'

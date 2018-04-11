@@ -1,8 +1,8 @@
-    # Settings 
+    # Settings
     #
     # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
     #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
-    # Examples:  
+    # Examples:
     #"mapCenter": {
     #    "lat": 41.06,
     #    "lon":-95.91,
@@ -11,20 +11,18 @@
     #"possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
     #"visibleSites":  ["BOU", "OAX"]
     #
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"
     #"eventIdDisplayType" : "PROG_ON_DIFF",
-
 
 Aviation = {
     "settingsID" : "Aviation",
-    "perspectiveIDs" : [],
-#     "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
-#                         "com.raytheon.viz.mpe.ui.MPEPerspective",
-#                         "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
-#                         "com.raytheon.viz.ui.GFEPerspective"],    
+    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
+                        "com.raytheon.viz.mpe.ui.MPEPerspective",
+                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
+                        "com.raytheon.viz.ui.GFEPerspective"],
     "displayName": "Aviation",
     "possibleSites": ["National"],
-    "visibleSites": ["National"],    
+    "visibleSites": ["National"],
     "visibleTypes": [
         "SIGMET.NonConvective",
         "SIGMET.Convective",
@@ -52,7 +50,7 @@ Aviation = {
         "Mountain_Obscuration",
         "IFR",
         "Icing",
-        "Multiple_Freezing_Levels",          
+        "Multiple_Freezing_Levels",
         ]
         },
     ],
@@ -84,7 +82,7 @@ Aviation = {
             "sortDir": "ascending",
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
-            
+
         },
         "Status": {
             "sortDir": "ascending",
@@ -169,12 +167,12 @@ Aviation = {
             },
         "Workstation": {
             "sortDir": "none",
-            "fieldName": "workStation", 
+            "fieldName": "workStation",
             "type": "string"
         },
         "User Name": {
             "sortDir": "none",
-            "fieldName": "userName", 
+            "fieldName": "userName",
             "type": "string"
         },
     },
@@ -208,13 +206,13 @@ Aviation = {
             "displayName": "CreateHazardEventFromPoints",
             "toolType": "RECOMMENDER",
             "visible":True,
-        },                                          
+        },
         {
             "toolName": "StormSurgeRecommender",
             "displayName": "StormSurgeRecommender",
             "toolType": "RECOMMENDER",
             "visible":True,
-        },                                                                                                                                                                                                
+        },
     ],
     "eventIdDisplayType" : "ONLY_SERIAL"
 }

@@ -6,8 +6,6 @@ import Legacy_Hydro_Formatter
 from collections import OrderedDict
 import AviationUtils
 
-OUTPUTDIR = '/scratch/AIRMET'
-
 '''
 WAUS46 KKCI 261709
 WA6S SFOS WA 261709
@@ -33,8 +31,8 @@ class Format(Legacy_Hydro_Formatter.Format):
         super(Format, self).initialize()
         self.initProductPartMethodMapping()
 
-        self._productGeneratorName = 'AIRMET_ProductGenerator' 
-        
+        self._productGeneratorName = 'AIRMET_ProductGenerator'
+
     def initProductPartMethodMapping(self):
         self.productPartMethodMapping = {
             'wmoHeader': self._wmoHeader,
@@ -43,7 +41,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'productHeader': self._productHeader,
             'narrativeForecastInformation': self._narrativeForecastInformation
                                 }
-        
+
     def execute(self, productDict, editableEntries=None, overrideProductText=None):
         self.productDict = productDict
         self._editableParts = OrderedDict()
@@ -52,38 +50,38 @@ class Format(Legacy_Hydro_Formatter.Format):
         self.updateNumberDict = self.productDict.get('updateNumberDict')
 
         self._fcstList = {}
-        
+
         originatingOfficeList = self.createOriginatingOfficeList(eventDicts)
         zoneList = self.createZoneList(eventDicts)
         advisoryTypeDict = self.createAdvisoryTypeDict(eventDicts)
-        
+
         headerDict = self.createHeaderDict(originatingOfficeList, zoneList, advisoryTypeDict)
         bodyDict = self.createBodyDict(eventDicts, originatingOfficeList, zoneList)
         freezingLevelDict = self.createFreezingLevelDict(eventDicts, originatingOfficeList, zoneList)
-        
+
         productDict = self.createProduct(headerDict, bodyDict, freezingLevelDict, originatingOfficeList, zoneList)
         legacyText = productDict.get('text')
 
         if self.issueFlag == "True":
             self.outputText(productDict)
- 
         self.flush()
+
         return [ProductUtils.wrapLegacy(legacyText)],self._editableParts
 
     ######################################################
-    #  Product Part Methods 
+    #  Product Part Methods
     ######################################################
     def createOriginatingOfficeList(self,eventDicts):
         originatingOfficeList = []
-        
+
         for eventDict in eventDicts:
             eventDictParts = eventDict.get('parts')
             originatingOffice = eventDictParts.get('originatingOffice')
             if originatingOffice not in originatingOfficeList:
                 originatingOfficeList.append(originatingOffice)
-                                            
+
         return originatingOfficeList
-    
+
     def createZoneList(self, eventDicts):
         zoneList = []
 
@@ -91,10 +89,10 @@ class Format(Legacy_Hydro_Formatter.Format):
             eventDictParts = eventDict.get('parts')
             zone = eventDictParts.get('zone')
             if zone not in zoneList:
-                zoneList.append(zone)            
-                
+                zoneList.append(zone)
+
         return zoneList
-    
+
     def createAdvisoryTypeDict(self,eventDicts):
         advisoryTypeDict = {}
 
@@ -109,7 +107,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                 series = 'SIERRA'
             else:
                 series = 'ZULU'
-                
+
             if eventDictParts.get('advisoryType') in ['Correction', 'Amendment', 'Cancellation']:
                 if originatingOffice in advisoryTypeDict:
                     if zone in advisoryTypeDict[originatingOffice]:
@@ -130,28 +128,28 @@ class Format(Legacy_Hydro_Formatter.Format):
                     advisoryTypeDict[originatingOffice][zone] = {}
                     advisoryTypeDict[originatingOffice][zone][series] = []
                     advisoryTypeDict[originatingOffice][zone][series].append(eventDictParts.get('advisoryType'))
-                                        
+
             self.issueTime = str(eventDictParts.get('currentTime'))
             self.startTime = str(eventDictParts.get('startTime'))
             self.endTime = str(eventDictParts.get('endTime'))
-            self.advisoryType = str(eventDictParts.get('advisoryType'))                 
-                
+            self.advisoryType = str(eventDictParts.get('advisoryType'))
+
         return advisoryTypeDict
-        
+
     def createFcstStr(self, eventDictParts):
         fcstStr = ''
-        
+
         boundingStatement = self.getBoundingStatement(eventDictParts)
         timeConstraintStr = self.getTimeConstraintStr(eventDictParts)
         outlookStr = self.getOutlookStr(eventDictParts)
-        
+
         if eventDictParts.get('advisoryType') in ['Cancellation', 'Amendment']:
             updateStr = '...UPDATE'
         elif eventDictParts.get('advisoryType') == 'Correction':
             updateStr = '...CORRECTION'
         else:
-            updateStr = ''      
-            
+            updateStr = ''
+
         #due to variations, put together forecast product based on hazard type
         #except for multiple freezing levels use in freezing level creation
         if self.phenomenon == 'LLWS':
@@ -161,7 +159,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                 fcstStr = fcstStr + 'CANCEL AIRMET. LLWS HAS DIMINISHED.' + '\n'
             else:
                 fcstStr = fcstStr + timeConstraintStr + 'AREAS LLWS CONDITIONS EXP.' + eventDictParts.get('intensityTrend') + '\n'
-                fcstStr = fcstStr + outlookStr + '\n'                
+                fcstStr = fcstStr + outlookStr + '\n'
         elif self.phenomenon == 'Strong_Surface_Wind':
             fcstStr = fcstStr + "AIRMET STG SFC WNDS..." + eventDictParts.get('states') + updateStr + '\n'
             fcstStr = fcstStr + boundingStatement + '\n'
@@ -194,7 +192,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             else:
                 fcstStr = fcstStr + timeConstraintStr + eventDictParts.get('restrictions') + ' ' + eventDictParts.get('phenomenon') + '.' + eventDictParts.get('intensityTrend') + '\n'
                 fcstStr = fcstStr + outlookStr + '\n'
-        elif self.phenomenon == 'Icing':            
+        elif self.phenomenon == 'Icing':
             fcstStr = fcstStr + "AIRMET ICE..." + eventDictParts.get('states') + updateStr + '\n'
             fcstStr = fcstStr + boundingStatement + '\n'
             if eventDictParts.get('advisoryType') == 'Cancellation':
@@ -204,14 +202,14 @@ class Format(Legacy_Hydro_Formatter.Format):
                 fcstStr = fcstStr + outlookStr + '\n'
         else:
             fcstStr = ''
-        
+
         return fcstStr
 
     def getOutlookStr(self, eventDictParts):
         phenomDict = {'LLWS': 'LLWS ', 'Multiple_Freezing_Levels ': 'MULT FZ LVLS ', 'IFR': 'IFR ',
                       'Icing': 'ICE ', 'Strong_Surface_Wind': 'STG SFC WND ', 'Turbulence': 'TURB ',
                       'Mountain_Obscuration': 'MTN OBSCN '}
-        
+
         if self.phenomenon in ['LLWS', 'Multiple_Freezing_Levels']:
             outlookStr = ''
         else:
@@ -220,13 +218,13 @@ class Format(Legacy_Hydro_Formatter.Format):
             else:
                 outlookStr = 'OTLK VALID ' + eventDictParts.get('endTime')[2:] + '-' + eventDictParts.get('outlookEndTime')[2:] + 'Z...'
                 outlookStr = outlookStr + phenomDict[self.phenomenon] + eventDictParts.get('states') + '\n'
-                outlookStr = outlookStr + 'BOUNDED BY ' + eventDictParts.get('outlookBoundingStatement')[5:] 
+                outlookStr = outlookStr + 'BOUNDED BY ' + eventDictParts.get('outlookBoundingStatement')[5:]
         return outlookStr
-    
+
     def getTimeConstraintStr(self, eventDictParts):
         timeConstraint = eventDictParts.get('timeConstraint')
         timeConstraintTime = eventDictParts.get('timeConstraintTime')
-        
+
         if timeConstraint == 'None':
             timeConstraintStr = ''
         elif timeConstraint == 'Occasional':
@@ -239,9 +237,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             timeConstraintStr = 'BY ' + str(timeConstraintTime) + 'Z '
         else:
             timeConstraintStr = 'CONDS CONTG BYD ' + str(timeConstraintTime) + 'Z '
-        
+
         return timeConstraintStr
-    
+
     def createFreezingLevelDict(self, eventDicts, originatingOfficeList, zoneList):
         freezingLevelDict = {'KKCI': {'SFO': '',
                                       'SLC': '',
@@ -253,20 +251,20 @@ class Format(Legacy_Hydro_Formatter.Format):
                                       'ANC': '',
                                       'FAI': '',},
                              'PHFO': {'HNL': '',}}
-        
+
         for eventDict in eventDicts:
             eventDictParts = eventDict.get('parts')
             if eventDict.get('hazardType') == 'Multiple_Freezing_Levels':
                 freezingLevelDict[eventDictParts.get('originatingOffice')][eventDictParts.get('zone')] = eventDictParts.get('freezingLevel') + eventDictParts.get('boundingStatement')
-        
+
         return freezingLevelDict
-    
+
     def createFreezingLevelStr(self):
         freezingLevelInformation = AviationUtils.AviationUtils().createFreezingLevelInformation()
         freezingLevelStr = 'FZLVL...' + freezingLevelInformation + '.\n'
-        
+
         return freezingLevelStr
-        
+
     def createBodyDict(self,eventDicts,originactingOfficeList,zoneList):
         bodyDict = {'KKCI': {'SFO': {'SIERRA': {},'TANGO': {},'ZULU': {}},
                              'SLC': {'SIERRA': {},'TANGO': {},'ZULU': {}},
@@ -278,7 +276,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                              'ANC': {'SIERRA': {},'TANGO': {},'ZULU': {}},
                              'FAI': {'SIERRA': {},'TANGO': {},'ZULU': {}}},
                     'PHFO': {'HNL': {'SIERRA': {},'TANGO': {},'ZULU': {}}}}
-        
+
         for eventDict in eventDicts:
             eventDictParts = eventDict.get('parts')
             self.issueFlag = eventDict.get('issueFlag',False)
@@ -293,15 +291,15 @@ class Format(Legacy_Hydro_Formatter.Format):
                 series = 'SIERRA'
             else:
                 series = 'ZULU'
-            
+
             fcstStr = self.createFcstStr(eventDictParts)
             bodyDict[originatingOffice][zone][series][eventID] = fcstStr
-            
+
         return bodyDict
-        
+
     def createHeaderDict(self,originatingOfficeList,zoneList, advisoryTypeDict):
         headerDict = {}
-        
+
         headerDictAll = {'KKCI': {'SFO': {"HEADER": "WAUS46 KKCI "+self.issueTime,
                                           "SIERRA": "WA6S SFOS WA "+self.startTime,
                                           "TANGO": "=WA6T SFOT WA "+self.startTime,
@@ -345,10 +343,10 @@ class Format(Legacy_Hydro_Formatter.Format):
 
         for originatingOffice in originatingOfficeList:
             headerDict[originatingOffice] = headerDictAll[originatingOffice]
-            
+
         for originatingOffice in advisoryTypeDict:
             for zone in advisoryTypeDict[originatingOffice]:
-                for series in advisoryTypeDict[originatingOffice][zone]:                        
+                for series in advisoryTypeDict[originatingOffice][zone]:
                     advisoryTypeList = advisoryTypeDict[originatingOffice][zone][series]
                     if 'Amendment' in advisoryTypeList or 'Cancellation' in advisoryTypeList:
                         headerDictAll[originatingOffice][zone]["HEADER"] = headerDictAll[originatingOffice][zone]["HEADER"] + " AAA"
@@ -356,15 +354,15 @@ class Format(Legacy_Hydro_Formatter.Format):
                     else: #correction
                         headerDictAll[originatingOffice][zone]["HEADER"] = headerDictAll[originatingOffice][zone]["HEADER"] + " CCA"
                         headerDictAll[originatingOffice][zone][series] = headerDictAll[originatingOffice][zone][series] + ' COR'
-        
-        return headerDict                                    
-                    
+
+        return headerDict
+
     def createProduct(self, headerDict, bodyDict, freezingLevelDict, originatingOfficeList, zoneList):
         fcst = ''
         updateNumberStr = ' '
         updateNumberDict = self.updateNumberDict['updateNumber']
         freezingLevelStr = self.createFreezingLevelStr()
-        
+
         for office in originatingOfficeList:
             for zone in headerDict[office]:
                 #header
@@ -375,7 +373,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                     updateNumberStr = ' UPDATE ' + str(updateNumberDict[zone]['SIERRA']) + ' '
                 else:
                     updateNumberStr = ' '
-                fcst = fcst + 'AIRMET SIERRA' + updateNumberStr + 'FOR IFR VALID UNTIL ' + self.endTime + '\n'                
+                fcst = fcst + 'AIRMET SIERRA' + updateNumberStr + 'FOR IFR VALID UNTIL ' + self.endTime + '\n'
                 if bool(bodyDict[office][zone]['SIERRA']) is False:
                     fcst = fcst + '.' + '\n'
                     fcst = fcst + 'NO SIGNIFICANT IFR EXP.' + '\n'
@@ -383,13 +381,13 @@ class Format(Legacy_Hydro_Formatter.Format):
                 else:
                     for entry in bodyDict[office][zone]['SIERRA']:
                         fcst = fcst + bodyDict[office][zone]['SIERRA'][entry]
-                #tango series    
+                #tango series
                 fcst = fcst + headerDict[office][zone]['TANGO'] + '\n'
                 if updateNumberDict[zone]['TANGO'] != 0:
                     updateNumberStr = ' UPDATE ' + str(updateNumberDict[zone]['TANGO']) + ' '
                 else:
-                    updateNumberStr = ' '                    
-                fcst = fcst + 'AIRMET TANGO' + updateNumberStr + 'FOR TURB/STG SFC WINDS/LLWS VALID UNTIL ' + self.endTime + '\n'                
+                    updateNumberStr = ' '
+                fcst = fcst + 'AIRMET TANGO' + updateNumberStr + 'FOR TURB/STG SFC WINDS/LLWS VALID UNTIL ' + self.endTime + '\n'
                 if bool(bodyDict[office][zone]['TANGO']) is False:
                     fcst = fcst + '.' + '\n'
                     fcst = fcst + 'NO SIGNIFICANT TURB/STG SFC WINDS/LLWS EXP.' + '\n'
@@ -397,12 +395,12 @@ class Format(Legacy_Hydro_Formatter.Format):
                 else:
                     for entry in bodyDict[office][zone]['TANGO']:
                         fcst = fcst + bodyDict[office][zone]['TANGO'][entry]
-                #zulu series                    
+                #zulu series
                 fcst = fcst + headerDict[office][zone]['ZULU'] + '\n'
                 if updateNumberDict[zone]['ZULU'] != 0:
                     updateNumberStr = ' UPDATE ' + str(updateNumberDict[zone]['ZULU']) + ' '
                 else:
-                    updateNumberStr = ' '                    
+                    updateNumberStr = ' '
                 fcst = fcst + 'AIRMET ZULU' + updateNumberStr + 'FOR ICE AND FZLVL VALID UNTIL ' + self.endTime + '\n'
                 if bool(bodyDict[office][zone]['ZULU']) is False:
                     fcst = fcst + '.' + '\n'
@@ -412,19 +410,19 @@ class Format(Legacy_Hydro_Formatter.Format):
                     for entry in bodyDict[office][zone]['ZULU']:
                         fcst = fcst + bodyDict[office][zone]['ZULU'][entry]
                     fcst = fcst + freezingLevelStr + '\n' + freezingLevelDict[office][zone]
-                                    
+
                 fcst = fcst + '\n\n' + '--------------------'
-                fcst = fcst + '\n' + '--------------------' + '\n\n'                       
-        
+                fcst = fcst + '\n' + '--------------------' + '\n\n'
+
         body = self.wordWrap(fcst)
-        
-        productDict = collections.OrderedDict()        
+
+        productDict = collections.OrderedDict()
         productDict['productID'] = 'SIGMET.International'
-        productDict['productName'] = 'INTERNATIONAL SIGMET'        
-        productDict['text'] = fcst            
-            
+        productDict['productName'] = 'INTERNATIONAL SIGMET'
+        productDict['text'] = fcst
+
         return productDict
-    
+
     def getBoundingStatement(self, eventDictParts):
         if eventDictParts.get('originatingOffice') == 'PAWU':
             vertices = eventDictParts.get('geometry')
@@ -434,9 +432,9 @@ class Format(Legacy_Hydro_Formatter.Format):
                 boundingStatement = eventDictParts.get('currentBoundingStatement')
             else:
                 boundingStatement = eventDictParts.get('boundingStatement')
-        
-        return boundingStatement    
-    
+
+        return boundingStatement
+
     def createLatLonStatement(self, vertices):
         import math
 
@@ -447,64 +445,63 @@ class Format(Legacy_Hydro_Formatter.Format):
             for vert in vertex:
                 decimal, degree = math.modf(vert)
                 minute = (decimal*60)/100
-                vert = round(int(degree) + minute, 2) 
+                vert = round(int(degree) + minute, 2)
                 newVert.append(vert)
                 newVert.reverse()
             newVerticesList.append(newVert)
-        
+
         for vertices in newVerticesList:
             latMinute, latDegree = math.modf(vertices[0])
             lonMinute, lonDegree = math.modf(vertices[1])
-        
+
             if latDegree < 0:
                 lat = 'S'+str(abs(int(latDegree)))+str(abs(int(latMinute*100)))
             else:
                 lat = 'N'+str(int(latDegree))+str(int(latMinute*100))
-        
+
             if lonDegree < 0:
                 lon = 'W'+str(abs(int(lonDegree)))+str(abs(int(lonMinute*100)))
             else:
                 lon = 'E'+str(int(lonDegree))+str(int(lonMinute*100))
-        
+
             locationList.append(lat+' '+lon)
             locationList.append(' - ')
-        
+
         locationList.pop()
         latLonStatement = "".join(locationList)
-                
-        return latLonStatement    
-    
+
+        return latLonStatement
+
     def wordWrap(self, string, width=68):
         newstring = ''
         if len(string) > width:
             while True:
                 # find position of nearest whitespace char to the left of 'width'
                 marker = width - 1
-                while not string[marker].isspace():
+                if not string[marker].isspace():
                     marker = marker - 1
-
                 # remove line from original string and add it to the new string
                 newline = string[0:marker] + '\n'
                 newstring = newstring + newline
                 string = string[marker + 1:]
-
                 # break out of loop when finished
                 if len(string) <= width:
                     break
-    
-        return newstring + string             
-    
-    def outputText(self, productDict):            
+        return newstring + string
+
+    def outputText(self, productDict):
+        OUTPUTDIR = AviationUtils.AviationUtils().outputAirmetFilePath()
+
         outAllAdvisories = 'AIRMET_' + self.issueTime + '.txt'
         pathAllFile = os.path.join(OUTPUTDIR, outAllAdvisories)
-        
+
         if not os.path.exists(OUTPUTDIR):
             try:
                 os.makedirs(OUTPUTDIR)
             except:
                 sys.stderr.write('Could not create output directory')
-                
+
         with open(pathAllFile, 'w') as outFile:
             outFile.write(productDict['text'])
-    
+
         return
