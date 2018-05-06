@@ -51,6 +51,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+
 /**
  * Various utility methods used to convert Settings and SettingsConfig to and
  * from maps. These methods need to be used until megawidgets are fixed.
@@ -70,6 +72,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      Also fixed bugs caused by hazard category and types object
  *                                      sometimes having a list of maps for its children instead of
  *                                      a list of strings.
+ * May 04, 2018 50032      Chris.Golden Added additional filters to settings.
  * </pre>
  * 
  * @author bkowal
@@ -124,10 +127,11 @@ public class MegawidgetSettingsConversionUtils {
             hazardCategoriesAndTypesMap.put("identifier",
                     hazardCategoryAndTypes.getIdentifier());
             if (hazardCategoryAndTypes.getChildren() != null
-                    && hazardCategoryAndTypes.getChildren().isEmpty() == false) {
+                    && hazardCategoryAndTypes.getChildren()
+                            .isEmpty() == false) {
                 hazardCategoriesAndTypesMap.put("children",
-                        getChildrenNamesFromList(hazardCategoryAndTypes
-                                .getChildren()));
+                        getChildrenNamesFromList(
+                                hazardCategoryAndTypes.getChildren()));
             }
 
             hazardCategoriesAndTypesMapList.add(hazardCategoriesAndTypesMap);
@@ -147,8 +151,8 @@ public class MegawidgetSettingsConversionUtils {
         currentSettingsMap.put("columns", columnsMap);
 
         // Build the 'mapCenter' map
-        Map<String, Object> mapCenterMap = BeanUtils.describe(settings
-                .getMapCenter());
+        Map<String, Object> mapCenterMap = BeanUtils
+                .describe(settings.getMapCenter());
         removeNullValues(mapCenterMap);
         currentSettingsMap.put("mapCenter", mapCenterMap);
 
@@ -156,23 +160,36 @@ public class MegawidgetSettingsConversionUtils {
         currentSettingsMap.put("displayName", settings.getDisplayName());
 
         // Add 'defaultDuration' to the map
-        currentSettingsMap
-                .put("defaultDuration", settings.getDefaultDuration());
+        currentSettingsMap.put("defaultDuration",
+                settings.getDefaultDuration());
 
         // Add 'settingsID' to the map
         currentSettingsMap.put("settingsID", settings.getSettingsID());
 
         // Add 'defaultCategory' to the map
-        currentSettingsMap
-                .put("defaultCategory", settings.getDefaultCategory());
+        currentSettingsMap.put("defaultCategory",
+                settings.getDefaultCategory());
 
         // Add 'visibleTypes' to the map
-        currentSettingsMap
-                .put(SETTING_HAZARD_TYPES, settings.getVisibleTypes());
+        currentSettingsMap.put(SETTING_HAZARD_TYPES,
+                settings.getVisibleTypes());
 
         // Add 'visibleStatuses' to the map
         currentSettingsMap.put(SETTING_HAZARD_STATES,
                 settings.getVisibleStatuses());
+
+        /*
+         * Add any additional filter values to the map.
+         * 
+         * TODO: Note that this is dangerous, since there is no guarantee that
+         * the filter names are not the same as other keys in the map. When
+         * settings are refactored, this should be cleaned up.
+         */
+        Map<String, Object> visibleAdditionalFilters = settings
+                .getVisibleAdditionalFilters();
+        if (visibleAdditionalFilters != null) {
+            currentSettingsMap.putAll(visibleAdditionalFilters);
+        }
 
         // Build the 'toolbarTools' list of maps
         List<Map<String, Object>> toolsMapsList = new LinkedList<Map<String, Object>>();
@@ -193,8 +210,8 @@ public class MegawidgetSettingsConversionUtils {
                 settings.getPossibleSites());
 
         // Add 'visibleSites' to the map
-        currentSettingsMap
-                .put(SETTING_HAZARD_SITES, settings.getVisibleSites());
+        currentSettingsMap.put(SETTING_HAZARD_SITES,
+                settings.getVisibleSites());
 
         // Add 'visibleColumns' to the map
         currentSettingsMap.put(SETTING_VISIBLE_COLUMNS,
@@ -217,8 +234,8 @@ public class MegawidgetSettingsConversionUtils {
 
             pagesMap.put("pageName", page.getPageName());
             pagesMap.put("numColumns", page.getNumColumns());
-            List<Map<String, Object>> pageFields = buildFieldMapList(page
-                    .getPageFields().toArray(new Field[0]));
+            List<Map<String, Object>> pageFields = buildFieldMapList(
+                    page.getPageFields().toArray(new Field[0]));
             pagesMap.put("pageFields", pageFields);
 
             pagesMapList.add(pagesMap);
@@ -247,8 +264,8 @@ public class MegawidgetSettingsConversionUtils {
         ObservedSettings updatedSettings = settings;
 
         // Update the visible types
-        updatedSettings.setVisibleTypes((Set<String>) settingsMap
-                .get(SETTING_HAZARD_TYPES));
+        updatedSettings.setVisibleTypes(
+                (Set<String>) settingsMap.get(SETTING_HAZARD_TYPES));
 
         // Update the visible states
         if (settingsMap.get(SETTING_HAZARD_STATES) instanceof List<?>) {
@@ -259,8 +276,29 @@ public class MegawidgetSettingsConversionUtils {
             }
             updatedSettings.setVisibleStatuses(visibleStatusesSet);
         } else {
-            updatedSettings.setVisibleStatuses((Set<String>) settingsMap
-                    .get(SETTING_HAZARD_STATES));
+            updatedSettings.setVisibleStatuses(
+                    (Set<String>) settingsMap.get(SETTING_HAZARD_STATES));
+        }
+
+        /*
+         * Update the visible additional filters, if any.
+         */
+        List<Object> additionalFilters = updatedSettings.getAdditionalFilters();
+        if (additionalFilters != null) {
+            Map<String, Object> visibleAdditionalFilters = updatedSettings
+                    .getVisibleAdditionalFilters();
+            if (visibleAdditionalFilters == null) {
+                visibleAdditionalFilters = new HashMap<>(
+                        additionalFilters.size(), 1.0f);
+            }
+            for (Object additionalFilter : additionalFilters) {
+                String identifier = ((Map<?, ?>) additionalFilter)
+                        .get(ISpecifier.MEGAWIDGET_IDENTIFIER).toString();
+                visibleAdditionalFilters.put(identifier,
+                        settingsMap.get(identifier));
+            }
+            updatedSettings
+                    .setVisibleAdditionalFilters(visibleAdditionalFilters);
         }
 
         // Update the possibleSites
@@ -279,18 +317,19 @@ public class MegawidgetSettingsConversionUtils {
         // Update the visibleSites
         if (settingsMap.get(SETTING_HAZARD_SITES) instanceof List<?>) {
             Set<String> visibleSitesSet = new HashSet<String>();
-            for (Object site : (List<?>) settingsMap.get(SETTING_HAZARD_SITES)) {
+            for (Object site : (List<?>) settingsMap
+                    .get(SETTING_HAZARD_SITES)) {
                 visibleSitesSet.add(site.toString());
             }
             updatedSettings.setVisibleSites(visibleSitesSet);
         } else {
-            updatedSettings.setVisibleSites((Set<String>) settingsMap
-                    .get(SETTING_HAZARD_SITES));
+            updatedSettings.setVisibleSites(
+                    (Set<String>) settingsMap.get(SETTING_HAZARD_SITES));
         }
 
         // Update the visibleColumns
-        updatedSettings.setVisibleColumns((List<String>) settingsMap
-                .get(SETTING_VISIBLE_COLUMNS));
+        updatedSettings.setVisibleColumns(
+                (List<String>) settingsMap.get(SETTING_VISIBLE_COLUMNS));
 
         // Update the Hazards Categories & Types
         List<HazardCategoryAndTypes> hazardCategoriesAndTypesList = new ArrayList<HazardCategoryAndTypes>();
@@ -299,23 +338,21 @@ public class MegawidgetSettingsConversionUtils {
         for (Map<String, Object> hcatMap : hazardCategoriesAndTypesMapList) {
             HazardCategoryAndTypes hazardCategoryAndTypes = new HazardCategoryAndTypes();
             if (hcatMap.containsKey("displayString")) {
-                hazardCategoryAndTypes.setDisplayString(hcatMap.get(
-                        "displayString").toString());
+                hazardCategoryAndTypes.setDisplayString(
+                        hcatMap.get("displayString").toString());
             }
             if (hcatMap.containsKey("identifier")) {
-                hazardCategoryAndTypes.setIdentifier(hcatMap.get("identifier")
-                        .toString());
+                hazardCategoryAndTypes
+                        .setIdentifier(hcatMap.get("identifier").toString());
             }
             if (hcatMap.containsKey("children")) {
-                hazardCategoryAndTypes
-                        .setChildren(getChildrenNamesFromList((List<?>) hcatMap
-                                .get("children")));
+                hazardCategoryAndTypes.setChildren(getChildrenNamesFromList(
+                        (List<?>) hcatMap.get("children")));
             }
             hazardCategoriesAndTypesList.add(hazardCategoryAndTypes);
         }
-        updatedSettings.setHazardCategoriesAndTypes(
-                hazardCategoriesAndTypesList
-                        .toArray(new HazardCategoryAndTypes[0]), originator);
+        updatedSettings.setHazardCategoriesAndTypes(hazardCategoriesAndTypesList
+                .toArray(new HazardCategoryAndTypes[0]), originator);
 
         // Update the Columns
         Map<String, Column> updatedColumnsMap = new HashMap<String, Column>();
@@ -326,8 +363,8 @@ public class MegawidgetSettingsConversionUtils {
                     .get(columnMapKey);
             Column column = new Column();
             if (columnMap.containsKey("width")) {
-                column.setWidth(NumberUtils.toInt(columnMap.get("width")
-                        .toString()));
+                column.setWidth(
+                        NumberUtils.toInt(columnMap.get("width").toString()));
             }
             if (columnMap.containsKey("type")) {
                 column.setType(columnMap.get("type").toString());
@@ -336,15 +373,15 @@ public class MegawidgetSettingsConversionUtils {
                 column.setFieldName(columnMap.get("fieldName").toString());
             }
             if (columnMap.containsKey("hintTextFieldName")) {
-                column.setHintTextFieldName(columnMap.get("hintTextFieldName")
-                        .toString());
+                column.setHintTextFieldName(
+                        columnMap.get("hintTextFieldName").toString());
             }
             if (columnMap.containsKey("sortDir")) {
                 column.setSortDir(columnMap.get("sortDir").toString());
             }
             if (columnMap.containsKey("displayEmptyAs")) {
-                column.setDisplayEmptyAs(columnMap.get("displayEmptyAs")
-                        .toString());
+                column.setDisplayEmptyAs(
+                        columnMap.get("displayEmptyAs").toString());
             }
             updatedColumnsMap.put(columnMapKey, column);
         }
@@ -355,30 +392,30 @@ public class MegawidgetSettingsConversionUtils {
                 .get("mapCenter");
         MapCenter mapCenter = new MapCenter();
         if (mapCenterMap.containsKey("lat")) {
-            mapCenter.setLat(NumberUtils.toDouble(mapCenterMap.get("lat")
-                    .toString()));
+            mapCenter.setLat(
+                    NumberUtils.toDouble(mapCenterMap.get("lat").toString()));
         }
         if (mapCenterMap.containsKey("lon")) {
-            mapCenter.setLon(NumberUtils.toDouble(mapCenterMap.get("lon")
-                    .toString()));
+            mapCenter.setLon(
+                    NumberUtils.toDouble(mapCenterMap.get("lon").toString()));
         }
         if (mapCenterMap.containsKey("zoom")) {
-            mapCenter.setZoom(NumberUtils.toDouble(mapCenterMap.get("zoom")
-                    .toString()));
+            mapCenter.setZoom(
+                    NumberUtils.toDouble(mapCenterMap.get("zoom").toString()));
         }
         updatedSettings.setMapCenter(mapCenter);
 
         // Update the display name
-        updatedSettings.setDisplayName(settingsMap.get("displayName")
-                .toString());
+        updatedSettings
+                .setDisplayName(settingsMap.get("displayName").toString());
 
         // Update the default duration
-        updatedSettings.setDefaultDuration(NumberUtils.toLong(settingsMap.get(
-                "defaultDuration").toString()));
+        updatedSettings.setDefaultDuration(NumberUtils
+                .toLong(settingsMap.get("defaultDuration").toString()));
 
         // Update the default category
-        updatedSettings.setDefaultCategory(settingsMap.get("defaultCategory")
-                .toString());
+        updatedSettings.setDefaultCategory(
+                settingsMap.get("defaultCategory").toString());
 
         // Update the toolbar tools
         List<Tool> toolbarTools = new ArrayList<Tool>();
@@ -394,8 +431,8 @@ public class MegawidgetSettingsConversionUtils {
             }
             if (toolbarMap.containsKey("toolType")) {
                 String toolTypeAsString = (String) toolbarMap.get("toolType");
-                ToolType toolType = ToolType.fromString(toolTypeAsString
-                        .toUpperCase());
+                ToolType toolType = ToolType
+                        .fromString(toolTypeAsString.toUpperCase());
                 tool.setToolType(toolType);
             }
             if (toolbarMap.containsKey("visible")) {
@@ -408,15 +445,14 @@ public class MegawidgetSettingsConversionUtils {
         updatedSettings.setToolbarTools(toolbarTools);
 
         // Update defaultTimeDisplayDuration
-        updatedSettings.setDefaultTimeDisplayDuration(NumberUtils
-                .toLong(settingsMap.get("defaultTimeDisplayDuration")
-                        .toString()));
+        updatedSettings.setDefaultTimeDisplayDuration(NumberUtils.toLong(
+                settingsMap.get("defaultTimeDisplayDuration").toString()));
 
         // Update the staticSettingsID
         if (settingsMap.containsKey("staticSettingsID")
                 && settingsMap.get("staticSettingsID") != null) {
-            updatedSettings.setStaticSettingsID(settingsMap.get(
-                    "staticSettingsID").toString());
+            updatedSettings.setStaticSettingsID(
+                    settingsMap.get("staticSettingsID").toString());
         }
 
         settings.apply(updatedSettings, originator);
@@ -440,14 +476,14 @@ public class MegawidgetSettingsConversionUtils {
             if (fieldMap.containsKey("expandHorizontally")) {
                 fieldMap.remove("expandHorizontally");
 
-                fieldMap.put("expandHorizontally", field
-                        .getExpandHorizontally().booleanValue());
+                fieldMap.put("expandHorizontally",
+                        field.getExpandHorizontally().booleanValue());
             }
             if (fieldMap.containsKey("expandVertically")) {
                 fieldMap.remove("expandVertically");
 
-                fieldMap.put("expandVertically", field.getExpandVertically()
-                        .booleanValue());
+                fieldMap.put("expandVertically",
+                        field.getExpandVertically().booleanValue());
             }
             if (fieldMap.containsKey("leftMargin")) {
                 fieldMap.remove("leftMargin");
@@ -467,7 +503,8 @@ public class MegawidgetSettingsConversionUtils {
             if (fieldMap.containsKey("bottomMargin")) {
                 fieldMap.remove("bottomMargin");
 
-                fieldMap.put("bottomMargin", field.getBottomMargin().intValue());
+                fieldMap.put("bottomMargin",
+                        field.getBottomMargin().intValue());
             }
 
             /* update choices to be a List of Maps */
@@ -480,8 +517,8 @@ public class MegawidgetSettingsConversionUtils {
             if (fieldMap.containsKey("fields")) {
                 fieldMap.remove("fields");
 
-                fieldMap.put("fields", buildFieldMapList(field.getFields()
-                        .toArray(new Field[0])));
+                fieldMap.put("fields", buildFieldMapList(
+                        field.getFields().toArray(new Field[0])));
             }
             fieldMapList.add(fieldMap);
         }

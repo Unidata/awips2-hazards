@@ -35,6 +35,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  *                                           showSettingsDetail.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * May 04, 2018   50032    Chris.Golden      Added additional filters to settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -101,4 +102,12 @@ public interface ISettingsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      * @param currentSettings
      */
     public void setCurrentSettings(ObservedSettings currentSettings);
+
+    /**
+     * Set the fields to be used to build filters.
+     * 
+     * @param fields
+     *            Fields defining the filters.
+     */
+    public void setFilterFields(Field[] fields);
 }

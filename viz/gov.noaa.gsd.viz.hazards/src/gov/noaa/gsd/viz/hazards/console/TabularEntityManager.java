@@ -100,6 +100,12 @@ import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
  *                                      workstations and users listed who have
  *                                      them locked, when they are not actually
  *                                      locked.
+ * May 04, 2018   50032    Chris.Golden Fixed bug that caused replacing of tabular
+ *                                      entities for an event that is not found
+ *                                      to have previously had a tabular entity
+ *                                      to not show the event. Now, the tabular
+ *                                      entity is added if no old one is found to
+ *                                      replace.
  * </pre>
  * 
  * @author Chris.Golden
@@ -708,7 +714,8 @@ class TabularEntityManager {
     void replaceRootEntityForEvent(IHazardEventView event) {
 
         /*
-         * Get the old entity for this event, if one is found.
+         * Get the old entity for this event, if one is found. If not, treat
+         * this as an addition.
          */
         String eventIdentifier = event.getEventID();
         Pair<String, Integer> entityIdentifier = new Pair<>(eventIdentifier,
@@ -716,6 +723,7 @@ class TabularEntityManager {
         TabularEntity oldEntity = tabularEntitiesForIdentifiers
                 .get(entityIdentifier);
         if (oldEntity == null) {
+            addEntitiesForEvent(event);
             return;
         }
 

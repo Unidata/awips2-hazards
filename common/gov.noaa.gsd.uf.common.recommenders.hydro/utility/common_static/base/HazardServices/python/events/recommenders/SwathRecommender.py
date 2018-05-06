@@ -239,6 +239,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if origin == 'database':
                     if trigger == "hazardEventModification":
                         if "status" in self.attributeIdentifiers:
+                            print '-------- SR setActivation .... ', event.get('objectID'), event.getStatus()
                             self.probUtils.setActivation(event, self.caveUser)
                         #update the eventSt_ms for all workstations, include the owner or non-owner
                         self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
@@ -248,6 +249,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     if event.get('showGrid'):
                         self.updatePreviewGridFeaturesOnly(event, resultEventSet)
 
+                print '-------- SR: Moving on to next hazard event...'
                 continue
 
             # Begin Graph Draw
@@ -486,6 +488,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
         # Skip ending, previously ended, and potential events 
         if event.getStatus() in ['ENDING', 'ENDED', 'POTENTIAL']:
+            if trigger == 'autoUpdate':
+                resultEventSet.add(event)
             return False
 
         # Check for end time < current time and end the event

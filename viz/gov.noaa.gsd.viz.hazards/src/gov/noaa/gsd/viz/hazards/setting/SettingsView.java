@@ -93,6 +93,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
  *                                           as part of console refactor.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * May 04, 2018   50032    Chris.Golden      Added additional filters to settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -323,9 +324,14 @@ public class SettingsView
         private MegawidgetManager megawidgetManager = null;
 
         /**
-         * Flag indicating whether or not the filters may have changed.
+         * Flag indicating that the number or types of filters may have changed.
          */
         private boolean filtersChanged = true;
+
+        /**
+         * Flag indicating whether or not the filter values may have changed.
+         */
+        private boolean filterValuesChanged = true;
 
         // Public Constructors
 
@@ -345,10 +351,18 @@ public class SettingsView
         }
 
         /**
-         * Receive notification that the filters may have changed.
+         * Receive notification that the number or type of filters may have
+         * changed.
          */
         public void filtersChanged() {
             filtersChanged = true;
+        }
+
+        /**
+         * Receive notification that the filter values may have changed.
+         */
+        public void filterValuesChanged() {
+            filterValuesChanged = true;
         }
 
         // Protected Methods
@@ -359,7 +373,11 @@ public class SettingsView
             /*
              * If the menu has not yet been created, create it now.
              */
-            if (menu == null) {
+            if ((menu == null) || filtersChanged) {
+                if (menu != null) {
+                    menu.dispose();
+                }
+                filtersChanged = false;
                 menu = new Menu(parent);
                 try {
                     megawidgetManager = new MegawidgetManager(menu,
@@ -408,7 +426,7 @@ public class SettingsView
             /*
              * If the filters may have changed, update the megawidget states.
              */
-            if (filtersChanged) {
+            if (filterValuesChanged) {
                 try {
                     megawidgetManager.setState(MegawidgetSettingsConversionUtils
                             .settingsPOJOToMap(currentSettings));
@@ -422,7 +440,7 @@ public class SettingsView
                             "Failed to convert the Current Settings to a Java Map!",
                             e);
                 }
-                filtersChanged = false;
+                filterValuesChanged = false;
             }
 
             /*
@@ -544,13 +562,7 @@ public class SettingsView
         setSettings(settings);
         setCurrentSettings(currentSettings);
 
-        this.filterMapList = new ArrayList<Map<String, Object>>();
-        try {
-            this.filterMapList = MegawidgetSettingsConversionUtils
-                    .buildFieldMapList(fields);
-        } catch (Exception e) {
-            statusHandler.error("Failed to build a list of Map fields!", e);
-        }
+        setFilterFields(fields);
     }
 
     @Override
@@ -648,12 +660,26 @@ public class SettingsView
             public void run() {
                 SettingsView.this.currentSettings = currentSettings;
                 if (filtersPulldownAction != null) {
-                    filtersPulldownAction.filtersChanged();
+                    filtersPulldownAction.filterValuesChanged();
                 }
                 if (settingDialog != null) {
                     settingDialog.setState(currentSettings);
                 }
             }
         });
+    }
+
+    @Override
+    public void setFilterFields(Field[] fields) {
+        filterMapList = new ArrayList<Map<String, Object>>();
+        try {
+            filterMapList = MegawidgetSettingsConversionUtils
+                    .buildFieldMapList(fields);
+            if (filtersPulldownAction != null) {
+                filtersPulldownAction.filtersChanged();
+            }
+        } catch (Exception e) {
+            statusHandler.error("Failed to build a list of Map fields!", e);
+        }
     }
 }

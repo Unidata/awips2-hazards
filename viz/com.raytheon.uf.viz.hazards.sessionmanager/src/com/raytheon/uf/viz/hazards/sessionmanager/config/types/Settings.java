@@ -66,6 +66,8 @@ import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
  * Jan 22, 2018 25765      Chris.Golden Added "priority for drag-and-drop geometry
  *                                      edit" flag to make geometry editing from
  *                                      the spatial display more flexible.
+ * May 04, 2018 50032      Chris.Golden Added "additionalFilters" and
+ *                                      "visibleAdditionalFilters" properties.
  * </pre>
  * 
  * @author bsteffen
@@ -91,6 +93,17 @@ public class Settings implements ISettings {
     private Set<String> visibleStatuses;
 
     /**
+     * Additional filters, if any.
+     */
+    private List<Object> additionalFilters;
+
+    /**
+     * Visible values for additional filters; meaningless unless
+     * {@link #additionalFilters} is provided.
+     */
+    private Map<String, Object> visibleAdditionalFilters;
+
+    /**
      * Which tools can be run
      */
     private List<Tool> toolbarTools;
@@ -107,7 +120,7 @@ public class Settings implements ISettings {
     private TimeResolution timeResolution;
 
     /**
-     * Priority for drag-and-drop geometry edits.
+     * Prior ity for drag-and-drop geometry edits.
      */
     @XmlJavaTypeAdapter(DragAndDropGeometryEditSourceAdapter.class)
     private DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits;
@@ -214,6 +227,8 @@ public class Settings implements ISettings {
         setSettingsID(other.getSettingsID());
         setVisibleTypes(other.getVisibleTypes());
         setVisibleStatuses(other.getVisibleStatuses());
+        setAdditionalFilters(other.getAdditionalFilters());
+        setVisibleAdditionalFilters(other.getVisibleAdditionalFilters());
         setToolbarTools(other.getToolbarTools());
         setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration());
         setTimeResolution(other.getTimeResolution());
@@ -263,6 +278,27 @@ public class Settings implements ISettings {
     @Override
     public void setVisibleStatuses(Set<String> visibleStatuses) {
         this.visibleStatuses = visibleStatuses;
+    }
+
+    @Override
+    public List<Object> getAdditionalFilters() {
+        return additionalFilters;
+    }
+
+    @Override
+    public void setAdditionalFilters(List<Object> additionalFilters) {
+        this.additionalFilters = additionalFilters;
+    }
+
+    @Override
+    public Map<String, Object> getVisibleAdditionalFilters() {
+        return visibleAdditionalFilters;
+    }
+
+    @Override
+    public void setVisibleAdditionalFilters(
+            Map<String, Object> visibleAdditionalFilters) {
+        this.visibleAdditionalFilters = visibleAdditionalFilters;
     }
 
     @Override

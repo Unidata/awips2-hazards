@@ -223,6 +223,7 @@ import net.engio.mbassy.listener.Handler;
  *                                            manager.
  * Dec 17, 2017 20739      Chris.Golden       Refactored away access to directly mutable session
  *                                            events.
+ * May 04, 2018 50032      Chris.Golden       Removed unneeded notifyModelChanged() call.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -506,12 +507,6 @@ public final class HazardServicesMessageHandler {
          * anymore.
          */
         appBuilder.settingsModified(change);
-
-        /*
-         * Notify of model changed the obsolete way.
-         */
-        appBuilder.notifyModelChanged(
-                EnumSet.of(HazardConstants.Element.CURRENT_SETTINGS));
     }
 
     /**

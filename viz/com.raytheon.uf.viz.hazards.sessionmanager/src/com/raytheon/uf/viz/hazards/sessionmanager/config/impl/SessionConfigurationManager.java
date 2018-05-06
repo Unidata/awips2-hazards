@@ -131,6 +131,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
 import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.megawidgets.BoundedChoicesMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ChoicesMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -324,6 +326,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      parameter.
  * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such
  *                                      scripts are not to be used.
+ * May 04, 2018 50032      Chris.Golden Added additional filters to settings.
  * </pre>
  * 
  * @author bsteffen
@@ -1267,9 +1270,67 @@ public class SessionConfigurationManager
         return alertsConfig.getConfig();
     }
 
+    private List<Field> getAdditionalFiltersAsCheckLists() {
+
+        List<Object> rawAdditionalFilters = settings.getAdditionalFilters();
+        if (rawAdditionalFilters == null) {
+            return Collections.emptyList();
+        }
+        List<Field> additionalFilters = new ArrayList<>(
+                rawAdditionalFilters.size());
+        for (Object rawFilter : rawAdditionalFilters) {
+            Map<?, ?> filterMap = (Map<?, ?>) rawFilter;
+            Field filter = new Field();
+            filter.setFieldName(
+                    (String) filterMap.get(ISpecifier.MEGAWIDGET_IDENTIFIER));
+            filter.setFieldType("CheckList");
+            filter.setLabel(
+                    (String) filterMap.get(ISpecifier.MEGAWIDGET_LABEL));
+            List<?> rawChoices = (List<?>) filterMap.get(
+                    BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES);
+            List<Choice> choices = new ArrayList<>(rawChoices.size());
+            for (Object rawChoice : rawChoices) {
+                Choice choice = new Choice();
+                if (rawChoice instanceof Map) {
+                    Map<?, ?> choiceMap = (Map<?, ?>) rawChoice;
+                    choice.setDisplayString((String) choiceMap
+                            .get(ChoicesMegawidgetSpecifier.CHOICE_NAME));
+                    choice.setIdentifier((String) choiceMap.get(
+                            BoundedChoicesMegawidgetSpecifier.CHOICE_IDENTIFIER));
+                } else {
+                    choice.setDisplayString((String) rawChoice);
+                }
+                choices.add(choice);
+            }
+            filter.setChoices(choices);
+            filter.setExpandVertically(true);
+            filter.setColumnName((String) filterMap.get("columnName"));
+            additionalFilters.add(filter);
+        }
+        return additionalFilters;
+    }
+
+    private List<Field> getAdditionalFiltersAsCheckBoxMenus() {
+        List<Field> additionalFilters = getAdditionalFiltersAsCheckLists();
+        for (Field field : additionalFilters) {
+            field.setFieldType("CheckBoxesMenu");
+            String label = field.getLabel();
+            int colonIndex = label.lastIndexOf(":");
+            if (colonIndex != -1) {
+                label = label.substring(0, colonIndex);
+            }
+            field.setLabel(label);
+        }
+        return additionalFilters;
+    }
+
     @Override
     public Field[] getFilterConfig() {
-        Field[] config = new Field[3];
+
+        List<Field> additionalFilters = getAdditionalFiltersAsCheckBoxMenus();
+
+        Field[] config = new Field[3 + additionalFilters.size()];
+
         SettingsConfig viewConfig = getSettingsConfig();
         for (Page page : viewConfig.getPages()) {
             for (Field field : page.getPageFields()) {
@@ -1303,6 +1364,12 @@ public class SessionConfigurationManager
                 }
             }
         }
+
+        int index = 3;
+        for (Field additionalFilter : additionalFilters) {
+            config[index++] = additionalFilter;
+        }
+
         return config;
     }
 
@@ -1341,6 +1408,21 @@ public class SessionConfigurationManager
                     }
                     field.setChoices(choices);
                 }
+            }
+        }
+        List<Field> additionalFilters = getAdditionalFiltersAsCheckLists();
+        if (additionalFilters.isEmpty() == false) {
+            int index = 0;
+            for (Page page : viewConfig.getPages()) {
+                if (page.getPageName().equals("Hazards Filter")) {
+                    break;
+                }
+                index++;
+            }
+            if (index < viewConfig.getPages().size()) {
+                viewConfig = new SettingsConfig(viewConfig);
+                viewConfig.getPages().get(index).getPageFields()
+                        .addAll(additionalFilters);
             }
         }
         return viewConfig;

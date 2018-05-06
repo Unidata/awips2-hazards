@@ -654,6 +654,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      hazard events from ENDED to ELAPSED. Also changed to
  *                                      check for geometry validity when merging hazard events
  *                                      from a recommender run's result event set.
+ * May 04, 2018   50032    Chris.Golden Added additional filters to settings, allowing filtering
+ *                                      on arbitrary hazard attributes on a per-settings basis.
  * </pre>
  * 
  * @author bsteffen
@@ -823,6 +825,8 @@ public class SessionEventManager implements ISessionEventManager {
     private final RiverForecastManager riverForecastManager;
 
     private boolean addCreatedEventsToSelected;
+
+    private Map<String, Set<String>> allowableValuesForFilteredEventAttributes;
 
     /**
      * Intra-managerial notification handler for session event additions.
@@ -1925,6 +1929,7 @@ public class SessionEventManager implements ISessionEventManager {
             reloadHazardServicesEventId();
         }
         if (notification.getChanged().contains(ObservedSettings.Type.FILTERS)) {
+            compileEventAttributeFilters(notification.getSettings());
             loadEventsForSettings(notification.getSettings());
         }
     }
@@ -2629,6 +2634,31 @@ public class SessionEventManager implements ISessionEventManager {
             EventAttributesModification modification, IOriginator originator) {
 
         /*
+         * If the modified event is selected, and it experienced an attribute
+         * change that left said attribute with a value that is not one of the
+         * allowable ones for a filter for that attribute, remove it from the
+         * set of selected events, because it is going to be filtered out from
+         * here on.
+         */
+        if (sessionManager.getSelectionManager()
+                .isSelected(eventView.getEventID())) {
+            Set<String> changedAttributesThatAreFiltered = Sets.intersection(
+                    modification.getAttributeKeys(),
+                    allowableValuesForFilteredEventAttributes.keySet());
+            for (String key : changedAttributesThatAreFiltered) {
+                Object value = modification.getAttribute(key);
+                if ((value != null)
+                        && (allowableValuesForFilteredEventAttributes.get(key)
+                                .contains(value) == false)) {
+                    sessionManager.getSelectionManager()
+                            .removeEventFromSelectedEvents(
+                                    eventView.getEventID(), Originator.OTHER);
+                    break;
+                }
+            }
+        }
+
+        /*
          * If the end time "until further notice" flag has changed value but was
          * not removed, change the end time in a corresponding manner.
          */
@@ -2933,7 +2963,72 @@ public class SessionEventManager implements ISessionEventManager {
                  */
                 if (key != null && !phenSigs.contains(key)) {
                     iterator.remove();
+                    continue;
                 }
+
+                if (isEventFilteredOutDueToAttributeFilters(eventView)) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine whether or not the specified event is filtered out by
+     * additional filters. If the event has a null value for any of the
+     * attributes for which there is a filter, it will not be filtered out; it
+     * is only culled if it has a non-null value that is not found in the set of
+     * allowed values for that attribute filter.
+     * 
+     * @param event
+     *            Event to be checked for filtering.
+     * @return <code>true</code> if the event is to be filtered out,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isEventFilteredOutDueToAttributeFilters(
+            IReadableHazardEvent event) {
+        for (Map.Entry<String, Set<String>> filterEntry : allowableValuesForFilteredEventAttributes
+                .entrySet()) {
+            Object value = event.getHazardAttribute(filterEntry.getKey());
+            if (value == null) {
+                continue;
+            } else if (filterEntry.getValue().contains(value) == false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Compile the additional filter values (if any) from the specified
+     * settings.
+     * 
+     * @param settings
+     *            Settings from which to compile the additional filter values.
+     */
+    private void compileEventAttributeFilters(ObservedSettings settings) {
+
+        /*
+         * For any additional filters included with this setting, translate them
+         * into sets of allowable values for each of the hazard attributes they
+         * are concerned with.
+         */
+        Map<String, Object> rawVisibleAdditionalFilters = settings
+                .getVisibleAdditionalFilters();
+        if (rawVisibleAdditionalFilters == null) {
+            allowableValuesForFilteredEventAttributes = Collections.emptyMap();
+        } else {
+            allowableValuesForFilteredEventAttributes = new HashMap<>(
+                    rawVisibleAdditionalFilters.size(), 1.0f);
+            for (Map.Entry<String, Object> entry : rawVisibleAdditionalFilters
+                    .entrySet()) {
+                Collection<?> rawFilter = (Collection<?>) entry.getValue();
+                Set<String> filter = new HashSet<>(rawFilter.size(), 1.0f);
+                for (Object element : rawFilter) {
+                    filter.add(element.toString());
+                }
+                allowableValuesForFilteredEventAttributes.put(entry.getKey(),
+                        filter);
             }
         }
     }
@@ -3043,6 +3138,14 @@ public class SessionEventManager implements ISessionEventManager {
             HazardHistoryList historyList = entry.getValue();
             HazardEvent event = historyList.get(historyList.size() - 1);
             if (statuses.contains(event.getStatus()) == false) {
+                continue;
+            }
+
+            /*
+             * For any additional filters included with this setting, ensure
+             * that the event has the appropriate attribute values.
+             */
+            if (isEventFilteredOutDueToAttributeFilters(event)) {
                 continue;
             }
 

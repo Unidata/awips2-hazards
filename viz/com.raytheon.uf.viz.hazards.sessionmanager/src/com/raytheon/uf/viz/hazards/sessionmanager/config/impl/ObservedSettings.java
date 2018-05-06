@@ -93,6 +93,10 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 22, 2018 25765     Chris.Golden  Added "priority for drag-and-drop geometry
  *                                      edit" flag to make geometry editing from
  *                                      the spatial display more flexible.
+ * May 04, 2018 50032     Chris.Golden  Added "additionalFilters" and
+ *                                      "visibleAdditionalFilters" properties.
+ *                                      Also made the copying of lists and sets
+ *                                      less shallow.
  * </pre>
  * 
  * @author bsteffen
@@ -107,7 +111,7 @@ public class ObservedSettings implements ISettings {
      * Types of changes that may be made to a settings object.
      */
     public enum Type {
-        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
+        IDENTIFIER, FILTERS, ADDITIONAL_FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
     };
 
     private SessionConfigurationManager configManager;
@@ -144,11 +148,49 @@ public class ObservedSettings implements ISettings {
     }
 
     private <E> Set<E> getSetCopy(Set<E> original) {
-        return (original == null ? null : new HashSet<E>(original));
+        if (original == null) {
+            return null;
+        }
+        Set<E> copy = new HashSet<>(original.size(), 1.0f);
+        for (E element : original) {
+            copy.add(getElementCopy(element));
+        }
+        return copy;
     }
 
     private <E> List<E> getListCopy(List<E> original) {
-        return (original == null ? null : new ArrayList<E>(original));
+        if (original == null) {
+            return null;
+        }
+        List<E> copy = new ArrayList<>(original.size());
+        for (E element : original) {
+            copy.add(getElementCopy(element));
+        }
+        return copy;
+    }
+
+    private <K, V> Map<K, V> getMapCopy(Map<K, V> original) {
+        if (original == null) {
+            return null;
+        }
+        Map<K, V> copy = new HashMap<>(original.size(), 1.0f);
+        for (Map.Entry<K, V> entry : original.entrySet()) {
+            copy.put(entry.getKey(), getElementCopy(entry.getValue()));
+        }
+        return copy;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <E> E getElementCopy(E element) {
+        if (element instanceof Set) {
+            return (E) getSetCopy((Set<?>) element);
+        } else if (element instanceof List) {
+            return (E) getListCopy((List<?>) element);
+        } else if (element instanceof Map) {
+            return (E) getMapCopy((Map<?, ?>) element);
+        } else {
+            return element;
+        }
     }
 
     private List<Tool> getToolbarToolsCopy(List<Tool> original) {
@@ -226,6 +268,16 @@ public class ObservedSettings implements ISettings {
     @Override
     public Set<String> getVisibleStatuses() {
         return getSetCopy(delegate.getVisibleStatuses());
+    }
+
+    @Override
+    public List<Object> getAdditionalFilters() {
+        return getListCopy(delegate.getAdditionalFilters());
+    }
+
+    @Override
+    public Map<String, Object> getVisibleAdditionalFilters() {
+        return getMapCopy(delegate.getVisibleAdditionalFilters());
     }
 
     @Override
@@ -344,6 +396,18 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public void setAdditionalFilters(List<Object> additionalFilters) {
+        setAdditionalFilters(additionalFilters, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setVisibleAdditionalFilters(
+            Map<String, Object> visibleAdditionalFilters) {
+        setVisibleAdditionalFilters(visibleAdditionalFilters, true,
+                Originator.OTHER);
+    }
+
+    @Override
     public void setToolbarTools(List<Tool> toolbarTools) {
         setToolbarTools(toolbarTools, true, Originator.OTHER);
     }
@@ -449,6 +513,10 @@ public class ObservedSettings implements ISettings {
                 setVisibleTypes(other.getVisibleTypes(), false, originator));
         changed.addAll(setVisibleStatuses(other.getVisibleStatuses(), false,
                 originator));
+        changed.addAll(setAdditionalFilters(other.getAdditionalFilters(), false,
+                originator));
+        changed.addAll(setVisibleAdditionalFilters(
+                other.getVisibleAdditionalFilters(), false, originator));
         changed.addAll(
                 setToolbarTools(other.getToolbarTools(), false, originator));
         changed.addAll(setDefaultTimeDisplayDuration(
@@ -523,6 +591,16 @@ public class ObservedSettings implements ISettings {
                 persisted.getVisibleStatuses()) == false) {
             changed.addAll(setVisibleStatuses(update.getVisibleStatuses(),
                     false, null));
+        }
+        if (changed(getAdditionalFilters(),
+                persisted.getAdditionalFilters()) == false) {
+            changed.addAll(setAdditionalFilters(update.getAdditionalFilters(),
+                    false, null));
+        }
+        if (changed(getVisibleAdditionalFilters(),
+                persisted.getVisibleAdditionalFilters()) == false) {
+            changed.addAll(setVisibleAdditionalFilters(
+                    update.getVisibleAdditionalFilters(), false, null));
         }
         if (changed(getToolbarTools(), persisted.getToolbarTools()) == false) {
             changed.addAll(
@@ -629,6 +707,17 @@ public class ObservedSettings implements ISettings {
     public void setVisibleStatuses(Set<String> visibleStatuses,
             IOriginator originator) {
         setVisibleStatuses(visibleStatuses, true, originator);
+    }
+
+    public void setAdditionalFilters(List<Object> additionalFilters,
+            IOriginator originator) {
+        setAdditionalFilters(additionalFilters, true, originator);
+    }
+
+    public void setVisibleAdditionalFilters(
+            Map<String, Object> visibleAdditionalFilters,
+            IOriginator originator) {
+        setVisibleAdditionalFilters(visibleAdditionalFilters, true, originator);
     }
 
     public void setToolbarTools(List<Tool> toolbarTools,
@@ -745,6 +834,30 @@ public class ObservedSettings implements ISettings {
             boolean notify, IOriginator originator) {
         if (changed(visibleStatuses, getVisibleStatuses())) {
             delegate.setVisibleStatuses(getSetCopy(visibleStatuses));
+            settingsChanged(notify, Type.FILTERS, originator);
+            return EnumSet.of(Type.FILTERS);
+        }
+        return EnumSet.noneOf(Type.class);
+    }
+
+    protected Set<Type> setAdditionalFilters(List<Object> additionalFilters,
+            boolean notify, IOriginator originator) {
+        if (changed(additionalFilters, getAdditionalFilters())) {
+            delegate.setAdditionalFilters(getListCopy(additionalFilters));
+            Set<Type> changed = EnumSet.of(Type.ADDITIONAL_FILTERS,
+                    Type.FILTERS);
+            settingsChanged(notify, changed, originator);
+            return changed;
+        }
+        return EnumSet.noneOf(Type.class);
+    }
+
+    protected Set<Type> setVisibleAdditionalFilters(
+            Map<String, Object> visibleAdditionalFilters, boolean notify,
+            IOriginator originator) {
+        if (changed(visibleAdditionalFilters, getVisibleAdditionalFilters())) {
+            delegate.setVisibleAdditionalFilters(
+                    getMapCopy(visibleAdditionalFilters));
             settingsChanged(notify, Type.FILTERS, originator);
             return EnumSet.of(Type.FILTERS);
         }

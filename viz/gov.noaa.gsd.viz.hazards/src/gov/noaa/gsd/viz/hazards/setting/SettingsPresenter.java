@@ -57,6 +57,7 @@ import net.engio.mbassy.listener.Handler;
  *                                           mutable session events.
  * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * May 04, 2018 50032      Chris.Golden      Added additional filters to settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -108,6 +109,8 @@ public class SettingsPresenter
      */
     @Handler
     public void settingsLoaded(SettingsLoaded change) {
+        getView().setFilterFields(
+                getModel().getConfigurationManager().getFilterConfig());
         if (getView().isSettingDetailExisting()) {
             getView().deleteSettingDetail();
             showSettingDetail(new ISaveAs() {

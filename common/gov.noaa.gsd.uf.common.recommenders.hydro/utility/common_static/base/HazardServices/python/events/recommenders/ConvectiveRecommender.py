@@ -646,10 +646,10 @@ class Recommender(RecommenderTemplate.Recommender):
         for existingEvent in existingEventSet:
             if self.probUtils.isFullyAuto(existingEvent):
                 if existingEvent.get('probSeverAttrs').get('probabilities') < self.lowThreshold:
-                    existingEvent.setStatus('PROPOSED')
+                    existingEvent.set('threshold', 'below')
                 else:
-                    if existingEvent.getStatus() == 'PROPOSED':
-                        existingEvent.setStatus('ISSUED')
+                    if existingEvent.get('threshold') != 'at or above':
+                        existingEvent.set('threshold', 'at or above')
             
         
         # recommende hazartType_objectIDs_tuples -- example: [ (Prob_Severe, M334), (Prob_Tor, 5557)]
@@ -663,10 +663,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
             if (existingEvent.getHazardType(), rawExistingEventID) not in recommended_hazardType_objectIDs_tuples:
                 if self.probUtils.isFullyAuto(existingEvent):
+                    print '\n\n\t\t$$$$$$$  CR -- ENDED event',  rawExistingEventID, '\n\n'
                     existingEvent.setStatus('ENDED')
                     mergedEvents.add(existingEvent)
+                    identifiersOfEventsToSaveToHistory.append(existingEvent.getEventID())
                     continue
-                #if partially or fully taken over i.e. object A:
+                #if partially or fully taken over
                 else:
                     # Convert it to be fully taken over i.e. "M" and all automated boxes unchecked
                     existingEvent.set('durationAutomated', False)
@@ -705,7 +707,7 @@ class Recommender(RecommenderTemplate.Recommender):
                             else:
                                 nonEndedEvent = existingEvent
                         else: 
-                            if not self.probUtils.isFullyAuto(existingEvent) and existingEvent.getStatus() in ['ISSUED', 'PROPOSED', 'PENDING'] and self.overlaps(existingEvent, recommendedDict):
+                            if not self.probUtils.isFullyAuto(existingEvent) and existingEvent.getStatus() in ['ISSUED', 'PENDING'] and self.overlaps(existingEvent, recommendedDict):
                                 overlap = True
                                 
                 if not found and not overlap:
@@ -742,161 +744,6 @@ class Recommender(RecommenderTemplate.Recommender):
                    
 
 
-    # Create an event set of new hazard events to be merged, together with
-    # existing events that are to be elapsed. Return a tuple of three elements,
-    # the first being a list of identifiers of events that are to be saved to
-    # history, the second being a list of identifiers of events that are to be
-    # saved to the database as latest versions, and the third being the event
-    # set itself.
-    def mergeHazardEventsNew2(self, currentEventsList, recommendedEventsDict):
-        intersectionDict = {}
-        recommendedObjectIDsList = sorted(recommendedEventsDict.keys())
-        unmatchedEvents = []
-        manualEventGeomsList = []
-        mergedEvents = EventSet(None)
-
-        currentTimeMS = self.currentTime
-        mergedEvents.addAttribute('currentTime', currentTimeMS)
-        mergedEvents.addAttribute('trigger', 'autoUpdate')
-        
-        identifiersOfEventsToSaveToDatabase = []
-        
-        hazardEventLockUtils = HazardEventLockUtils(self.practice)
-        identifiersOfLockedEvents = hazardEventLockUtils.getLockedEvents()
-        
-        for currentEvent in currentEventsList:
-            
-            currentEventObjectID = currentEvent.get('objectID')
-            ### If current event has match in rec event, add to dict for later processing
-            ### should avoid 'userOwned' since they are filtered out with previous if statement
-
-            rawCurrentEventObjectID = re.findall('\d+', str(currentEventObjectID))[0]
-
-            if currentEvent.getEventID() in identifiersOfLockedEvents or self.probUtils.isFullyManual(currentEvent):
-                if rawCurrentEventObjectID in recommendedObjectIDsList:
-                    ### Need to remove from list, or else we end up with duplicates
-                    recommendedObjectIDsList.remove(rawCurrentEventObjectID)
-                if self.probUtils.isFullyManual(currentEvent):
-                    evtGeom = currentEvent.getGeometry().asShapely()
-                    manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom, 'status':currentEvent.getStatus()})
-                continue
-                
-
-#            if currentEvent.getEventID() in identifiersOfLockedEvents:
-#                print 'CR: skipping update because event is locked', currentEvent.getEventID()
-#                ### Need to make sure that we don't create a new object
-#                if rawCurrentEventObjectID in recommendedObjectIDsList:
-#                    recommendedObjectIDsList.remove(rawCurrentEventObjectID)
-#                continue
-#            
-#            
-#            #if currentEvent.get('automationLevel') == 'userOwned':
-#            if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated') and not currentEvent.get('durationAutomated'):
-#                evtGeom = currentEvent.getGeometry().asShapely()
-#                manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
-#                continue
-            
-            ### Set below threshold to Proposed to hide only for fully automated events
-#            if currentEvent.get('probSeverAttrs').get('probabilities') < self.lowThreshold and currentEvent.get('geometryAutomated') and currentEvent.get('motionAutomated') and currentEvent.get('probTrendAutomated'):
-            if currentEvent.get('probSeverAttrs').get('probabilities') < self.lowThreshold and self.probUtils.isFullyAuto(currentEvent):
-                currentEvent.setStatus('PROPOSED')
-                sys.stderr.write('\n\t' + currentEvent.get('objectID') + ' is below threshold ['+ str(self.lowThreshold) + '].Skipping...\n')
-                sys.stderr.flush()
-                mergedEvents.add(currentEvent)
-                continue
-            else:
-                if currentEvent.getStatus() == 'PROPOSED':
-                    print '\t\tsetting to issued:', currentEvent.get('objectID')
-                    sys.stderr.write('\n\t' + currentEvent.get('objectID') + ' is above threshold again ['+ str(self.lowThreshold) + ']. Resurrecting...\n')
-                    sys.stderr.flush()
-                    currentEvent.setStatus('ISSUED')
-            
-
-            #if currentEventObjectID in recommendedObjectIDsList:
-            ### Account for prepended 'M' to automated events that are level 3 or 2 automation.
-#            if str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList])):
-            if rawCurrentEventObjectID in recommendedObjectIDsList:
-                intersectionDict[currentEventObjectID] = {'currentEvent': currentEvent, 'recommendedAttrs': recommendedEventsDict[rawCurrentEventObjectID]}
-                ### Remove ID from rec list so remaining list is "newOnly"
-                recommendedObjectIDsList.remove(rawCurrentEventObjectID)
-#                mergedEvents.add(currentEvent)
-                
-            else:
-                if currentEvent.getStatus() != 'ELAPSED':
-                    print '\t\t, setting to elapsed', currentEvent.get('objectID')
-                    currentEvent.setStatus('ELAPSED')
-                    currentEvent.set('statusForHiddenField', 'ELAPSED')
-                    mergedEvents.add(currentEvent)
-                    identifiersOfEventsToSaveToDatabase.append(currentEvent.getEventID())
-
-        ### Update the current events with the attributes of the recommended events.
-        ### This returns a list of identifiers of events that are to be saved to the
-        ### database (not history list).  
-        #identifiersOfEventsToSaveToDatabase = self.updateCurrentEvents(intersectionDict, mergedEvents, currentTime)
-        identifiersOfEventsToSaveToDatabase.extend(self.updateCurrentEvents(intersectionDict, mergedEvents))
-        
-        # Create a list of hazard event identifiers that are to be saved
-        # to the history list.
-        identifiersOfEventsToSaveToHistory = []
-        
-        
-        ##########################################################################################
-        ### FIXME: Probably want to use makeNewObjectsIDList in the loop below, but we need to ensure we
-        ### are not removing the id from recommendedEventsDict
-        ##########################################################################################
-        
-        recoverAutomatedList = self.doubleCheckEnded(currentEventsList, recommendedEventsDict)
-        makeNewObjectsIDList = recommendedObjectIDsList+recoverAutomatedList
-        
-        ### Loop through remaining/unmatched recommendedEvents
-        ### if recommended geometry overlaps an existing *manual* geometry
-        ### ignore it. 
-        for recID in recommendedObjectIDsList:
-            recommendedValues = recommendedEventsDict[recID]
-            recommendedEvent = None
-
-            if len(manualEventGeomsList) == 0:
-                
-                ### If an event is created, add it to the event set and add
-                ### it to the list of events to be saved to history.
-                recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
-                
-            else:
-                ### Get recommended geometry
-                recGeom = loads(recommendedValues.get('polygons'))
-                makeNew = True
-                for eventDict in manualEventGeomsList:
-                    ### The only time we need to skip on overlap is if the manual event is:
-                    ### * not ended or elapsed,
-                    ###      AND
-                    ### * not of the same type (Prob_Severe)
-                    ###      AND
-                    ### * spatially overlaps
-                    hazType = eventDict.get('hazType', None)
-                    evtGeom = eventDict.get('geom')
-                    status = eventDict.get('status')
-                    if status in ['ELAPSED', 'ENDED', 'elapsed', 'ended']:
-                        ### Since makeNew is already True
-                        continue
-                    if eventDict.get('hazType', None) != 'Prob_Severe':
-                        ### Since makeNew is already True
-                        continue
-                    if evtGeom.intersects(recGeom):
-                        makeNew = False
-                if makeNew:
-                    recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
-
-            if recommendedEvent:
-                mergedEvents.add(recommendedEvent)
-                identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
-
-        for e in mergedEvents:
-            e.setIssuanceCount(e.getIssuanceCount() + 1)
-            #print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
-                    
-        return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
-    
-        
     def isEditableSelected(self, event):
         selected = event.get('selected', False)
         if selected == 0: selected = False  

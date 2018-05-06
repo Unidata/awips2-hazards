@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -31,10 +32,10 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 10, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Jul 10, 2013  1257      bsteffen      Initial creation
+ * May 04, 2018 50032      Chris.Golden  Added copy constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -47,6 +48,15 @@ public class Page {
     private Integer numColumns;
 
     private List<Field> pageFields;
+
+    public Page() {
+    }
+
+    public Page(Page other) {
+        this.pageName = other.pageName;
+        this.numColumns = other.numColumns;
+        this.pageFields = new ArrayList<>(other.pageFields);
+    }
 
     public String getPageName() {
         return pageName;
