@@ -435,6 +435,12 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.set('visibleGeometry', 'highResolutionGeometryIsVisible')
         hazardEvent.setStatus('ISSUED')
         hazardEvent.set('statusForHiddenField', 'ISSUED')
+
+        # fill in the fields for newly created event
+        hazardEvent.set('convectiveObjectDirUnc', 12)
+        hazardEvent.set('convectiveObjectSpdKtsUnc', 4) 
+        self.storeLastEvent(hazardEvent)
+        hazardEvent.set('probSevereGeomList', [(AdvancedGeometry.createShapelyWrapper(polygon, 0) ,long(TimeUtils.datetimeToEpochTimeMillis(self.latestDLTDT)))])
         
         hazardEvent.set('manuallyCreated', False)
         hazardEvent.set('geometryAutomated', True)

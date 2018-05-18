@@ -725,6 +725,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if event.get('durationAutomated', False):
                 endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
                 event.setEndTime(endTime)
+            changed = True
         
         if origin == 'user' and 'geometryAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
             if event.get('geometryAutomated', False):
@@ -733,7 +734,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     geomList.sort(key=lambda x: x[1])
                     geom = geomList[-1][0]
                     event.setGeometry(geom)
-                    changed = True
+            changed = True
         
         if origin == 'user' and 'motionAutomated' in attributeSet:  ### BUG ALERT: would we ever get 'motionAutomated' and other attrs at the same time?
             if event.get('motionAutomated', False):
