@@ -15,7 +15,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.velocity;bundle-version="1.7.0",
  org.apache.commons.lang;bundle-version="2.3.0",
  com.raytheon.viz.ui;bundle-version="1.14.1",
- com.raytheon.uf.viz.localization.perspective
+ com.raytheon.uf.viz.localization.perspective,
+ com.raytheon.uf.common.protectedfiles
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: com.raytheon.uf.viz.python,

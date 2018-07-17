@@ -47,7 +47,7 @@ import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
-import com.raytheon.uf.viz.core.datastructure.PerspectiveSpecificProperties;
+import com.raytheon.uf.viz.core.comm.PerspectiveSpecificLoadProperties;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.drawables.PaintProperties;
 import com.raytheon.uf.viz.core.drawables.ResourcePair;
@@ -55,7 +55,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
-import com.raytheon.uf.viz.d2d.core.D2DProperties;
+import com.raytheon.uf.viz.d2d.core.D2DLoadProperties;
 import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
 import com.raytheon.viz.hydro.perspective.HydroPerspectiveManager;
 import com.raytheon.viz.hydro.resource.MultiPointResource;
@@ -2666,14 +2666,29 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
 
             /*
              * Only do this for the D2D perspective.
+             * 
+             * 
+             * 
+             * 
+        PerspectiveSpecificLoadProperties perspProps = loadProperties
+                .getPerspectiveProperty();
+        D2DLoadProperties d2dProps = null;
+        if (perspProps instanceof D2DLoadProperties) {
+            d2dProps = (D2DLoadProperties) perspProps;
+        } else {
+            d2dProps = new D2DLoadProperties();
+            loadProperties.setPerspectiveProperty(d2dProps);
+        }
+
+             * 
              */
             String newMapScale = null;
-            PerspectiveSpecificProperties perspectiveProps = paintProperties
-                    .getPerspectiveProps();
+            PerspectiveSpecificLoadProperties perspectiveProps = loadProperties
+                    .getPerspectiveProperty();
             if (perspectiveProps != null) {
-                if (perspectiveProps instanceof D2DProperties) {
-                    D2DProperties d2dPerspectiveProps = (D2DProperties) perspectiveProps;
-                    newMapScale = d2dPerspectiveProps.getScale();
+                if (perspectiveProps instanceof D2DLoadProperties) {
+                	D2DLoadProperties d2dPerspectiveProps = (D2DLoadProperties) perspectiveProps;
+                    newMapScale = paintProperties.getCanvasBounds().toString();
                 }
             }
             if (newMapScale == null) {

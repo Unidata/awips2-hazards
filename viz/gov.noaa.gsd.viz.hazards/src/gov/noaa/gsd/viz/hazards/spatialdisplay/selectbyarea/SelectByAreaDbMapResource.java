@@ -1090,7 +1090,7 @@ public class SelectByAreaDbMapResource extends
                             node.getLocation()[1] - offsetY);
                     string.font = font;
                     string.horizontalAlignment = HorizontalAlignment.CENTER;
-                    string.verticallAlignment = VerticalAlignment.MIDDLE;
+                    string.verticalAlignment = VerticalAlignment.MIDDLE;
                     boolean add = true;
 
                     /*

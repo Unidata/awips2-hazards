@@ -67,4 +67,10 @@ public class HazardStyle extends AbstractStylePreferences {
         this.color = color;
     }
 
+	@Override
+	public AbstractStylePreferences clone() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

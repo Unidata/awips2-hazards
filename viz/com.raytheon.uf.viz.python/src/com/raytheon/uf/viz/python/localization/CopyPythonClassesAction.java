@@ -46,6 +46,7 @@ import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.LocalizationUtil;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
+import com.raytheon.uf.common.protectedfiles.ProtectedFileLookup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -268,8 +269,8 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
                 enabled = false;
             }
         }
-        if (enabled && this.file.isProtected()) {
-            return file.getProtectedLevel().compareTo(level) >= 0;
+        if (enabled && ProtectedFileLookup.isProtected(this.file)) {
+            return ProtectedFileLookup.getProtectedLevel(file).compareTo(level) >= 0;
         }
 
         return enabled;

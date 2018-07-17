@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.raytheon.uf.common.comm.HttpServerException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardLockNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.LockHazardEventResponse;
@@ -39,8 +40,10 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.database.cluster.ClusterLockUtils;
 import com.raytheon.uf.edex.database.cluster.ClusterTask;
-import com.raytheon.uf.edex.esb.camel.jms.IBrokerConnectionsProvider;
+import com.raytheon.uf.edex.esb.camel.jms.IBrokerRestProvider;
+import com.raytheon.uf.edex.esb.camel.jms.JMSConfigurationException;
 import com.raytheon.uf.edex.hazards.notification.HazardLockNotifier;
+import com.raytheon.uf.common.comm.CommunicationException;
 
 /**
  * 
@@ -108,19 +111,13 @@ public class HazardEventLockHandler implements IRequestHandler<LockRequest> {
     private static final String LOCK_FAILED = "FAILED";
 
     /** Qpid connection provider */
-    private IBrokerConnectionsProvider provider;
+    private static IBrokerRestProvider provider;
 
     private HazardLockNotifier notifier;
-
-    /**
-     * Creates a new LockHazardEventHandler
-     * 
-     * @param provider
-     *            The qpid connection provider
-     */
-    public HazardEventLockHandler(IBrokerConnectionsProvider provider) {
-        this.provider = provider;
-        this.notifier = new HazardLockNotifier();
+        
+    public void setProvider(IBrokerRestProvider provider) {
+    	HazardEventLockHandler.provider = provider;
+    	this.notifier = new HazardLockNotifier();
     }
 
     @Override
@@ -336,13 +333,16 @@ public class HazardEventLockHandler implements IRequestHandler<LockRequest> {
 
     /**
      * Checks for orphaned hazard event locks
+     * @throws  
+     * @throws JMSConfigurationException 
+     * @throws HttpServerException 
      * 
      * @throws Exception
      *             If errors occur getting qpid clients or persisting new state
      *             of HazardEvent
      */
     private void checkForOrphanedLocks(boolean practice, String taskName)
-            throws Exception {
+            throws CommunicationException, HttpServerException, JMSConfigurationException {
         Set<String> clients = new HashSet<String>(provider.getConnections());
         List<ClusterTask> locks = ClusterLockUtils.getLocks(taskName);
         List<String> unlockedOrphans = new ArrayList<>();

@@ -666,7 +666,7 @@ class PgenDisplayElementFactory {
         dstring.font = font;
         dstring.setCoordinates(loc[0], loc[1]);
         dstring.horizontalAlignment = HorizontalAlignment.CENTER;
-        dstring.verticallAlignment = VerticalAlignment.MIDDLE;
+        dstring.verticalAlignment = VerticalAlignment.MIDDLE;
         dstring.rotation = rotation;
 
         Rectangle2D bounds = target.getStringsBounds(dstring);
@@ -962,7 +962,7 @@ class PgenDisplayElementFactory {
         dstring.font = font;
         dstring.setCoordinates(loc[0], loc[1]);
         dstring.horizontalAlignment = HorizontalAlignment.CENTER;
-        dstring.verticallAlignment = VerticalAlignment.MIDDLE;
+        dstring.verticalAlignment = VerticalAlignment.MIDDLE;
         dstring.rotation = rotation;
 
         Rectangle2D bounds = target.getStringsBounds(dstring);
