@@ -70,7 +70,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.StringUtil;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
@@ -639,7 +638,7 @@ public class HazardEventHandler {
             AbstractHazardServicesEventIdUtil eventIdUtil = HazardServicesEventIdUtil
                     .getInstance(practice);
             hazardEvent.setEventID(eventIdUtil.getNewEventID(siteID,
-                    LocalizationManager.getInstance().getCurrentSite()));
+                    System.getProperty("aw.site.identifier")));
         } catch (Exception e) {
             statusHandler.handle(Priority.ERROR, "Hazard ID generation failed.",
                     e);
