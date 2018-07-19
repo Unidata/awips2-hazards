@@ -33,7 +33,6 @@ from dynamicserialize.dstypes.com.raytheon.uf.common.localization import Localiz
 from dynamicserialize.dstypes.com.raytheon.uf.common.localization import LocalizationLevel
 from dynamicserialize.dstypes.com.raytheon.uf.common.auth.resp import UserNotAuthorized
 from dynamicserialize.dstypes.com.raytheon.uf.common.auth.resp import SuccessfulExecution
-from dynamicserialize.dstypes.com.raytheon.uf.common.plugin.nwsauth.user import User
 
 # NOTE, THE LOGIC THAT ALLOWS STANDALONE UNIT TESTS TO RETRIEVE BASE LEVEL
 # LOCALIZATION FILES OUT OF THE CODE BASE IS COMPLETELY DEPENDENT ON THIS
