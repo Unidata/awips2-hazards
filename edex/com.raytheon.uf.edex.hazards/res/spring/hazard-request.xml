@@ -52,7 +52,7 @@
 
     <bean id="HazardEventLockHandler"
         class="com.raytheon.uf.edex.hazards.handlers.HazardEventLockHandler">
-        <constructor-arg ref="brokerConnectionsProvider" />
+        <constructor-arg ref="brokerRestProvider" />
     </bean>
     		
 	<bean id="SpatialQueryHandler" class="com.raytheon.uf.edex.hazards.handlers.SpatialQueryHandler"/>
@@ -200,23 +200,5 @@
         </route>
 
     </camelContext>
-
-	<camelContext id="clusteredSvcbuDbProc"
-		xmlns="http://camel.apache.org/schema/spring"
-		errorHandlerRef="errorHandler">
-		<endpoint id="svcbuDbFileEndpoint"
-			uri="file:${edex.home}/data/HazardServices/ServiceBackup/database?delete=True&amp;delay=60000" />
-
-		<route id="svcbuDbFileScan">
-			<from ref="svcbuDbFileEndpoint" />
-			<bean ref="svcbuDbProc" method="processEvent" />
-		</route>
-	</camelContext>
-
-	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
-		<constructor-arg ref="clusteredSvcbuDbProc"/>
-	</bean>
-
-	<bean id="svcbuDbProc" class="com.raytheon.uf.edex.hazards.servicebackup.ServiceBackupDbTableProcessor"/>
 
 </beans>
