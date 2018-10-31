@@ -20,27 +20,4 @@
     -->
 <?eclipse version="3.2"?>
 <plugin>  
-   <extension
-       point="com.raytheon.uf.viz.localization.perspective.localizationpath">
-       <path
-          application="Hazard Services"
-          extensionFilter=".py"
-          localizationAdapter="com.raytheon.uf.viz.recommenders.localization.RecommenderAdapter"
-          localizationType="COMMON_STATIC"
-          name="Recommenders"
-          value="HazardServices/python/events/recommenders" 
-          recursive="true">
-       </path>
-   </extension>
-   <extension
-       point="com.raytheon.uf.viz.localization.perspective.localizationpath">
-       <path
-          application="Hazard Services"
-          extensionFilter=".py"
-          localizationType="COMMON_STATIC"
-          name="Event Utilities"
-          recursive="true"
-          value="HazardServices/python/events/utilities">
-       </path>
-   </extension>
 </plugin>
